@@ -1,0 +1,13 @@
+extends: '@panates/rman-preset'
+
+group: false
+
+version:
+  cascade: group
+  # A dependent is not released, nor its range rewritten, while a sibling's
+  # new version is inside the range it declares; outside it, version fails.
+  # A sibling's new major: move the dependents' ranges by hand first
+  dependentRanges: keep
+
+changelog:
+  groupBy: package

@@ -1,0 +1,9 @@
+{
+  "extends": "@panates/tsconfig/node.json",
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "noEmit": false
+  },
+  "references": [{ "path": "./packages/*" }]
+}

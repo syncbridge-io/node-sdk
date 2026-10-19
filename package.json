@@ -1,0 +1,37 @@
+{
+  "name": "syncbridge-node-sdk",
+  "description": "SyncBridge's Node.js SDK: the libraries and tools to build, test and publish SyncBridge modules",
+  "private": true,
+  "version": "2.0.0",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syncbridge-io/node-sdk.git"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "rman build",
+    "test": "tsc -b tsconfig-test.json --noEmit && mocha",
+    "precover": "rman clean",
+    "citest": "c8 mocha"
+  },
+  "devDependencies": {
+    "@opra/common": "^1.32.3",
+    "@panates/eslint-config": "^2.3.2",
+    "@panates/eslint-config-ts": "^2.3.2",
+    "@panates/rman-preset": "^1.12.0",
+    "@panates/tsconfig": "^2.1.8",
+    "@swc-node/register": "^1.12.1",
+    "@swc/core": "^1.16.18",
+    "@swc/helpers": "^0.5.23",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^26.6.5",
+    "c8": "^12.0.0",
+    "globals": "^17.13.0",
+    "mocha": "^12.0.3",
+    "typescript": "6.0.3"
+  }
+}

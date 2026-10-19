@@ -1,0 +1,29 @@
+syncbridge-fixtures; boundary=sb-test
+
+A monitor's messages, for the FixtureReader tests.
+--sb-test lines inside this text do not count: only whole lines.
+
+--sb-test
+name: oru-r01
+eol: cr
+note: as recorded at a site
+
+MSH|^~\&|VSP|GE Healthcare|||20250827142700||ORU^R01|1|P|2.6
+PID|||33426^^^PID^MR
+--sb-test
+name: pdu
+encoding: hex
+
+00 01 00 2a
+e1 00 00 02
+--sb-test
+name: ack
+escapes: true
+
+<VT>MSH|^~\&|SB|||||20250101||ACK|1|P|2.6<CR>MSA|AA|1<CR><FS><CR>
+--sb-test
+
+<<not a header>> --sb-testing, and a line break kept at the end
+
+--sb-test--
+Anything after the closing boundary is not read.

@@ -1,0 +1,95 @@
+# Changelog
+
+## @syncbridge/syncbuild@2.0.0 (2026-10-19)
+
+### ✨ Features
+
+- plugins, which extend SyncBridge in its main process (d58d5ce)
+- test fixtures, and a guide to migrate packages (f070e3f)
+- the app's logs in the worker's log view, and a details field for records (6ca4521)
+- components' traffic logged when turned on, by the events picked (cabd140)
+- a log channel's settings from the Logs tab, and warnings of wrong ones (c1a81ed)
+- an IO client's connects and disconnects tell what it connects to (97d3e60)
+- each applet, component and plugin a README of its own - docs/<ClassName>.md put in the package by spm, its path in the definition; one without told of, a misspelt one refused (f7dfbc7)
+- **spm:** a package's documents - docs/ whole, in languages, its links checked (bcc8a2f)
+- **docs:** sidebar.json tells how a package's documents are listed; a document may be in another language alone (60663df)
+- **spm:** login, logout, whoami - signed in by the device authorization grant (cdea02a)
+- **spm:** publish - asked first, then only what the registry lacks (f667ea0)
+- **spm:** publish approved in Console - asked for, waited for, sent under it (02ffb96)
+- **spm:** publish from GitHub Actions - the job's OIDC token, no sign-in, no approval (0540196)
+- **registry:** how a module is found in the Marketplace - its summary, functions, connections, screenshots (cce9fb1)
+- **common,engine,syncbuild:** Node's permission model holds an isolated worker - reading its code, installation, plan and data, writing its data alone; native addons and other programs only as declared (native-code, child-processes), worker threads never; spm verify runs a module under it, telling what it failed to declare (e7f6781)
+- **runtime,syncbuild:** spm verify loads a package of components alone - its classes, in a worker under the permission model as they declare; a provided package of the same workspace is packed and installed, one that cannot be resolved told so (d749c0b)
+- **syncbuild:** spm verify packs a peer of the same workspace the host provides rather than linking its sources; an app whose default values are not valid is loaded, told as not created, its profile to choose its components (d1012e9)
+- **cloud,syncbuild:** a version published already is refused with code VERSION_PUBLISHED; spm publish --skip-existing skips it rather than failing, so a release is run again safely (89e0355)
+
+### 🐛 Bug Fixes
+
+- **syncbuild:** spm removes nothing that is not its own (ca6691d)
+- **syncbuild:** spm verify points the peers of a host copy it installed at the host's - pnpm gave it registry copies of its own, which shadowed them (375e42f)
+
+### 🔧 Refactoring
+
+- an extension's README in a directory of its own - docs/<ClassName>/README.md, kept at the same path in the package, so what it links to is found from where it is (7cbf635)
+- applets are apps - @App, AppBase, AppMetadata, the manifest's "apps", classType "app"; SyncBridge itself the engine to its plugins (host.engine, engine-started) (5bc768e)
+- **common:** a module tells its summary and screenshots alone - where it is shown is the registry's (4b3ca34)
+
+### 💬 General Changes
+
+- **syncbuild:** spm runs in this checkout (b9e22ac)
+
+---
+
+## @syncbridge/syncbuild@1.0.4 (2026-10-12)
+
+### 🐛 Bug Fixes
+
+- drop the manifest version, one package layout only (5f5badd)
+- workspace dependencies, no package lockfile, verify loads only (b3a4af4)
+- spm verify registers what the profile uses, several profiles (7265320)
+
+---
+
+## @syncbridge/syncbuild@1.0.0 (2026-10-10)
+
+### 🧹 Chores
+
+- depend on the 1.0 @syncbridge packages in the app, cloud services and spm init (516d819)
+
+---
+
+## @syncbridge/syncbuild@0.14.0 (2026-10-10)
+
+### ✨ Features
+
+- **syncbuild:** spm init creates a package with its first test (a7c5d95)
+- **syncbuild:** unbundled packages, spm add/check and a register hook (ac368e7)
+- **syncbuild:** spm check reports a package depending on itself (9649ea8)
+- **syncbuild:** spm check refuses the npm mirror's copies as runtime dependencies (8ea2bc3)
+- **syncbuild:** spm verify installs a package as SyncBridge does and starts it (8ce2d4d)
+
+### 🐛 Bug Fixes
+
+- **syncbuild:** spm build of a v2 package writes into the output directory itself (60f5e83)
+
+### 🧪 Tests
+
+- **syncbuild:** spm verify tests use @syncbridge/common's sources, not its build (5701569)
+
+---
+
+## @syncbridge/syncbuild@0.13.11 (2026-10-08)
+
+### 🐛 Bug Fixes
+
+- **syncbuild:** spm build writes into the output directory itself (b80fad8)
+- **syncbuild:** spm exits with 1 when a build fails (fa2ad1d)
+- **syncbuild:** say what to fix when a build fails, without the stack (4befdf5)
+
+---
+
+## @syncbridge/syncbuild@0.13.8 (2026-10-06)
+
+### 🧹 Chores
+
+- version every package independently (8f9dc3b)

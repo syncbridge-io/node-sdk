@@ -1,0 +1,7 @@
+/coverage
+/.idea
+/.github
+**/*.md
+
+node_modules
+build

@@ -1,0 +1,56 @@
+{
+  "name": "@syncbridge/runtime",
+  "version": "2.0.0",
+  "description": "Installs SyncBridge extension packages and runs apps in workers, as SyncBridge does",
+  "author": "Panates Inc",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syncbridge-io/node-sdk.git",
+    "directory": "packages/runtime"
+  },
+  "scripts": {
+    "test": "mocha",
+    "cover": "c8 mocha",
+    "prepublishOnly": "node -e \"console.error('This package publishes from build/, never from the source tree. Run: rman publish'); process.exit(1)\""
+  },
+  "dependencies": {
+    "@jsopen/objects": "^2.3.4",
+    "adm-zip": "^0.6.1",
+    "jsonc-parser": "^3.3.1",
+    "semver": "^7.8.5"
+  },
+  "peerDependencies": {
+    "@syncbridge/common": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
+    "@types/semver": "^7.8.0",
+    "expect": "^30.5.2"
+  },
+  "type": "module",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./loader": {
+      "types": "./loader.d.ts",
+      "default": "./loader.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22.15"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/syncbridge-io/node-sdk/tree/main/packages/runtime#readme",
+  "bugs": {
+    "url": "https://github.com/syncbridge-io/node-sdk/issues"
+  }
+}

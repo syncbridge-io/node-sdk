@@ -1,0 +1,48 @@
+{
+  "name": "@syncbridge/plugin-api",
+  "version": "2.0.0",
+  "description": "The API SyncBridge plugins are written against",
+  "author": "Panates Inc",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syncbridge-io/node-sdk.git",
+    "directory": "packages/plugin-api"
+  },
+  "scripts": {
+    "test": "mocha",
+    "cover": "c8 mocha",
+    "prepublishOnly": "node -e \"console.error('This package publishes from build/, never from the source tree. Run: rman publish'); process.exit(1)\""
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.2.2",
+    "ts-gems": "^4.0.4"
+  },
+  "peerDependencies": {
+    "@syncbridge/common": "^2.0.0"
+  },
+  "devDependencies": {
+    "expect": "^30.5.2"
+  },
+  "type": "module",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/syncbridge-io/node-sdk/tree/main/packages/plugin-api#readme",
+  "bugs": {
+    "url": "https://github.com/syncbridge-io/node-sdk/issues"
+  }
+}

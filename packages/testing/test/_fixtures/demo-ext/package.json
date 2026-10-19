@@ -1,0 +1,13 @@
+{
+  "name": "@test/demo-ext",
+  "version": "1.2.0",
+  "private": true,
+  "type": "module",
+  "module": "./index.js",
+  "dependencies": {
+    "@test/base-ext": "*"
+  },
+  "peerDependencies": {
+    "@syncbridge/common": "*"
+  }
+}

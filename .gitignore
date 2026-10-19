@@ -1,0 +1,31 @@
+# compiled output
+/node_modules
+**/node_modules
+# A test fixture's dependency, linked as npm would install it
+!packages/testing/test/_fixtures/demo-ext/node_modules
+packages/*/dist
+packages/*/build
+packages/*/.spm
+packages/*/tmp-*
+packages/*/coverage
+*.tsbuildinfo
+*.log
+junit.xml
+.claude
+
+# environment variables
+.env
+.env.*
+
+# OS
+.DS_Store
+
+# Tests
+/coverage
+/.nyc_output
+
+# IDEs and editors
+/.idea
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json

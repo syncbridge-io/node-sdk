@@ -1,0 +1,33 @@
+name: Release
+on:
+  # Can be run manually
+  workflow_dispatch:
+
+  # The version is decided from Conventional Commits in the release job:
+  # every push to main may release
+  push:
+    branches:
+      - main
+
+# Only one run at a time
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    if: "!contains(github.event.head_commit.message, 'no-release')"
+    uses: ./.github/workflows/test.yml
+
+  release:
+    needs: [test]
+    if: "!contains(github.event.head_commit.message, 'no-release')"
+    uses: panates/github-actions/.github/workflows/node-release.yaml@v3
+    # Declared on the calling job: what governs a reusable workflow's
+    # permissions. id-token: npm Trusted Publishing (OIDC) - the
+    # @syncbridge/* packages are registered for syncbridge-io/node-sdk and
+    # this workflow (release.yml), so no NPM_TOKEN; the repository is public,
+    # so each version carries its provenance
+    permissions:
+      id-token: write
+      contents: write

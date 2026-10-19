@@ -1,0 +1,45 @@
+name: Test
+on:
+  workflow_call:
+
+  # Can be run manually
+  workflow_dispatch:
+
+  push:
+    branches:
+      - dev
+    paths:
+      - '.github/workflows/test.yml'
+      - 'packages/**'
+      - '**/package.json'
+      - '**/tsconfig*.json'
+      - '**/.mocharc.*'
+      - '.c8rc.json'
+      - 'package-lock.json'
+
+# Only one run per branch at a time
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 'Tests'
+    if: >
+      github.event_name != 'push' ||
+      !contains(github.event.head_commit.message, 'no-test')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Setup Environment
+        uses: panates/gh-setup-node@v2
+        with:
+          node-version: '24'
+          rman-version: '2'
+          install: 'ci'
+
+      - name: Apply tests
+        run: |
+          rman check
+          rman lint
+          npm run citest
