@@ -1,6 +1,6 @@
 {
   "name": "@syncbridge/runtime",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Installs SyncBridge extension packages and runs apps in workers, as SyncBridge does",
   "author": "Panates Inc",
   "license": "MIT",
@@ -22,7 +22,7 @@
     "semver": "^7.8.5"
   },
   "peerDependencies": {
-    "@syncbridge/common": "^2.0.0"
+    "@syncbridge/common": "^2.0.1"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.8",

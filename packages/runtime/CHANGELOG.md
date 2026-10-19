@@ -1,5 +1,16 @@
 # Changelog
 
+<!-- rman:documented-up-to 8a48ab417b5d748bab8a39aeead003c0be3c69d3 -->
+
+## @syncbridge/runtime@2.0.1 (2026-10-19)
+
+### 🐛 Bug Fixes
+
+- **runtime:** a worker ends as soon as its app has stopped - what the app left open is logged as a warning, not waited for; endWorker and resourcesLeft, for the engine's worker too (5874ff1)
+- **runtime:** a worker ends as soon as its last message is delivered - not after a fixed 250 ms; an 'ended' message marks it, which hosts ignore (cb26055)
+
+---
+
 ## @syncbridge/runtime@2.0.0 (2026-10-19)
 
 ### ✨ Features
