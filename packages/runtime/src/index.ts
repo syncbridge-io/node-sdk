@@ -1,4 +1,5 @@
 export * from './app-worker.js';
+export * from './end-worker.js';
 export * from './install.js';
 export * from './load-extension-package.js';
 export { installWorkerHooks, readWorkerPlan } from './loader.js';

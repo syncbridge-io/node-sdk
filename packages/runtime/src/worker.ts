@@ -8,11 +8,12 @@
  * packages and creates the app, without initializing or starting it;
  * sent `load`, it only loads them - a package of components alone.
  * Its host gone (crashed, killed) or a stop signal, it stops and ends: it
- * is never left running alone.
+ * is never left running alone, nor kept by what the app left open.
  */
 import process from 'node:process';
 import type { ILogger, Profile } from '@syncbridge/common';
 import { AppWorker } from './app-worker.js';
+import { endWorker } from './end-worker.js';
 import { readWorkerPlan } from './loader.js';
 import {
   componentPaths,
@@ -116,22 +117,22 @@ async function createOnly(profile: Profile) {
     send({ type: 'created', components: componentPaths(worker.app!) });
 }
 
-/** How long ending waits for what the app left open */
-const END_MS = 2000;
-
 let stopping: Promise<void> | undefined;
-/** Stops the app, tells the host, and ends: what it left open too */
+/** Stops the app, tells the host, and ends: whatever the app left open */
 function stop(): Promise<void> {
   return (stopping ??= (async () => {
+    let failed = false;
     try {
       await worker.stop();
-    } finally {
-      send({ type: 'stopped' });
-      setTimeout(() => {
-        if (process.connected) process.disconnect?.();
-        setTimeout(() => process.exit(0), END_MS).unref();
-      }, 100).unref();
+    } catch (e) {
+      failed = true;
+      logger.error(e);
     }
+    send({ type: 'stopped' });
+    await endWorker({
+      warn: message => logger.warn(message),
+      exitCode: failed ? 1 : 0,
+    });
   })());
 }
 

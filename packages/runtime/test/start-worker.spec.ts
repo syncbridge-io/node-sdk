@@ -146,6 +146,30 @@ describe('startWorker', function () {
     expect(w.logs.map(l => l.message)).toContain('lib 1.0.0');
     await w.stop();
     expect(w.status).toBe('stopped');
+    /* It left nothing open: nothing told */
+    expect(w.logs.some(l => /open when it stopped/.test(l.message))).toBe(
+      false,
+    );
+  });
+
+  it('should end once its app stopped, telling what the app left open', async () => {
+    const dir = path.join(root, 'rt__leak@1.0.0');
+    /* A timer its _stop() does not clear */
+    await writeApp(dir, '@rt/leak', `setInterval(() => undefined, 1000);`);
+    await install(dir);
+    const w = await start('@rt/leak');
+    await w.waitForStatus(['started']);
+    const exited = new Promise(resolve => w.once('exit', resolve));
+    const began = Date.now();
+    await w.stop();
+    /* Not kept alive by the timer: ended at once, well */
+    expect(Date.now() - began).toBeLessThan(1500);
+    expect(await exited).toBe(0);
+    expect(
+      w.logs.find(
+        l => l.level === 'warn' && /left Timeout ×1 open/.test(l.message),
+      ),
+    ).toBeDefined();
   });
 
   it('should report an app that fails to start', async () => {
