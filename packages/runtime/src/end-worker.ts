@@ -27,8 +27,8 @@ export interface EndWorkerOptions {
   /** Sends what is still queued for the host - log records */
   flush?: () => void;
   /**
-   * How long the IPC channel is given to deliver what was sent, in ms;
-   * default 250
+   * How long, at most, the IPC channel is given to deliver what was sent,
+   * in ms; default 1000. It ends as soon as it has.
    */
   drainMs?: number;
   /** Default 0 */
@@ -50,9 +50,14 @@ export function endWorker(options: EndWorkerOptions): Promise<never> {
     );
   options.flush?.();
   return new Promise<never>(() => {
-    setTimeout(() => {
+    const exit = () => {
       if (process.connected) process.disconnect?.();
       process.exit(options.exitCode ?? 0);
-    }, options.drainMs ?? 250);
+    };
+    if (!process.connected || !process.send) return exit();
+    setTimeout(exit, options.drainMs ?? 1000);
+    /* IPC delivers in order: once this one is sent, so is all before it.
+     * A host ignores it - it tells nothing */
+    process.send({ type: 'ended' }, () => exit());
   });
 }

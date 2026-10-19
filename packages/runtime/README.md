@@ -51,7 +51,7 @@ Once the app has stopped, `endWorker` ends the process - both workers use
 it. Whatever the app left open (a timer, a socket, a library's pool) would
 only keep a stopped process alive, so the worker does not wait for it: it
 logs a warning naming what was left (`resourcesLeft`), for the module's
-developer to close in `_stop()`, and exits.
+developer to close in `_stop()`, and exits once its messages are delivered.
 
 Requires Node.js 22.15 or later (`module.registerHooks`).
 

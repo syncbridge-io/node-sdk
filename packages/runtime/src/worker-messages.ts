@@ -10,4 +10,6 @@ export type WorkerMessage =
   /** Its plan's classes loaded alone (`loadOnly`): their URIs */
   | { type: 'loaded'; classes: string[] }
   | { type: 'failed'; message: string }
-  | { type: 'stopped' };
+  | { type: 'stopped' }
+  /** The last message: everything sent before it was delivered */
+  | { type: 'ended' };
