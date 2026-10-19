@@ -12,6 +12,7 @@ packages/*/coverage
 *.log
 junit.xml
 .claude
+graphify-out
 
 # environment variables
 .env
