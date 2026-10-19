@@ -136,7 +136,9 @@ always call `super`:
 - `_init()`: once, before the first start.
 - `_start(abortSignal)`: start working. The signal aborts when a stop comes
   while starting.
-- `_stop()`: stop, and release what `_start` took.
+- `_stop()`: stop, and release what `_start` took. Close every timer,
+  socket and pool: what is left open is logged as a warning when the
+  worker ends.
 - `_restart()`: stop and start in place, for example when values change.
 
 `status` is a `ServiceStatus`: `stopped`, `starting`, `started`,
