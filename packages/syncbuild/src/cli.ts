@@ -202,7 +202,7 @@ program
   )
   .option(
     '--registry <url>',
-    'The registry; default: SB_REGISTRY_URL, or api.syncbridge.io',
+    'The registry; default: SB_REGISTRY_URL, or registry.syncbridge.io',
   )
   .option(
     '--access <access>',
@@ -303,7 +303,7 @@ program
   )
   .option(
     '--registry <url>',
-    'The registry; default: SB_REGISTRY_URL, or api.syncbridge.io',
+    'The registry; default: SB_REGISTRY_URL, or registry.syncbridge.io',
   )
   .option('--no-browser', 'Does not open the browser: the address is shown')
   .action(async options => {
@@ -341,7 +341,7 @@ program
   .description('Signs out of the registry: the sign-in revoked and forgotten')
   .option(
     '--registry <url>',
-    'The registry; default: SB_REGISTRY_URL, or api.syncbridge.io',
+    'The registry; default: SB_REGISTRY_URL, or registry.syncbridge.io',
   )
   .action(async options => {
     try {
@@ -361,7 +361,7 @@ program
   .description('Tells who you are signed in as, and your organizations')
   .option(
     '--registry <url>',
-    'The registry; default: SB_REGISTRY_URL, or api.syncbridge.io',
+    'The registry; default: SB_REGISTRY_URL, or registry.syncbridge.io',
   )
   .action(async options => {
     try {

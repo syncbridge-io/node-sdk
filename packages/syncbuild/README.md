@@ -254,7 +254,7 @@ and opens the browser (`--no-browser`: the address alone), and the
 sign-in lasts until `spm logout`. It is kept in
 `~/.syncbridge/credentials.json` (`SB_CONFIG_DIR`), readable by you
 alone. The registry is `--registry`, `SB_REGISTRY_URL`, or
-`https://api.syncbridge.io`.
+`https://registry.syncbridge.io`.
 
 `spm publish` packs the package (or takes an archive `spm pack` made)
 and asks the registry first whether the version may be published - you a

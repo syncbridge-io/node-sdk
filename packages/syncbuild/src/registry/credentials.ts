@@ -5,7 +5,7 @@ import process from 'node:process';
 import { SbError } from '@syncbridge/common';
 
 /** The registry spm talks to when none is told */
-export const DEFAULT_REGISTRY = 'https://api.syncbridge.io';
+export const DEFAULT_REGISTRY = 'https://registry.syncbridge.io';
 
 /** Where spm keeps what it signed in with: SB_CONFIG_DIR, or ~/.syncbridge */
 export function configDir(): string {
@@ -34,7 +34,7 @@ interface CredentialsFile {
 
 /**
  * The registry a command talks to: the one told, SB_REGISTRY_URL, or
- * api.syncbridge.io - its address without a trailing slash
+ * registry.syncbridge.io - its address without a trailing slash
  */
 export function resolveRegistry(told?: string): string {
   const url = told || process.env.SB_REGISTRY_URL || DEFAULT_REGISTRY;
