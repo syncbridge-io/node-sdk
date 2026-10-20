@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to 8a48ab417b5d748bab8a39aeead003c0be3c69d3 -->
+<!-- rman:documented-up-to 9d521a0c633c441f201925eeae5d53e7e204daea -->
+
+## v2026.10.20-1135 (2026-10-20)
+
+### 📚 Documentation
+
+- the platform repository is syncbridge-io/syncbridge, at ~/dev/syncbridge/syncbridge - renamed from syncbridge-cloud (19ed8c0)
+
+### 🧹 Chores
+
+- sync lockfile (66f5200)
+
+---
 
 ## v2026.10.19-1816 (2026-10-19)
 
