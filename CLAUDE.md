@@ -5,8 +5,8 @@
 SyncBridge's Node.js SDK (MIT, public): the npm packages module developers
 use - `@syncbridge/common`, `runtime`, `syncbuild` (`spm`), `testing`,
 `plugin-api` - in `packages/<name>`. Moved out of the private platform
-repository (syncbridge-io/syncbridge-cloud, at
-`~/dev/syncbridge/cloud`, beside this one) at 2.0.0, with a fresh history.
+repository (syncbridge-io/syncbridge, at
+`~/dev/syncbridge/syncbridge`, beside this one) at 2.0.0, with a fresh history.
 
 The platform consumes these packages from npm: the engine
 (`syncbridge-engine`) and the cloud services there depend on them. Work
