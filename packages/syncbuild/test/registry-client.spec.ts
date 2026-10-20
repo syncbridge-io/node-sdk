@@ -114,7 +114,7 @@ describe('the registry client', function () {
     const env = process.env.SB_REGISTRY_URL;
     delete process.env.SB_REGISTRY_URL;
     try {
-      expect(resolveRegistry()).toBe('https://api.syncbridge.io');
+      expect(resolveRegistry()).toBe('https://registry.syncbridge.io');
     } finally {
       if (env !== undefined) process.env.SB_REGISTRY_URL = env;
     }
