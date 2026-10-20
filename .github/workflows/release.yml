@@ -2,6 +2,11 @@ name: Release
 on:
   # Can be run manually
   workflow_dispatch:
+    inputs:
+      skip-tests:
+        description: Skip test
+        type: boolean
+        default: false
 
   # The version is decided from Conventional Commits in the release job:
   # every push to main may release
@@ -16,12 +21,19 @@ concurrency:
 
 jobs:
   test:
-    if: "!contains(github.event.head_commit.message, 'no-release')"
+    if: >
+      !contains(github.event.head_commit.message, 'no-release') &&
+      !(github.event_name == 'workflow_dispatch' && inputs.skip-tests)
     uses: ./.github/workflows/test.yml
 
   release:
     needs: [test]
-    if: "!contains(github.event.head_commit.message, 'no-release')"
+    # `always()` because `needs` alone would block this whenever `test` is
+    # skipped - a manual run with skip-tests
+    if: >
+      always() && !cancelled() &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped') &&
+      !contains(github.event.head_commit.message, 'no-release')
     uses: panates/github-actions/.github/workflows/node-release.yaml@v3
     # Declared on the calling job: what governs a reusable workflow's
     # permissions. id-token: npm Trusted Publishing (OIDC) - the
