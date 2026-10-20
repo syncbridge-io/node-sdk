@@ -1,5 +1,15 @@
 # Changelog
 
+<!-- rman:documented-up-to 9d521a0c633c441f201925eeae5d53e7e204daea -->
+
+## @syncbridge/syncbuild@2.1.0 (2026-10-20)
+
+### ✨ Features
+
+- **syncbuild:** spm's default registry is https://registry.syncbridge.io - the SyncBridge Registry API's own address now that it is apart from Console's (api.syncbridge.io); its CI runs' OIDC audience with it (8415afd)
+
+---
+
 ## @syncbridge/syncbuild@2.0.0 (2026-10-19)
 
 ### ✨ Features
