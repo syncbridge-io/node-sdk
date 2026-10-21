@@ -117,7 +117,7 @@ property's TypeScript type when not given. Some options:
 
 | Option | Meaning |
 | --- | --- |
-| `label`, `description` | How it is shown |
+| `label`, `description` | How it is shown: text, or text by language - `{ en: 'Port', tr: 'Bağlantı noktası' }` - shown in the reader's language in the server's UI and the Marketplace, else in English |
 | `type` | `VariableType`: `String`, `Secret` (a password or key, kept encrypted in the profile), `Number`, `BigInt`, `Boolean`, `Enum`, `Nested` |
 | `default`, `required` | Its default value, and whether it must be given |
 | `enumValues` | The values of an enum |
