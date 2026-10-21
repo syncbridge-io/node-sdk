@@ -322,6 +322,19 @@ writes that declaration, the `@sbext/vendor__name` devDependency that
 carries its types and the tsconfig `paths` entry. `spm check` reports what
 is missing or inconsistent among them.
 
+The packages come from the registry's npm mirror, https://npm.syncbridge.io/,
+under `@sbext`: `spm add` adds `@sbext:registry=https://npm.syncbridge.io/`
+to the workspace's `.npmrc` when it is not there (`SB_NPM_MIRROR` names
+another mirror). Public packages need no sign-in.
+
+The modules SyncBridge ships with every server - `@syncbridge/builtins`,
+`@syncbridge/hl7`, ... - are the host's, as the SDK is: `spm add
+@syncbridge/builtins@^2.0.0` declares it in `peerDependencies`, to import
+under its own name, and installs the mirror's copy under that name for
+development (`"npm:@sbext/syncbridge__builtins@^2.0.0"`). The SDK itself
+(`@syncbridge/common`, `runtime`, `syncbuild`, `testing`, `plugin-api`)
+comes from npm.
+
 A dependency that is a package of the same workspace - linked into
 `node_modules`, not published - needs no `@sbext` copy: `spm add` maps
 `sb:@vendor/name` to the declarations its build writes (its tsconfig's

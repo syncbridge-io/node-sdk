@@ -12,6 +12,11 @@ import {
 } from '@syncbridge/common';
 import semver from 'semver';
 import { parseTsConfig } from '../builder/utils/parse-tsconfig.js';
+import {
+  hasMirrorScope,
+  isHostProvided,
+  workspaceRoot,
+} from '../npm-mirror.js';
 import { findWorkspacePackage } from '../workspace.js';
 
 export interface CheckResult {
@@ -60,6 +65,12 @@ export function checkPackage(
       for (const p of problems) errors.push(`manifest dependencies: ${p}`);
       continue;
     }
+    if (isHostProvided(name)) {
+      errors.push(
+        `manifest dependencies["${name}"]: SyncBridge ships it with every server; declare it in peerDependencies and import it as "${name}". Run: spm add ${name}@${range}`,
+      );
+      continue;
+    }
     if (name === (manifest?.name || pkgJson.name)) {
       errors.push(`manifest dependencies: "${name}" is the package itself`);
       continue;
@@ -95,6 +106,30 @@ export function checkPackage(
       warnings.push(
         `dependencies["${name}"]: SyncBridge provides the @syncbridge packages; declare it in peerDependencies, so the package uses the host's copy rather than a second one of its own`,
       );
+
+  /* Those SyncBridge ships: the mirror's copy under their own name, for
+   * development and tests */
+  const devDeps = pkgJson.devDependencies || {};
+  for (const [name, range] of Object.entries(pkgJson.peerDependencies || {})) {
+    if (!isHostProvided(name) || findWorkspacePackage(name, packageDir))
+      continue;
+    if (!devDeps[name]?.startsWith(`npm:${toSbextName(name)}@`))
+      warnings.push(
+        `devDependencies["${name}"]: "npm:${toSbextName(name)}@${range}", the npm mirror's copy, gives its types and tests it. Run: spm add ${name}@${range}`,
+      );
+  }
+
+  /* The mirror's packages found only when .npmrc sends @sbext there: the
+   * workspace's, else one's own (~/.npmrc) - so told, not refused */
+  const fromMirror = Object.entries(devDeps).some(
+    ([name, spec]) =>
+      name.startsWith(`@${SBEXT_SCOPE}/`) ||
+      String(spec).startsWith(`npm:@${SBEXT_SCOPE}/`),
+  );
+  if (fromMirror && !hasMirrorScope(workspaceRoot(packageDir)))
+    warnings.push(
+      `.npmrc: "@${SBEXT_SCOPE}:registry=" is not in the workspace's .npmrc; unless yours sends it, npm looks for the npm mirror's packages on npmjs.org. Run spm add again, or add: @${SBEXT_SCOPE}:registry=https://npm.syncbridge.io/`,
+    );
 
   if (pkgJson.dependencies?.['@syncbridge/common'])
     errors.push(
@@ -160,7 +195,11 @@ export function checkPackage(
         errors.push(`${where}: ${e.message}`);
         continue;
       }
-      if (sb && !(sb.name in registryDeps))
+      if (sb && isHostProvided(sb.name))
+        errors.push(
+          `${where}: imports "${m[2]}"; SyncBridge ships "${sb.name}" with every server: import it as "${m[2].slice(3)}"`,
+        );
+      else if (sb && !(sb.name in registryDeps))
         errors.push(
           `${where}: imports "${m[2]}", but "${sb.name}" is not in manifest dependencies. Run: spm add ${sb.name}@<range>`,
         );
