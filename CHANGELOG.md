@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 35e7e9b676854cc77d38894017ae1c5dd47ce5d6 -->
+<!-- rman:documented-up-to 73c2accd4c6d6390e0b38651e4fc6d8794ed3de8 -->
+
+## v2026.10.21-2207 (2026-10-21)
+
+### 🧹 Chores
+
+- sync lockfile (27caca8)
+
+---
 
 ## v2026.10.21-2045 (2026-10-21)
 
