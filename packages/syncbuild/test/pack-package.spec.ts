@@ -404,6 +404,39 @@ export class PackComponent extends ComponentBase {}
     expect(manifest.components[0]).not.toHaveProperty('readme');
   });
 
+  it('should leave an abstract class out: a base of others, never run nor offered', async () => {
+    write(
+      path.join(pkgDir, 'src', 'pack-base.component.ts'),
+      `import { Component, ComponentBase } from '@syncbridge/common';
+
+@Component({ className: 'PackBase', abstract: true })
+export class PackBase extends ComponentBase {}
+`,
+    );
+    write(
+      path.join(pkgDir, 'src', 'index.ts'),
+      `export * from './pack-base.component.js';\nexport * from './pack.component.js';\n`,
+    );
+    const told: string[] = [];
+    await packPackage({
+      packageDir: pkgDir,
+      outDir: 'dist',
+      pack: false,
+      logger: (m: string) => told.push(m),
+    });
+    const manifest = JSON.parse(
+      fs.readFileSync(
+        path.join(pkgDir, 'dist', 'syncbridge-manifest.json'),
+        'utf8',
+      ),
+    );
+    expect(manifest.components.map((c: any) => c.className)).toEqual([
+      'PackComponent',
+    ]);
+    /* Nothing asked of it for the Marketplace */
+    expect(told.filter(m => m.includes('PackBase'))).toEqual([]);
+  });
+
   it('should refuse a README named after no class of the package: a misspelt one', async () => {
     write(path.join(pkgDir, 'docs', 'PackComponnet', 'README.md'), '# Typo');
     await expect(

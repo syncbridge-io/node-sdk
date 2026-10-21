@@ -49,16 +49,21 @@ export async function extractExports(context: Context) {
           ...(await normalizePluginMetadata(metadata)),
         });
       } else if (classType === 'component') {
+        const definition = await normalizeComponentMetadata(metadata);
+        /* An abstract one: a base of others, never run nor offered */
+        if (definition.abstract) continue;
         (manifest.components = manifest.components || []).push({
           exportName: k,
           entryPoint,
-          ...(await normalizeComponentMetadata(metadata)),
+          ...definition,
         });
       } else {
+        const definition = await normalizeAppMetadata(metadata);
+        if (definition.abstract) continue;
         (manifest.apps = manifest.apps || []).push({
           exportName: k,
           entryPoint,
-          ...(await normalizeAppMetadata(metadata)),
+          ...definition,
         });
       }
     }
