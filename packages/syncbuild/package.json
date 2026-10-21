@@ -1,6 +1,6 @@
 {
   "name": "@syncbridge/syncbuild",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "SyncBridge Extension Package Builder",
   "author": "Panates Inc",
   "license": "MIT",
