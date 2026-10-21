@@ -61,8 +61,17 @@ describe('spm add / spm check', () => {
     expect(r).toEqual({
       name: '@test/lib',
       range: '^1.0.0',
-      changed: ['package.json', 'syncbridge-manifest.json', 'tsconfig.json'],
+      changed: [
+        'package.json',
+        'syncbridge-manifest.json',
+        '../../.npmrc',
+        'tsconfig.json',
+      ],
     });
+    /* npm sent to the mirror for @sbext, at the workspace root */
+    expect(fs.readFileSync(path.join(root, '.npmrc'), 'utf8')).toBe(
+      '@sbext:registry=https://npm.syncbridge.io/\n',
+    );
     const pkg = JSON.parse(
       fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'),
     );
@@ -180,6 +189,103 @@ describe('spm add / spm check', () => {
         /dependencies\["@syncbridge\/net"\]: .* declare it in peerDependencies/,
       ),
     ]);
+  });
+
+  it("should keep a workspace's own .npmrc, adding the mirror's line", () => {
+    write(path.join(root, '.npmrc'), 'save-exact=true');
+    addDependency(pkgDir, '@test/lib@^1.0.0');
+    expect(fs.readFileSync(path.join(root, '.npmrc'), 'utf8')).toBe(
+      'save-exact=true\n@sbext:registry=https://npm.syncbridge.io/\n',
+    );
+    write(
+      path.join(root, '.npmrc'),
+      '@sbext:registry=http://localhost:4873/\n',
+    );
+    addDependency(pkgDir, '@test/lib@^1.0.0');
+    expect(fs.readFileSync(path.join(root, '.npmrc'), 'utf8')).toBe(
+      '@sbext:registry=http://localhost:4873/\n',
+    );
+  });
+
+  it('should report the mirror not configured', () => {
+    addDependency(pkgDir, '@test/lib@^1.0.0');
+    fs.rmSync(path.join(root, '.npmrc'));
+    expect(checkPackage(pkgDir)).toEqual({
+      errors: [],
+      warnings: [
+        expect.stringMatching(
+          /\.npmrc: "@sbext:registry=" is not in the workspace's \.npmrc/,
+        ),
+      ],
+    });
+  });
+
+  it('should refuse an SDK package: it comes from npm', () => {
+    expect(() => addDependency(pkgDir, '@syncbridge/common@^2.0.0')).toThrow(
+      /part of the SDK, on npm/,
+    );
+  });
+
+  describe('a package SyncBridge ships with every server', () => {
+    beforeEach(() => {
+      write(
+        path.join(pkgDir, 'src', 'index.ts'),
+        `import { peerOf } from '@syncbridge/builtins';\nexport const x = peerOf;\n`,
+      );
+    });
+
+    it("should declare it as the host's, its mirror copy under its own name", () => {
+      const r = addDependency(pkgDir, '@syncbridge/builtins@^2.0.0');
+      expect(r.changed).toEqual(['package.json', '../../.npmrc']);
+      const pkg = JSON.parse(
+        fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'),
+      );
+      expect(pkg.peerDependencies['@syncbridge/builtins']).toBe('^2.0.0');
+      expect(pkg.devDependencies).toEqual({
+        '@syncbridge/builtins': 'npm:@sbext/syncbridge__builtins@^2.0.0',
+      });
+      /* No registry dependency, no sb: paths */
+      expect(fs.existsSync(path.join(pkgDir, 'syncbridge-manifest.json'))).toBe(
+        false,
+      );
+      expect(
+        fs.readFileSync(path.join(pkgDir, 'tsconfig.json'), 'utf8'),
+      ).not.toContain('sb:');
+      expect(
+        addDependency(pkgDir, '@syncbridge/builtins@^2.0.0').changed,
+      ).toEqual([]);
+      expect(checkPackage(pkgDir)).toEqual({ errors: [], warnings: [] });
+    });
+
+    it('should report it as a registry dependency, or imported by sb:', () => {
+      write(path.join(pkgDir, 'syncbridge-manifest.json'), {
+        dependencies: { '@syncbridge/builtins': '^2.0.0' },
+      });
+      write(
+        path.join(pkgDir, 'src', 'index.ts'),
+        `import { peerOf } from 'sb:@syncbridge/builtins';\nexport const x = peerOf;\n`,
+      );
+      expect(checkPackage(pkgDir).errors).toEqual([
+        expect.stringMatching(
+          /manifest dependencies\["@syncbridge\/builtins"\]: SyncBridge ships it/,
+        ),
+        expect.stringMatching(
+          /imports "sb:@syncbridge\/builtins"; .* import it as "@syncbridge\/builtins"/,
+        ),
+      ]);
+    });
+
+    it('should warn about a peer with no mirror copy to develop against', () => {
+      const pkgFile = path.join(pkgDir, 'package.json');
+      const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
+      pkg.peerDependencies['@syncbridge/hl7'] = '^2.0.0';
+      write(pkgFile, pkg);
+      expect(checkPackage(pkgDir).warnings).toEqual([
+        expect.stringMatching(
+          /devDependencies\["@syncbridge\/hl7"\]: "npm:@sbext\/syncbridge__hl7@\^2\.0\.0"/,
+        ),
+      ]);
+    });
   });
 
   describe('a package of the same workspace', () => {

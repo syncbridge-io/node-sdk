@@ -33,11 +33,27 @@ Raise every `@syncbridge/*` range - in `peerDependencies` and
 | ---------------------------------------------- | ------------------- |
 | `@syncbridge/common`                           | `^<common release>` |
 | `@syncbridge/syncbuild`, `@syncbridge/testing` | `^<release>`        |
-| `@syncbridge/builtins`, `net`, `hl7`, `sqb`, … | `^<release>`        |
+| `@syncbridge/builtins`, `hl7`, `sqb`, …        | `^2.0.0`            |
 
 > The versions are set when SyncBridge is released; take them from its
 > release notes. A range left at 1.1.x / 1.0.x still installs the old
 > packages.
+
+The SDK (`common`, `runtime`, `syncbuild`, `testing`, `plugin-api`) stays
+on npm. The modules SyncBridge ships with every server - `builtins`,
+`hl7`, `kafka`, `redis`, `serialport`, `sqb`, `ngrok`, `pinggy` - are no
+longer on npm: they come from the SyncBridge registry. Add each one a
+package uses with `spm add` in place of its npm range:
+
+```bash
+npx spm add @syncbridge/builtins@^2.0.0
+```
+
+It stays in `peerDependencies` and is imported under its own name, as
+before. `spm add` writes the devDependency
+`"@syncbridge/builtins": "npm:@sbext/syncbridge__builtins@^2.0.0"` - the
+registry's npm mirror's copy, under that name - and sends `@sbext` to the
+mirror in the workspace's `.npmrc` (`@sbext:registry=https://npm.syncbridge.io/`).
 
 Then `npm install`.
 

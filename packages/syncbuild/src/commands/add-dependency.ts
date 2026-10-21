@@ -8,6 +8,13 @@ import {
 } from '@syncbridge/common';
 import * as jsonc from 'jsonc-parser';
 import semver from 'semver';
+import {
+  ensureMirrorScope,
+  isHostProvided,
+  isSdkPackage,
+  nodeModulesDirs,
+  workspaceRoot,
+} from '../npm-mirror.js';
 import { findWorkspacePackage } from '../workspace.js';
 
 /**
@@ -26,6 +33,14 @@ import { findWorkspacePackage } from '../workspace.js';
  * A package of the same workspace is not on the npm mirror: it needs no
  * `@sbext` devDependency, and its `paths` entry, under its own name, points
  * at the declarations its build writes.
+ *
+ * A package SyncBridge ships with every server (`@syncbridge/builtins`,
+ * `@syncbridge/hl7`, ...) is the host's, as the SDK is: it goes into
+ * `peerDependencies` and is imported under its own name, the mirror's copy
+ * installed under that name for development (`npm:@sbext/...`).
+ *
+ * Any package from the mirror needs the workspace's `.npmrc` to send
+ * `@sbext` there: written when it does not.
  */
 export function addDependency(
   dir: string,
@@ -45,9 +60,36 @@ export function addDependency(
   if (problems.length) throw new SbError(problems.join('. '));
   if (!semver.validRange(range))
     throw new SbError(`"${range}" is not a semver range`);
+  if (isSdkPackage(name))
+    throw new SbError(
+      `"${name}" is part of the SDK, on npm: declare it in peerDependencies (npm install -D ${name})`,
+    );
   const scope = name.slice(1).split('/')[0];
   const changed: string[] = [];
   const workspace = findWorkspacePackage(name, packageDir);
+  const mirror = () => {
+    const root = workspaceRoot(packageDir);
+    if (ensureMirrorScope(root))
+      changed.push(path.relative(packageDir, path.join(root, '.npmrc')));
+  };
+
+  if (isHostProvided(name)) {
+    const pkgFile = path.join(packageDir, 'package.json');
+    const before = fs.readFileSync(pkgFile, 'utf8');
+    let text = modify(before, ['peerDependencies', name], range);
+    if (!workspace)
+      text = modify(
+        text,
+        ['devDependencies', name],
+        `npm:${toSbextName(name)}@${range}`,
+      );
+    if (text !== before) {
+      fs.writeFileSync(pkgFile, text);
+      changed.push('package.json');
+    }
+    if (!workspace) mirror();
+    return { name, range, changed };
+  }
 
   const pkgFile = path.join(packageDir, 'package.json');
   let text = fs.readFileSync(pkgFile, 'utf8');
@@ -72,6 +114,8 @@ export function addDependency(
       changed.push(MANIFEST_FILE);
     }
   }
+
+  if (!workspace) mirror();
 
   const tsFile = path.resolve(packageDir, tsconfig);
   if (!fs.existsSync(tsFile)) throw new SbError(`${tsconfig} not found`);
@@ -109,27 +153,4 @@ function modify(text: string, at: jsonc.JSONPath, value: any): string {
     formattingOptions: { insertSpaces: true, tabSize: 2, eol: '\n' },
   });
   return jsonc.applyEdits(text, edits);
-}
-
-/**
- * Every `node_modules` a package's dependencies can be installed in: its
- * own, and its ancestors' up to the workspace root - the first directory
- * with a lockfile or a `.git`.
- */
-function nodeModulesDirs(packageDir: string): string[] {
-  const out: string[] = [];
-  let dir = path.resolve(packageDir);
-  for (;;) {
-    out.push(path.join(dir, 'node_modules'));
-    const isRoot = [
-      '.git',
-      'package-lock.json',
-      'pnpm-lock.yaml',
-      'yarn.lock',
-    ].some(f => fs.existsSync(path.join(dir, f)));
-    const parent = path.dirname(dir);
-    if (isRoot || parent === dir) break;
-    dir = parent;
-  }
-  return out;
 }
