@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to 35e7e9b676854cc77d38894017ae1c5dd47ce5d6 -->
+<!-- rman:documented-up-to 73c2accd4c6d6390e0b38651e4fc6d8794ed3de8 -->
+
+## @syncbridge/syncbuild@2.4.0 (2026-10-21)
+
+### ✨ Features
+
+- **common:** a setting's label and description by language - { en: '...', tr: '...' }, as a module's summary is - shown in the reader's language, else English; textIn picks it, spm checks the languages told (b8add25)
+
+### 🐛 Bug Fixes
+
+- **syncbuild:** an abstract app or component left out of the manifest - a base of others, never run nor offered in the Marketplace, so asked for no summary nor README (a17cf9f)
+
+---
 
 ## @syncbridge/syncbuild@2.3.0 (2026-10-21)
 
