@@ -1,6 +1,16 @@
 # Changelog
 
-<!-- rman:documented-up-to 9d521a0c633c441f201925eeae5d53e7e204daea -->
+<!-- rman:documented-up-to 536898adef8e211a65842d9c667f33da7cc7737d -->
+
+## v2026.10.21-1316 (2026-10-21)
+
+### 🧹 Chores
+
+- sync lockfile (6c462c8)
+- **ci:** a manual release run may skip the tests (skip-tests), as the other repositories' - the release then runs with the test job skipped (640f04d)
+- @opra/common 1.33.0, @panates/eslint-config(-ts) 2.3.3, @panates/rman-preset 1.12.1 - the lockfile with them (bc5087c)
+
+---
 
 ## v2026.10.20-1135 (2026-10-20)
 
