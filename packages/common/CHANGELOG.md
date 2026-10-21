@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 8a48ab417b5d748bab8a39aeead003c0be3c69d3 -->
+<!-- rman:documented-up-to 73c2accd4c6d6390e0b38651e4fc6d8794ed3de8 -->
+
+## @syncbridge/common@2.1.0 (2026-10-21)
+
+### ✨ Features
+
+- **common:** a setting's label and description by language - { en: '...', tr: '...' }, as a module's summary is - shown in the reader's language, else English; textIn picks it, spm checks the languages told (b8add25)
+
+---
 
 ## @syncbridge/common@2.0.1 (2026-10-19)
 
