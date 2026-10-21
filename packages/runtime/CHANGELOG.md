@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 8a48ab417b5d748bab8a39aeead003c0be3c69d3 -->
+<!-- rman:documented-up-to ffbc6d88d7995850ffca3bc97080890e7e937d5f -->
+
+## @syncbridge/runtime@2.0.2 (2026-10-21)
+
+### 🐛 Bug Fixes
+
+- **runtime:** a package's own peers - the host's - not given to pnpm when its dependencies are installed: auto-install-peers fetched them from npm, where a registry package is not (a module peering @syncbridge/builtins 2 failed to install, spm verify and the engine alike), and installed copies no one loaded (f2b4c95)
+
+---
 
 ## @syncbridge/runtime@2.0.1 (2026-10-19)
 
