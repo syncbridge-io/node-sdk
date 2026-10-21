@@ -152,11 +152,16 @@ program
   )
   .option('--timeout <ms>', 'How long creating an app may take', '30000')
   .option('--keep', 'Leave the sandbox in place, for inspection', false)
+  .option(
+    '--store-dir <directory>',
+    "pnpm's store, shared by every verify; default: SB_SPM_STORE_DIR, else ~/.cache/syncbridge/pnpm-store",
+  )
   .action(async options => {
     if (options.color === false) colors.enabled = false;
     console.log(colors.yellow('**** SyncBuild v' + version + ' ****'));
     try {
       const r = await verifyPackage({
+        storeDir: options.storeDir,
         packageDir: options.packageDir,
         tsconfig: options.tsconfig,
         profile: options.profile,

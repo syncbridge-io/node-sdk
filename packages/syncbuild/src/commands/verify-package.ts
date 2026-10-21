@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
+import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import {
   decodeProfileSilent,
@@ -48,6 +49,13 @@ export interface VerifyOptions {
   with?: string[];
   /** Leave the sandbox in place, for inspection */
   keep?: boolean;
+  /**
+   * pnpm's store the packages' npm dependencies are hardlinked from:
+   * shared by every verify, so what is downloaded once is not again (a
+   * workspace verifying its packages side by side). Default:
+   * SB_SPM_STORE_DIR, else <XDG_CACHE_HOME or ~/.cache>/syncbridge/pnpm-store
+   */
+  storeDir?: string;
   /** How long creating an app may take, in ms */
   timeout?: number;
   /** Node.js options for the worker */
@@ -120,12 +128,14 @@ export async function verifyPackage(
   const dirs = {
     dist: path.join(sandbox, 'dist'),
     installed: path.join(sandbox, 'extensions'),
-    store: path.join(sandbox, 'extensions', '.pnpm-store'),
     temp: path.join(sandbox, 'tmp'),
     data: path.join(sandbox, 'data'),
     host: path.join(sandbox, 'host'),
   };
   for (const d of Object.values(dirs)) fs.mkdirSync(d, { recursive: true });
+  /* The store outlives the sandbox: what it holds is only ever added to */
+  const storeDir = path.resolve(options.storeDir || defaultStoreDir());
+  fs.mkdirSync(storeDir, { recursive: true });
   /* Pack's temporary directory stays in the project, where `spm pack` has
    * it: the package is imported from there to read its metadata, and
    * resolves its modules from the project */
@@ -162,7 +172,7 @@ export async function verifyPackage(
     const install = (file: string, fromDir?: string) =>
       installPackage(file, {
         installDir: dirs.installed,
-        storeDir: dirs.store,
+        storeDir,
         tempDir: dirs.temp,
         pnpm: pnpmCommand(),
         overrides: fromDir
@@ -808,4 +818,14 @@ async function registerProvided(
 
 function readJson(file: string): any {
   return jsonc.parse(fs.readFileSync(file, 'utf8'));
+}
+
+/**
+ * Where spm keeps pnpm's store between verifies: SB_SPM_STORE_DIR, else
+ * the user's cache - XDG_CACHE_HOME, or ~/.cache
+ */
+export function defaultStoreDir(): string {
+  if (process.env.SB_SPM_STORE_DIR) return process.env.SB_SPM_STORE_DIR;
+  const cache = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
+  return path.join(cache, 'syncbridge', 'pnpm-store');
 }

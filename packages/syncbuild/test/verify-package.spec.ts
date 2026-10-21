@@ -4,7 +4,10 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import AdmZip from 'adm-zip';
 import { expect } from 'expect';
-import { verifyPackage } from '../src/commands/verify-package.js';
+import {
+  defaultStoreDir,
+  verifyPackage,
+} from '../src/commands/verify-package.js';
 
 const COMMON_DIR = path.resolve(import.meta.dirname, '../../common');
 const COMMON_VERSION = JSON.parse(
@@ -135,6 +138,20 @@ describe('spm verify', function () {
   this.timeout(120000);
   let root: string;
   let pkgDir: string;
+  /* One pnpm store for the tests, as for a user's verifies: never theirs */
+  let store: string;
+  const storeEnv = process.env.SB_SPM_STORE_DIR;
+
+  before(() => {
+    store = fs.mkdtempSync(path.join(os.tmpdir(), 'syncbuild-store-'));
+    process.env.SB_SPM_STORE_DIR = store;
+  });
+
+  after(() => {
+    if (storeEnv === undefined) delete process.env.SB_SPM_STORE_DIR;
+    else process.env.SB_SPM_STORE_DIR = storeEnv;
+    fs.rmSync(store, { recursive: true, force: true });
+  });
 
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'syncbuild-verify-'));
@@ -158,6 +175,40 @@ describe('spm verify', function () {
       { app: 'VerifyApp', created: true, components: [] },
     ]);
     expect(r.ok).toBe(true);
+  });
+
+  it('should keep the npm dependencies in a store of its own, shared by every verify', async () => {
+    expect(defaultStoreDir()).toBe(store);
+    writePackage(pkgDir);
+    const r = await verifyPackage({
+      packageDir: pkgDir,
+      execArgv: EXEC_ARGV,
+      permissionModel: false,
+      timeout: 10000,
+      keep: true,
+    });
+    expect(r.ok).toBe(true);
+    try {
+      /* Not in the sandbox: it outlives it, the next verify takes from it */
+      expect(
+        fs.existsSync(path.join(r.sandbox!, 'extensions', '.pnpm-store')),
+      ).toBe(false);
+    } finally {
+      fs.rmSync(r.sandbox!, { recursive: true, force: true });
+    }
+    expect(fs.existsSync(store)).toBe(true);
+    const xdg = process.env.XDG_CACHE_HOME;
+    delete process.env.SB_SPM_STORE_DIR;
+    process.env.XDG_CACHE_HOME = '/cache';
+    try {
+      expect(defaultStoreDir()).toBe(
+        path.join('/cache', 'syncbridge', 'pnpm-store'),
+      );
+    } finally {
+      if (xdg === undefined) delete process.env.XDG_CACHE_HOME;
+      else process.env.XDG_CACHE_HOME = xdg;
+      process.env.SB_SPM_STORE_DIR = store;
+    }
   });
 
   it('should not start the app: what starting needs is the environment', async () => {
