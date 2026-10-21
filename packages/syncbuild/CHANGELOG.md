@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 9d521a0c633c441f201925eeae5d53e7e204daea -->
+<!-- rman:documented-up-to 536898adef8e211a65842d9c667f33da7cc7737d -->
+
+## @syncbridge/syncbuild@2.2.0 (2026-10-21)
+
+### ✨ Features
+
+- **syncbuild:** spm view - a package's published versions, as its publisher would see them (a GitHub Actions job by its OIDC token, else the signed-in user, else anybody), --json for tools; spm publish --no-wait fails at once (exit code 3) rather than waits on a Console approval (cbc10bc)
+
+---
 
 ## @syncbridge/syncbuild@2.1.0 (2026-10-20)
 
