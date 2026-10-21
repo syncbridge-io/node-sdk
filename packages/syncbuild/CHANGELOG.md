@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 536898adef8e211a65842d9c667f33da7cc7737d -->
+<!-- rman:documented-up-to 35e7e9b676854cc77d38894017ae1c5dd47ce5d6 -->
+
+## @syncbridge/syncbuild@2.3.0 (2026-10-21)
+
+### ✨ Features
+
+- **syncbuild:** the modules SyncBridge ships with every server added as the host's - spm add @syncbridge/builtins declares it in peerDependencies, imported under its own name, and installs the npm mirror's copy under that name (npm:@sbext/...); spm add sends @sbext to the mirror in the workspace's .npmrc; spm check reports one declared as a registry dependency or imported by sb:, a peer with no copy to develop against, and the mirror not configured (9d8e43e)
+
+---
 
 ## @syncbridge/syncbuild@2.2.0 (2026-10-21)
 
