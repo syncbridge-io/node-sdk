@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 73c2accd4c6d6390e0b38651e4fc6d8794ed3de8 -->
+<!-- rman:documented-up-to 56f0924fc384f7a33707c73ed62e531bd7e95ab7 -->
+
+## @syncbridge/syncbuild@2.4.1 (2026-10-21)
+
+### ⚡ Performance and Optimizations
+
+- **syncbuild:** spm verify takes npm dependencies from one pnpm store, kept between verifies (SB_SPM_STORE_DIR, else ~/.cache/syncbridge/pnpm-store; --store-dir) - a workspace verifying its packages side by side downloaded the same ones into a store of each sandbox (234ecd5)
+
+---
 
 ## @syncbridge/syncbuild@2.4.0 (2026-10-21)
 
