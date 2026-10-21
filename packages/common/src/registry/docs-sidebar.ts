@@ -1,4 +1,5 @@
 import { SbError } from '../classes/sb-error.js';
+import type { LocalizedText } from './localized-text.js';
 import { CLASS_DIR_PATTERN, DOCS_DIR, isDocsLanguage } from './package-docs.js';
 
 /**
@@ -25,7 +26,7 @@ import { CLASS_DIR_PATTERN, DOCS_DIR, isDocsLanguage } from './package-docs.js';
 export const SIDEBAR_FILE = 'sidebar.json';
 
 /** Text, or text by language: { "tr": "Ağ", "en": "Network" } */
-export type SidebarText = string | Record<string, string>;
+export type SidebarText = LocalizedText;
 
 /** An item of a sidebar, as its author writes it */
 export type SidebarItemSource =

@@ -1,4 +1,5 @@
 import { ApiField, ArrayType, ComplexType } from '@opra/common';
+import type { LocalizedText } from '../../registry/localized-text.js';
 import { EnumSource } from '../enums/enum-source.enum.js';
 import { VariableFormat } from '../enums/variable-format.enum.js';
 import { VariableType } from '../enums/variable-type.enum.js';
@@ -36,14 +37,18 @@ export class VariableMetadata {
   hotPlug?: boolean;
 
   @ApiField({
-    description: 'Label of the variable',
+    description:
+      "Its label: text, or text by language ({ en: '...', tr: '...' }) - shown in the server's UI and the Marketplace in the reader's language",
+    type: 'any',
   })
-  declare label?: string;
+  declare label?: LocalizedText;
 
   @ApiField({
-    description: 'App description',
+    description:
+      "What it is for: text, or text by language ({ en: '...', tr: '...' })",
+    type: 'any',
   })
-  declare description?: string;
+  declare description?: LocalizedText;
 
   @ApiField({
     description: 'Examples of the variable value.',

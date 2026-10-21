@@ -26,6 +26,7 @@ export * from './models-document.js';
 export * from './registry/docs-sidebar.js';
 export * from './registry/extension-package.js';
 export * from './registry/extension-registry.js';
+export * from './registry/localized-text.js';
 export * from './registry/module-catalog.js';
 export * from './registry/package-docs.js';
 export * from './registry/package-manifest.js';

@@ -404,6 +404,98 @@ export class PackComponent extends ComponentBase {}
     expect(manifest.components[0]).not.toHaveProperty('readme');
   });
 
+  it("should keep settings' labels and descriptions by language, and refuse a key not a language", async () => {
+    const component = (label: string) =>
+      write(
+        path.join(pkgDir, 'src', 'pack.component.ts'),
+        `import { Component, ComponentBase, DefineVariable } from '@syncbridge/common';
+
+class TlsVars {
+  @DefineVariable({ description: { en: 'Certificate', tr: 'Sertifika' } })
+  declare cert: string;
+}
+
+class PackVars {
+  @DefineVariable({ label: ${label}, description: 'The port' })
+  declare port: number;
+
+  @DefineVariable({ label: 'TLS', variables: TlsVars })
+  declare tls: TlsVars;
+}
+
+@Component({ className: 'PackComponent' })
+export class PackComponent extends ComponentBase {
+  @Component.UseVariables(PackVars)
+  declare values: PackVars;
+}
+`,
+      );
+    write(
+      path.join(pkgDir, 'src', 'common.d.ts'),
+      `declare module '@syncbridge/common' {
+  export const Component: any;
+  export const DefineVariable: any;
+  export class ComponentBase { constructor(...args: any[]); }
+}`,
+    );
+    component(`{ en: 'Port', tr: 'Bağlantı noktası' }`);
+    await packPackage({ packageDir: pkgDir, outDir: 'dist', pack: false });
+    const manifest = JSON.parse(
+      fs.readFileSync(
+        path.join(pkgDir, 'dist', 'syncbridge-manifest.json'),
+        'utf8',
+      ),
+    );
+    const { variables } = manifest.components[0];
+    expect(variables.port.label).toEqual({
+      en: 'Port',
+      tr: 'Bağlantı noktası',
+    });
+    expect(variables.port.description).toBe('The port');
+    expect(variables.tls.variables.cert.description).toEqual({
+      en: 'Certificate',
+      tr: 'Sertifika',
+    });
+
+    component(`{ english: 'Port' }`);
+    await expect(
+      packPackage({ packageDir: pkgDir, outDir: 'dist', pack: false }),
+    ).rejects.toThrow(/PackComponent's port label is told in "english"/);
+  });
+
+  it('should leave an abstract class out: a base of others, never run nor offered', async () => {
+    write(
+      path.join(pkgDir, 'src', 'pack-base.component.ts'),
+      `import { Component, ComponentBase } from '@syncbridge/common';
+
+@Component({ className: 'PackBase', abstract: true })
+export class PackBase extends ComponentBase {}
+`,
+    );
+    write(
+      path.join(pkgDir, 'src', 'index.ts'),
+      `export * from './pack-base.component.js';\nexport * from './pack.component.js';\n`,
+    );
+    const told: string[] = [];
+    await packPackage({
+      packageDir: pkgDir,
+      outDir: 'dist',
+      pack: false,
+      logger: (m: string) => told.push(m),
+    });
+    const manifest = JSON.parse(
+      fs.readFileSync(
+        path.join(pkgDir, 'dist', 'syncbridge-manifest.json'),
+        'utf8',
+      ),
+    );
+    expect(manifest.components.map((c: any) => c.className)).toEqual([
+      'PackComponent',
+    ]);
+    /* Nothing asked of it for the Marketplace */
+    expect(told.filter(m => m.includes('PackBase'))).toEqual([]);
+  });
+
   it('should refuse a README named after no class of the package: a misspelt one', async () => {
     write(path.join(pkgDir, 'docs', 'PackComponnet', 'README.md'), '# Typo');
     await expect(

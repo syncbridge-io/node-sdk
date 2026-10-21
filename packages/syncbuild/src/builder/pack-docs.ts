@@ -17,6 +17,7 @@ import {
   SIDEBAR_FILE,
   sidebarDocs,
   sidebarOwner,
+  variableTextProblems,
 } from '@syncbridge/common';
 import colors from 'ansi-colors';
 import type { Nodes } from 'mdast';
@@ -190,13 +191,22 @@ export function packDocs(context: Context) {
       docsLanguage: language,
       hasDoc: file => docs.has(file),
     });
-    errors.push(...problems);
+    errors.push(
+      ...problems,
+      ...variableTextProblems(ext.variables as any, ext.className),
+    );
     Object.assign(ext, catalog);
     if (!catalog.summary)
       warn(
         `${ext.className} has no summary: tell what it is for, in a sentence (@${ext.classType === 'app' ? 'App' : 'Component'}({ summary })) - its card in the Marketplace`,
       );
   }
+
+  /* A plugin's settings: their labels and descriptions, as told */
+  for (const plugin of manifest.plugins ?? [])
+    errors.push(
+      ...variableTextProblems(plugin.settings as any, plugin.className),
+    );
 
   if (errors.length)
     throw new SbError(

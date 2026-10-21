@@ -1,3 +1,4 @@
+import type { LocalizedText } from './localized-text.js';
 import { DOC_TYPES, DOCS_DIR, isDocsLanguage } from './package-docs.js';
 
 /*
@@ -13,7 +14,7 @@ export const SUMMARY_MAX_LENGTH = 160;
 export const SCREENSHOTS_MAX = 8;
 
 /** A summary as told: one in the package's docs language, or one per language */
-export type ModuleSummary = string | Record<string, string>;
+export type ModuleSummary = LocalizedText;
 
 /** What the Marketplace is told of a module, as its makers wrote it */
 export interface ModuleCatalogInput {
