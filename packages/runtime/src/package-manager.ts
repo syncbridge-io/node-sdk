@@ -18,7 +18,8 @@ export const SB_PNPM_PATH = 'SB_PNPM_PATH';
  *   are installed with them - a @syncbridge library declares what it uses
  *   as peers, and nobody else would install them. Those the host shares
  *   (`@syncbridge/common`, the registry packages' peers) still resolve to
- *   the host's copy in the worker.
+ *   the host's copy in the worker. The package's own peers are not given
+ *   to pnpm (installDependencies): they are the host's alone.
  * - `strict-dep-builds=false`: dependencies' build scripts are not run - a
  *   pnpm default kept on purpose - but skipping them is not a failure.
  *   pnpm 12 exits with 1 for skipped scripts otherwise, although the install

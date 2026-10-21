@@ -165,7 +165,16 @@ export async function installDependencies(
   },
 ): Promise<void> {
   if (!Object.keys(pkgJson.dependencies || {}).length) return;
+  /* Its own peers are the host's: unsaid to pnpm, whose auto-install-peers
+   * would fetch them from npm - where a registry package is not - and
+   * install a copy no one loads. Its package.json as it was, after */
+  const file = path.join(pkg.path, 'package.json');
+  const original = fs.readFileSync(file, 'utf8');
+  const { peerDependencies, peerDependenciesMeta, ...forPnpm } =
+    JSON.parse(original);
   try {
+    if (peerDependencies || peerDependenciesMeta)
+      fs.writeFileSync(file, JSON.stringify(forPnpm, null, 2));
     if (options.overrides && Object.keys(options.overrides).length) {
       /* pnpm reads its settings from here; JSON is YAML */
       fs.writeFileSync(
@@ -180,6 +189,7 @@ export async function installDependencies(
       logger: options.logger,
       abortSignal: options.abortSignal,
     });
+    fs.writeFileSync(file, original);
   } catch (e) {
     fs.rmSync(pkg.path, { recursive: true, force: true });
     throw e;
