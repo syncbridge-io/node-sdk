@@ -8,8 +8,12 @@ import { Command, program } from 'commander';
 import { openBrowser, signIn, signOut, whoAmI } from './commands/account.js';
 import { addDependency } from './commands/add-dependency.js';
 import { checkPackage } from './commands/check-package.js';
-import { publishPackage } from './commands/publish-package.js';
+import {
+  ApprovalRequiredError,
+  publishPackage,
+} from './commands/publish-package.js';
 import { verifyPackage } from './commands/verify-package.js';
+import { viewPackage } from './commands/view-package.js';
 import { version } from './constants.js';
 import { initPackage } from './init-package.js';
 import { packPackage } from './pack-package.js';
@@ -34,7 +38,8 @@ function fail(e: any) {
   if (program.opts().verbose) console.error(e?.cause ?? e);
   else if (!(e instanceof SbError))
     console.error(colors.gray('Run with --verbose for the details.'));
-  process.exitCode = 1;
+  /* One that waits on no one: told apart, to stop rather than retry */
+  process.exitCode = e instanceof ApprovalRequiredError ? 3 : 1;
 }
 
 async function build(options: any, pack: boolean) {
@@ -218,6 +223,10 @@ program
     'In GitHub Actions, publishes as the signed-in user, not as the job',
   )
   .option(
+    '--no-wait',
+    'When the registry asks it approved in Console: fails at once (exit code 3) rather than waits',
+  )
+  .option(
     '--skip-existing',
     'A version the registry has already is skipped, not an error: a release run again safely',
     false,
@@ -237,6 +246,7 @@ program
         dryRun: options.dryRun,
         ci: options.ci === false ? false : undefined,
         skipExisting: options.skipExisting,
+        wait: options.wait,
         logger: console.log,
         onApproval: ({ url }) => {
           console.log(
@@ -291,6 +301,39 @@ program
               ? colors.gray(` - a new package, ${options.access ?? 'private'}`)
               : ''),
         );
+    } catch (e) {
+      fail(e);
+    }
+  });
+
+program
+  .command('view <name>')
+  .description(
+    'Tells the published versions of a package (@org/name[@version]), as its publisher would see them',
+  )
+  .option(
+    '--registry <url>',
+    'The registry; default: SB_REGISTRY_URL, or registry.syncbridge.io',
+  )
+  .option('--json', 'Prints {"name", "versions"} alone, newest first', false)
+  .option(
+    '--no-ci',
+    'In GitHub Actions, asks as the signed-in user, not as the job',
+  )
+  .action(async (name: string, options) => {
+    try {
+      const r = await viewPackage({
+        name,
+        registry: options.registry,
+        ci: options.ci === false ? false : undefined,
+      });
+      if (options.json)
+        process.stdout.write(
+          JSON.stringify({ name: r.name, versions: r.versions }) + '\n',
+        );
+      else if (!r.versions.length)
+        console.log(colors.gray(`${name} is not published to ${r.registry}`));
+      else for (const v of r.versions) console.log(v);
     } catch (e) {
       fail(e);
     }
