@@ -3,6 +3,7 @@ export * from './commands/add-dependency.js';
 export * from './commands/check-package.js';
 export * from './commands/publish-package.js';
 export * from './commands/verify-package.js';
+export * from './commands/view-package.js';
 export * from './context.js';
 export * from './hooks.js';
 export * from './pack-package.js';

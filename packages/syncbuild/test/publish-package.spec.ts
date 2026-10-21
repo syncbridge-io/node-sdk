@@ -6,7 +6,11 @@ import os from 'node:os';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
 import { expect } from 'expect';
-import { publishPackage, saveCredentials } from '../src/index.js';
+import {
+  ApprovalRequiredError,
+  publishPackage,
+  saveCredentials,
+} from '../src/index.js';
 
 const PDF = Buffer.from('%PDF-1.7\n% a manual\n');
 const sha = (b: Buffer) => createHash('sha256').update(b).digest('hex');
@@ -216,6 +220,15 @@ describe('spm publish', function () {
     expect(new URLSearchParams(fake.state.sent[0].query).get('request')).toBe(
       'req-1',
     );
+  });
+
+  it('should not wait on an approval when told not to: refused at once, nothing sent', async () => {
+    fake.state.approval = true;
+    await expect(
+      publishPackage({ archive, registry, pollMs: 1, wait: false }),
+    ).rejects.toBeInstanceOf(ApprovalRequiredError);
+    expect(fake.state.requests).toHaveLength(0);
+    expect(fake.state.sent).toHaveLength(0);
   });
 
   it('should send nothing denied', async () => {

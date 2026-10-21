@@ -49,6 +49,11 @@ export interface PublishOptions {
   /** How often the approval is asked after: ms, 2 s if not told */
   pollMs?: number;
   /**
+   * Waits for the approval the registry asks (the default); false: an
+   * ApprovalRequiredError at once instead - for a run no one watches
+   */
+  wait?: boolean;
+  /**
    * Publishes as the GitHub Actions job it runs in - its OIDC token, no
    * sign-in, no approval: when in one, unless told not to
    */
@@ -60,6 +65,18 @@ export interface PublishOptions {
    */
   skipExisting?: boolean;
   logger?: (message: string) => void;
+}
+
+/**
+ * The registry asks the publish approved in Console, and spm was told not
+ * to wait for it (wait: false): nothing was sent
+ */
+export class ApprovalRequiredError extends SbError {
+  constructor(name: string, version: string) {
+    super(
+      `${name}@${version} must be approved in Console first: run spm publish where you can approve it, or publish from a GitHub Actions job its organization trusts`,
+    );
+  }
 }
 
 export interface PublishResult {
@@ -309,6 +326,8 @@ export async function publishPackage(
     if (options.dryRun) return result;
 
     /* Approved by its user first, when the registry asks it */
+    if (prepared.approval && !ci && options.wait === false)
+      throw new ApprovalRequiredError(name, version);
     const request =
       prepared.approval && !ci
         ? await approve(registry, zip, {
