@@ -128,12 +128,9 @@ Marketplace - what it links to beside it, in its directory.
 `,
     [`docs/${appClass}/README.md`]: `# ${className}
 
-What ${className} does, and how it is set up: shown on its page in the
-Marketplace.
-
-## Variables
-
-- **Greeting** - what the app says when it starts (default: \`Hello\`).
+What ${className} does: shown on its page in the Marketplace. Its
+variables are shown there from its definition - explained in their
+descriptions, not here.
 `,
     'src/index.ts': `export * from './${fileBase}.app.js';\n`,
     [`src/${fileBase}.app.ts`]: `import { DefineVariable, App, AppBase } from '@syncbridge/common';

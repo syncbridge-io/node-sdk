@@ -137,7 +137,11 @@ A package is published as a whole, but each of its apps, components
 and plugins is a product of its own, with its own page in the
 Marketplace and in Console. What it does is told in its README; how its
 device is set up, the network it needs, a user guide - in documents
-beside it. All are in `docs/` at the package's root:
+beside it. Its settings and variables are not told there: its page
+shows them from its definition - their labels and descriptions, in each
+language, are where to explain them. A README tells what they cannot:
+how it behaves, its events, an example. All are in `docs/` at the
+package's root:
 
 ```
 docs/
