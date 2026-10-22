@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to 56f0924fc384f7a33707c73ed62e531bd7e95ab7 -->
+<!-- rman:documented-up-to 5116db6312cfd7dca11b8c5ebe16ba54946b110d -->
+
+## @syncbridge/syncbuild@2.4.2 (2026-10-22)
+
+### 🐛 Bug Fixes
+
+- **syncbuild:** spm init's README no longer lists the app's variables - its page shows them from its definition; the README rule says a README does not repeat them (8be2dbd)
+
+### 🧹 Chores
+
+- update dependencies (cf150e4)
+
+---
 
 ## @syncbridge/syncbuild@2.4.1 (2026-10-21)
 
