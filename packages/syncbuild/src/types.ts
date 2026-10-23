@@ -47,6 +47,10 @@ export interface PackageJson {
   description?: string;
   author?: any;
   license?: string;
+  /** The package's web page, as npm has it */
+  homepage?: string;
+  /** Where its code is, as npm has it: a URL or shorthand, or an object */
+  repository?: string | { type?: string; url: string; directory?: string };
   private?: boolean;
   type?: string;
   module?: string;

@@ -86,6 +86,9 @@ export async function packPackage(config: PackageBuildConfig) {
       description: pkgJson.description,
       author: pkgJson.author,
       license: pkgJson.license,
+      /* Where it lives: shown with it in the registry */
+      homepage: pkgJson.homepage,
+      repository: pkgJson.repository,
       private: true,
       type: 'module',
       module: './' + ENTRY_POINT,

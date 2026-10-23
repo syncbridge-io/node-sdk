@@ -113,6 +113,31 @@ export class PackComponent extends ComponentBase {}
     ]);
   });
 
+  it('should keep where the package lives: its web page and its repository', async () => {
+    const pkgJsonPath = path.join(pkgDir, 'package.json');
+    write(pkgJsonPath, {
+      ...JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8')),
+      homepage: 'https://example.com/prc',
+      repository: {
+        type: 'git',
+        url: 'git+https://github.com/test/prc.git',
+        directory: 'packages/prc',
+      },
+    });
+    await packPackage({ packageDir: pkgDir, outDir: 'dist', pack: false });
+    const outPkgJson = JSON.parse(
+      fs.readFileSync(path.join(pkgDir, 'dist', 'package.json'), 'utf8'),
+    );
+    expect(outPkgJson).toMatchObject({
+      homepage: 'https://example.com/prc',
+      repository: {
+        type: 'git',
+        url: 'git+https://github.com/test/prc.git',
+        directory: 'packages/prc',
+      },
+    });
+  });
+
   it('should write the zip beside what is in the directory, removing nothing', async () => {
     const out = path.join(pkgDir, 'dist');
     write(path.join(out, 'older-1.0.0.zip'), 'an older zip');
