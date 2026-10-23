@@ -1,6 +1,6 @@
 {
   "name": "@syncbridge/syncbuild",
-  "version": "2.4.3",
+  "version": "2.5.0",
   "description": "SyncBridge Extension Package Builder",
   "author": "Panates Inc",
   "license": "MIT",
@@ -34,7 +34,7 @@
     "yaml": "^2.9.1"
   },
   "peerDependencies": {
-    "@syncbridge/common": "^2.1.0"
+    "@syncbridge/common": "^2.2.0"
   },
   "devDependencies": {
     "@jsopen/objects": "^2.3.4",
