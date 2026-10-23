@@ -127,9 +127,10 @@ upload to SyncBridge. Both first run `spm check`, then:
    their definitions and modules;
 3. put the package's documents in it, each one's README among them -
    see below;
-4. write a `package.json` (`dependencies`, `peerDependencies`) and
-   `syncbridge-manifest.json`: the manifest its author wrote, with the
-   apps, components and plugins added.
+4. write a `package.json` (`dependencies`, `peerDependencies`, and
+   `homepage` and `repository` - shown with the package in the registry,
+   as on npm) and `syncbridge-manifest.json`: the manifest its author
+   wrote, with the apps, components and plugins added.
 
 ### Documents
 
