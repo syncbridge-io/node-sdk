@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 73c2accd4c6d6390e0b38651e4fc6d8794ed3de8 -->
+<!-- rman:documented-up-to f2d465e5e2ee4fe20144753880fff1777ea94f92 -->
+
+## @syncbridge/common@2.2.0 (2026-10-23)
+
+### ✨ Features
+
+- **common:** the permissions inside a host - HostPermission, the roles as their sets, and the header Console passes them on with (85e109b)
+
+---
 
 ## @syncbridge/common@2.1.0 (2026-10-21)
 
