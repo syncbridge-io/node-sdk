@@ -86,3 +86,5 @@ export type HostLinkMessage = HostStatusMessage;
 export const CONSOLE_USER_HEADER = 'x-sb-console-user';
 export const CONSOLE_USER_NAME_HEADER = 'x-sb-console-user-name';
 export const CONSOLE_ROLE_HEADER = 'x-sb-console-role';
+/** What the user may do inside the host: HostPermission values, comma-separated */
+export const CONSOLE_PERMISSIONS_HEADER = 'x-sb-console-permissions';
