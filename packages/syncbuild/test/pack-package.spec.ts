@@ -503,6 +503,35 @@ export class PackBase extends ComponentBase {}
     ).rejects.toThrow(/docs\/PackComponnet\/: no app, component or plugin/);
   });
 
+  it("should send an abstract class's documents among the package's own: no page shows them", async () => {
+    write(
+      path.join(pkgDir, 'src', 'pack-base.component.ts'),
+      `import { Component, ComponentBase } from '@syncbridge/common';
+
+@Component({ className: 'PackBase', abstract: true })
+export class PackBase extends ComponentBase {}
+`,
+    );
+    write(
+      path.join(pkgDir, 'src', 'index.ts'),
+      `export * from './pack-base.component.js';\nexport * from './pack.component.js';\n`,
+    );
+    write(path.join(pkgDir, 'docs', 'PackBase', 'README.md'), '# PackBase');
+    const packing = packPackage({
+      packageDir: pkgDir,
+      outDir: 'dist',
+      pack: false,
+    });
+    await expect(packing).rejects.toThrow(
+      /docs\/PackBase\/: PackBase is abstract - a base of others, offered nowhere, so documents named after it are shown nowhere: put them among the package's own documents \(docs\/guides\/, say\)/,
+    );
+    await expect(packing).rejects.not.toThrow(/no app, component or plugin/);
+    /* Among the package's own, it packs */
+    fs.rmSync(path.join(pkgDir, 'docs', 'PackBase'), { recursive: true });
+    write(path.join(pkgDir, 'docs', 'guides', 'pack-base.md'), '# PackBase');
+    await packPackage({ packageDir: pkgDir, outDir: 'dist', pack: false });
+  });
+
   it('should list the plugins with their definitions', async () => {
     write(
       path.join(pkgDir, 'src', 'plugin-api.d.ts'),
