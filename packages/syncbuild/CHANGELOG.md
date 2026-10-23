@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 5116db6312cfd7dca11b8c5ebe16ba54946b110d -->
+<!-- rman:documented-up-to 60c3eadbe7144dcf96ac43bf51ce1849c634c7eb -->
+
+## @syncbridge/syncbuild@2.4.3 (2026-10-23)
+
+### 🐛 Bug Fixes
+
+- **syncbuild:** documents named after an abstract class told to go among the package's own - shown nowhere, not "named after no class" (61dde79)
+
+---
 
 ## @syncbridge/syncbuild@2.4.2 (2026-10-22)
 
