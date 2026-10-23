@@ -79,11 +79,24 @@ export function packDocs(context: Context) {
         .filter(e => e.isDirectory() && CLASS_DIR_PATTERN.test(e.name))
         .map(e => e.name)
     : [];
+  const abstract = new Set(context.abstractClassNames ?? []);
   const orphans = classDirs.filter(d => !classNames.has(d));
-  if (orphans.length)
+  const dirsOf = (names: string[]) =>
+    names.map(d => `${DOCS_DIR}/${d}/`).join(', ');
+  const unknown = orphans.filter(d => !abstract.has(d));
+  if (unknown.length)
     errors.push(
-      `${orphans.map(d => `${DOCS_DIR}/${d}/`).join(', ')}: no app, component or plugin of ${context.pkgJson.name} has ${orphans.length > 1 ? 'these class names' : 'this class name'} - name its documents' directory after its class (${DOCS_DIR}/<ClassName>/${README_FILE})`,
+      `${dirsOf(unknown)}: no app, component or plugin of ${context.pkgJson.name} has ${unknown.length > 1 ? 'these class names' : 'this class name'} - name its documents' directory after its class (${DOCS_DIR}/<ClassName>/${README_FILE})`,
     );
+  /* An abstract class has no page of its own: documents named after it
+   * would be shown nowhere, the package's own are */
+  const ofAbstract = orphans.filter(d => abstract.has(d));
+  if (ofAbstract.length) {
+    const one = ofAbstract.length === 1;
+    errors.push(
+      `${dirsOf(ofAbstract)}: ${ofAbstract.join(', ')} ${one ? 'is' : 'are'} abstract - ${one ? 'a base' : 'bases'} of others, offered nowhere, so documents named after ${one ? 'it' : 'them'} are shown nowhere: put them among the package's own documents (${DOCS_DIR}/guides/, say) and link to them from the classes built on ${one ? 'it' : 'them'}`,
+    );
+  }
 
   /* What each file is, by its path and its bytes; a sidebar apart */
   const docs = new Map<string, DocPath>();

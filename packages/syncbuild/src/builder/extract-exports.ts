@@ -22,6 +22,7 @@ import { describeLoadError } from './utils/load-error.js';
  */
 export async function extractExports(context: Context) {
   const { manifest } = context;
+  const abstractClassNames: string[] = (context.abstractClassNames = []);
   /* The package imports its externals and its registry dependencies, from
    * the output directory; see installResolveHooks for how they resolve */
   const hooks = installResolveHooks();
@@ -51,7 +52,10 @@ export async function extractExports(context: Context) {
       } else if (classType === 'component') {
         const definition = await normalizeComponentMetadata(metadata);
         /* An abstract one: a base of others, never run nor offered */
-        if (definition.abstract) continue;
+        if (definition.abstract) {
+          abstractClassNames.push(definition.className);
+          continue;
+        }
         (manifest.components = manifest.components || []).push({
           exportName: k,
           entryPoint,
@@ -59,7 +63,10 @@ export async function extractExports(context: Context) {
         });
       } else {
         const definition = await normalizeAppMetadata(metadata);
-        if (definition.abstract) continue;
+        if (definition.abstract) {
+          abstractClassNames.push(definition.className);
+          continue;
+        }
         (manifest.apps = manifest.apps || []).push({
           exportName: k,
           entryPoint,

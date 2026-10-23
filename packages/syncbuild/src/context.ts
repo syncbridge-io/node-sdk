@@ -7,6 +7,12 @@ export class Context {
   declare outPkgJson: PackageJson;
   /** The manifest of the package built, written to syncbridge-manifest.json */
   declare manifest: SyncBridgeManifest;
+  /**
+   * The class names of the abstract apps and components the package
+   * exports: bases of others, left out of the manifest - as extractExports
+   * finds them
+   */
+  declare abstractClassNames?: string[];
   /** The TypeScript program the package was compiled with, and its config */
   declare program?: typescript.Program;
   declare tsConfig?: typescript.ParsedCommandLine;
