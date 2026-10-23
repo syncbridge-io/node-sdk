@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 60c3eadbe7144dcf96ac43bf51ce1849c634c7eb -->
+<!-- rman:documented-up-to cc711bbd0d34484aa2d78bd9449a619a66747fad -->
+
+## @syncbridge/syncbuild@2.5.0 (2026-10-23)
+
+### ✨ Features
+
+- **syncbuild:** a package's homepage and repository kept in the package.json it packs (f824d01)
+
+---
 
 ## @syncbridge/syncbuild@2.4.3 (2026-10-23)
 
