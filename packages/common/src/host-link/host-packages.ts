@@ -34,3 +34,63 @@ export interface HostPackagePlanItem {
 export interface HostPackagesResolveResponse {
   items: HostPackagePlanItem[];
 }
+
+/*
+ * A host's packages' updates: what the registry has newer of each package
+ * it has, asked in one call. To check, its installed versions sent - each
+ * answered the newest of its minor (a fix), of its major (fixes and
+ * features) and a newer major, told apart; nothing signed. To install, the
+ * very versions it takes sent - each answered with a short-lived grant to
+ * read it: read by it without its access asked again, unless that version,
+ * its package or the host's workspace is suspended, or the access ended,
+ * since.
+ */
+
+/** Where, under Console's API, a host's packages' updates are asked */
+export const HOST_PACKAGE_UPDATES_PATH = 'host/packages/updates';
+
+/** What a host asks of its packages' updates */
+export interface HostPackageUpdatesRequest {
+  /**
+   * check: what is newer of the versions it has; download: grants to read
+   * the versions it installs
+   */
+  mode: 'check' | 'download';
+  /** "@org/name" -> its newest version installed (check), or the one it installs (download) */
+  packages: Record<string, string>;
+}
+
+/** A version offered: what it needs of the registry's packages */
+export interface HostPackageOffer {
+  version: string;
+  /** Registry packages it depends on: name -> range */
+  dependencies: Record<string, string>;
+}
+
+/** What is newer of a package, or why it was not told */
+export interface HostPackageUpdate {
+  name: string;
+  /** The version sent */
+  version: string;
+  /**
+   * NOT_FOUND: not in the registry, or (download) no such version;
+   * NO_ACCESS: the host's workspace may not use it; SUSPENDED (download):
+   * the version is suspended
+   */
+  problem?: 'NOT_FOUND' | 'NO_ACCESS' | 'SUSPENDED';
+  /** check: the newest of its minor, newer than the one sent (a fix) */
+  patch?: HostPackageOffer;
+  /** check: the newest of its major, newer than the one sent */
+  minor?: HostPackageOffer;
+  /** check: a newer major's newest - told, never installed without asking */
+  major?: string;
+  /** download: the version sent, its grant in its link; a few minutes good */
+  download?: HostPackagePlanItem & {
+    dependencies: Record<string, string>;
+  };
+}
+
+/** Each package sent, answered */
+export interface HostPackageUpdatesResponse {
+  items: HostPackageUpdate[];
+}
