@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to f2d465e5e2ee4fe20144753880fff1777ea94f92 -->
+<!-- rman:documented-up-to 51bc4f79b27c9c175a8b233b98c7607429da9fd1 -->
+
+## @syncbridge/common@2.3.0 (2026-10-24)
+
+### ✨ Features
+
+- **common:** a host's packages' updates asked in one call - to check, of each version it has, the newest of its minor and of its major and a newer major; to install, the very versions it takes, each with a short-lived grant to read it (48030b2)
+
+---
 
 ## @syncbridge/common@2.2.0 (2026-10-23)
 
