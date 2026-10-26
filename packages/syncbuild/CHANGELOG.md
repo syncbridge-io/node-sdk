@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to cc711bbd0d34484aa2d78bd9449a619a66747fad -->
+<!-- rman:documented-up-to 26bada1e777b729b4ba1454f070e157df1675d6f -->
+
+## @syncbridge/syncbuild@2.5.1 (2026-10-26)
+
+### 🧹 Chores
+
+- update dependencies (dd8f998)
+
+---
 
 ## @syncbridge/syncbuild@2.5.0 (2026-10-23)
 
