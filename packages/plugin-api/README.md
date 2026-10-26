@@ -54,7 +54,33 @@ or in the environment: `SB_PLUGINS_ELASTICSEARCH_LOG_ENABLED=true`,
 - `this.host.logs.registerTarget(definition)`: a log target.
 - `this.host.events.on(event, listener)`: the engine's and the workers'
   lifecycle, to observe only.
-- `this.host.workers`: the workers and their status, read only.
+- `this.host.workers`: the workers and their status, read;
+  `addEnvironment({...})` adds to the environment every worker starts with
+  - a native library's directory, say (2.1).
+- `this.host.status.set({ state, message, progress })`: how it is doing,
+  told on its card in Settings → Plugins (2.1).
+- `this.host.ui.ask(question)`: a question to the server's admins - its
+  choices, or a form - resolved with the answer, kept with who gave it and
+  when; asked once (2.1).
+- `this.host.ui.registerAction(action)`: a button on its card, its input
+  asked in a form first, run by an admin (2.1).
+
+Nothing of a plugin runs in the browser: it declares what it asks and
+offers, and SyncBridge draws it. A plugin using what 2.1 adds asks for
+`@syncbridge/plugin-api` `^2.1.0`.
+
+```ts
+const { choice } = await this.host.ui.ask({
+  id: 'license',
+  title: "The vendor's license",
+  link: { label: 'Read it', url: 'https://example.com/license' },
+  choices: [
+    { value: 'accept', label: 'Accept', primary: true },
+    { value: 'decline', label: 'Decline' },
+  ],
+});
+if (choice === 'accept') void this.install();
+```
 
 What a plugin registers is undone when it is deactivated, or when its
 `activate` fails; a plugin that fails is turned off and the engine goes on.
