@@ -4,6 +4,7 @@ import { expect } from 'expect';
 import { AppFactory, ExtensionRegistry, Profile } from '../../src/index.js';
 import { Cmp1Component } from '../_support/cmp1.component.js';
 import { Cmp1_1Component } from '../_support/cmp1_1.component.js';
+import { HotPlugApp } from '../_support/hot-plug.app.js';
 import { Prc1App } from '../_support/prc1.app.js';
 
 describe('AppFactory', () => {
@@ -11,6 +12,7 @@ describe('AppFactory', () => {
     await ExtensionRegistry.registerClass(Cmp1Component);
     await ExtensionRegistry.registerClass(Cmp1_1Component);
     await ExtensionRegistry.registerClass(Prc1App);
+    await ExtensionRegistry.registerClass(HotPlugApp);
   });
 
   it('should create an app', async () => {
@@ -127,6 +129,67 @@ describe('AppFactory', () => {
     expect(updatedProperties.length).toEqual(1);
     expect(r1.app.values?.var1).toBe('updated');
     expect(r1.app.values?.var2).toBe('initial');
+  });
+
+  describe('updating a running app', () => {
+    const profile = (values: object): Profile => ({
+      id: 'hot',
+      displayName: 'Hot plug',
+      appUri: HotPlugApp.uri,
+      values,
+    });
+    const start = async (values: object) => {
+      const app = await AppFactory.createApp<HotPlugApp>(profile(values));
+      let updated: string[] = [];
+      app.on('values-updated', props => {
+        updated = props;
+      });
+      return { app, updated: () => updated };
+    };
+
+    it('should replace a hot-plug list of groups whole, a list still', async () => {
+      const { app, updated } = await start({ rows: [{ code: 'A' }] });
+      expect(app.values.rows).toEqual([{ code: 'A' }]);
+      await AppFactory.updateApp(
+        app,
+        profile({ rows: [{ code: 'A' }, { code: 'B', unit: 'bpm' }] }),
+      );
+      expect(Array.isArray(app.values.rows)).toBe(true);
+      expect(app.values.rows).toEqual([
+        { code: 'A' },
+        { code: 'B', unit: 'bpm' },
+      ]);
+      expect(updated()).toEqual(['rows']);
+      await AppFactory.updateApp(app, profile({ rows: [{ code: 'B' }] }));
+      expect(app.values.rows).toEqual([{ code: 'B' }]);
+    });
+
+    it('should replace a hot-plug list of values whole', async () => {
+      const { app } = await start({ tags: ['a', 'b'] });
+      await AppFactory.updateApp(app, profile({ tags: ['c'] }));
+      expect(app.values.tags).toEqual(['c']);
+    });
+
+    it('should not share the list with the profile', async () => {
+      const { app } = await start({});
+      const next = profile({ rows: [{ code: 'A' }] });
+      await AppFactory.updateApp(app, next);
+      (next.values as any).rows.push({ code: 'X' });
+      expect(app.values.rows).toEqual([{ code: 'A' }]);
+    });
+
+    it("should update all of a hot-plug group's settings", async () => {
+      const { app, updated } = await start({ limits: { min: 1, max: 5 } });
+      await AppFactory.updateApp(app, profile({ limits: { min: 2, max: 5 } }));
+      expect(app.values.limits).toEqual({ min: 2, max: 5 });
+      expect(updated()).toEqual(['limits.min']);
+    });
+
+    it('should leave a list not hot-plug as it was', async () => {
+      const { app } = await start({ cold: [{ code: 'A' }] });
+      await AppFactory.updateApp(app, profile({ cold: [{ code: 'B' }] }));
+      expect(app.values.cold).toEqual([{ code: 'A' }]);
+    });
   });
 
   it('should update hot-plug component variables', async () => {
