@@ -138,7 +138,7 @@ program
 program
   .command('verify')
   .description(
-    'Packs the package, installs it as SyncBridge does, and in a worker loads its classes and creates its apps, without starting them; a package of components alone has its classes loaded',
+    'Packs the package, installs it as SyncBridge does, and in a worker loads its classes and creates its apps, without starting them; a package of components or plugins alone has its classes loaded',
   )
   .option('-p, --package-dir <directory>', 'Directory of package', '.')
   .option('--tsconfig <fileName>', 'tsconfig file name')

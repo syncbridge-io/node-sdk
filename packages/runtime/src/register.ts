@@ -40,37 +40,52 @@ export async function registerPlanPackages(plan: WorkerPlan): Promise<Error[]> {
 }
 
 /**
- * Loads the class of every app and component of the plan's packages,
- * so every module they import is resolved the way the worker resolves it.
- * Run after registerPlanPackages.
+ * Every class of the plan's packages - their apps, components and plugins -
+ * each by its URI, `<package>:<class>`
  */
-export async function loadPlanClasses(plan: WorkerPlan): Promise<Error[]> {
-  const errors: Error[] = [];
-  for (const planned of Object.values(plan.packages)) {
+function planExtensions(
+  plan: WorkerPlan,
+): { uri: string; getClass(): Promise<unknown> }[] {
+  return Object.values(plan.packages).flatMap(planned => {
     const pkg = ExtensionRegistry.packages
       .get(planned.name)
       ?.find(p => p.version === planned.version);
-    for (const ext of [...(pkg?.apps || []), ...(pkg?.components || [])]) {
-      try {
-        await ext.getClass();
-      } catch (err: any) {
-        errors.push(
-          new Error(`${ext.uri} cannot be loaded: ${err?.message || err}`),
-        );
-      }
+    if (!pkg) return [];
+    return [
+      ...pkg.apps,
+      ...pkg.components,
+      ...pkg.plugins.map(p => ({
+        uri: `${pkg.name}:${p.exportName}`,
+        getClass: () => p.getClass(),
+      })),
+    ];
+  });
+}
+
+/**
+ * Loads the class of every app, component and plugin of the plan's
+ * packages, so every module they import is resolved the way the worker
+ * resolves it. A plugin runs in the engine's own process, never a worker's;
+ * loaded here, its package is checked as the engine loads it. Run after
+ * registerPlanPackages.
+ */
+export async function loadPlanClasses(plan: WorkerPlan): Promise<Error[]> {
+  const errors: Error[] = [];
+  for (const ext of planExtensions(plan)) {
+    try {
+      await ext.getClass();
+    } catch (err: any) {
+      errors.push(
+        new Error(`${ext.uri} cannot be loaded: ${err?.message || err}`),
+      );
     }
   }
   return errors;
 }
 
-/** The URIs of every app and component class of the plan's packages */
+/** The URIs of every app, component and plugin class of the plan's packages */
 export function planClasses(plan: WorkerPlan): string[] {
-  return Object.values(plan.packages).flatMap(planned => {
-    const pkg = ExtensionRegistry.packages
-      .get(planned.name)
-      ?.find(p => p.version === planned.version);
-    return [...(pkg?.apps || []), ...(pkg?.components || [])].map(e => e.uri);
-  });
+  return planExtensions(plan).map(e => e.uri);
 }
 
 /** The paths of an app's components, nested ones included */

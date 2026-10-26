@@ -64,10 +64,12 @@ spm verify [--profile profiles/] [--with lib-1.2.0.zip] [--keep]
 without SyncBridge: it packs the package, installs the archive into a
 sandbox with the engine's own install steps (dependency checks, `pnpm
 install`) and, in a worker process with its version plan, loads every
-app and component class and creates each app from a profile.
+app, component and plugin class and creates each app from a profile.
 It exits with 1 when one cannot be, with the reason. A package of
 components alone - no app to create - has its classes loaded, unless a
-profile of an app using them is given. So does an app whose default values
+profile of an app using them is given. So does a package of plugins
+alone, outside Node's permission model: the engine loads its plugins in
+its own process, from an installation like a worker's. So does an app whose default values
 are not valid - a required component is to be chosen: it is told as not
 created, and creating it takes a profile that chooses its components
 (by `uri`), kept with the package, e.g. `verify/*.yml`.
