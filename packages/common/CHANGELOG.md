@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 51bc4f79b27c9c175a8b233b98c7607429da9fd1 -->
+<!-- rman:documented-up-to 26bada1e777b729b4ba1454f070e157df1675d6f -->
+
+## @syncbridge/common@2.3.1 (2026-10-26)
+
+### 🐛 Bug Fixes
+
+- **common:** a running app's hot-plug lists replaced whole, a list still - a list of groups was made an object ({"0": {...}}) and its new rows dropped on the first profile update; a hot-plug group's settings all updated, not only those marked hot-plug themselves; each value its own copy, not the profile's (7024d0f)
+
+---
 
 ## @syncbridge/common@2.3.0 (2026-10-24)
 
