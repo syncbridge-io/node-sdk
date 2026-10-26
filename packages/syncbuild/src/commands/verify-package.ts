@@ -71,11 +71,14 @@ export interface VerifyOptions {
 }
 
 export interface VerifyAppResult {
-  /** The app; the package, when it has components alone */
+  /** The app; the package, when it has components or plugins alone */
   app: string;
-  /** Created; loaded, for a package of components alone */
+  /** Created; loaded, for a package of components or plugins alone */
   created: boolean;
-  /** A package of components alone: its classes loaded, no app created */
+  /**
+   * A package of components or plugins alone: its classes loaded, no app
+   * created
+   */
   loadOnly?: boolean;
   /**
    * Apps of a package loaded alone that were not created: none of their
@@ -105,7 +108,9 @@ export interface VerifyResult {
  * the engine's install steps, and in a worker process with its version plan
  * and resolve hooks, every app and component class of it is loaded
  * and each app is created from a profile. A package of components alone,
- * with no profile given, has its classes loaded, as its worker would.
+ * with no profile given, has its classes loaded, as its worker would; so
+ * does one of plugins, whose classes the engine loads in its own process
+ * from an installation like a worker's.
  *
  * Apps are not initialized or started: what starting needs - a
  * device, a database, a service - is the environment's, not the package's,
@@ -270,9 +275,9 @@ export async function verifyPackage(
     };
     const results: VerifyAppResult[] = [];
     if (!profiles.length || unprofiled.length) {
-      if (!pkg.apps?.length && !pkg.components?.length)
+      if (!pkg.apps?.length && !pkg.components?.length && !pkg.plugins?.length)
         throw new SbError(
-          `${pkg.name} has neither apps nor components; give a profile with --profile`,
+          `${pkg.name} has no apps, components or plugins; give a profile with --profile`,
         );
       const result = await loadPackage(pkg, {
         ...workerOptions,
@@ -409,9 +414,11 @@ async function runProfile(
 }
 
 /**
- * Loads every class of a package of components alone in a worker, under
- * the permission model as what its classes declare permits: its
- * components are created by an app, verified with a profile of one
+ * Loads every class of a package of components or plugins alone in a
+ * worker, under the permission model as what its classes declare permits:
+ * its components are created by an app, verified with a profile of one.
+ * A package of plugins alone is loaded outside the model: the engine runs
+ * its plugins in its own process, which the model does not hold.
  */
 async function loadPackage(
   pkg: ExtensionPackage,
@@ -444,6 +451,7 @@ async function loadPackage(
   }
   /* What any of the classes loaded declares: a component's are its
    * worker's once an app is given it */
+  const pluginsAlone = !pkg.apps?.length && !pkg.components?.length;
   const permissions = new Set<WorkerPermission>();
   for (const planned of Object.values(plan.packages)) {
     const loaded = ctx.packages
@@ -457,7 +465,7 @@ async function loadPackage(
     dataDirectory: ctx.dataDir,
     execArgv: [
       ...(ctx.execArgv || []),
-      ...(ctx.permissionModel
+      ...(ctx.permissionModel && !pluginsAlone
         ? nodePermissionArgs({ permissions: [...permissions] })
         : []),
     ],

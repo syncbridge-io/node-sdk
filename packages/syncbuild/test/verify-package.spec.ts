@@ -109,6 +109,48 @@ function writeCommon(dir: string) {
   );
 }
 
+const PLUGIN_API_DIR = path.resolve(import.meta.dirname, '../../plugin-api');
+
+/**
+ * A package of plugins alone, its index `source` after the imports of
+ * Plugin and PluginBase. The project has @syncbridge/plugin-api - the
+ * plugins' peer, which SyncBridge provides - as its sources.
+ */
+function writePlugin(dir: string, source: string) {
+  writePackage(dir, {
+    pkgJson: {
+      peerDependencies: {
+        '@syncbridge/common': '>=0.13.0',
+        '@syncbridge/plugin-api': '*',
+      },
+    },
+  });
+  write(
+    path.join(dir, 'src', 'plugin-api.d.ts'),
+    `declare module '@syncbridge/plugin-api' {
+  export const Plugin: any;
+  export class PluginBase {}
+}`,
+  );
+  write(
+    path.join(dir, 'src', 'index.ts'),
+    `import { Plugin, PluginBase } from '@syncbridge/plugin-api';\n${source}`,
+  );
+  const api = path.join(dir, 'node_modules', '@syncbridge', 'plugin-api');
+  write(path.join(api, 'package.json'), {
+    name: '@syncbridge/plugin-api',
+    version: JSON.parse(
+      fs.readFileSync(path.join(PLUGIN_API_DIR, 'package.json'), 'utf8'),
+    ).version,
+    type: 'module',
+    exports: './index.js',
+  });
+  write(
+    path.join(api, 'index.js'),
+    `export * from ${JSON.stringify(pathToFileURL(path.join(PLUGIN_API_DIR, 'src/index.ts')).href)};`,
+  );
+}
+
 /** The npm mirror's copy of registry package @vt/lib, in the project */
 function writeMirroredLib(projectDir: string) {
   const dir = path.join(projectDir, 'node_modules', '@sbext', 'vt__lib');
@@ -464,6 +506,63 @@ export class Link extends ComponentBase {}
     expect(r.ok).toBe(false);
     expect(r.apps[0].message).toMatch(
       /"undeclared-dep" is not in the package's dependencies/,
+    );
+  });
+
+  it('should load the classes of a package of plugins alone, as the engine would', async () => {
+    writePlugin(
+      pkgDir,
+      `@Plugin({ name: 'audit' })
+export class AuditPlugin extends PluginBase {
+  activate() {}
+}
+`,
+    );
+    const r = await verify();
+    expect(r.apps).toEqual([
+      {
+        app: '@vt/prc',
+        created: true,
+        loadOnly: true,
+        components: ['@vt/prc:AuditPlugin'],
+      },
+    ]);
+    expect(r.ok).toBe(true);
+  });
+
+  it('should say why a plugin cannot be loaded', async () => {
+    writePlugin(
+      pkgDir,
+      `// @ts-ignore
+import 'undeclared-dep';
+
+@Plugin({ name: 'audit' })
+export class AuditPlugin extends PluginBase {
+  activate() {}
+}
+`,
+    );
+    const dep = path.join(pkgDir, 'node_modules', 'undeclared-dep');
+    write(path.join(dep, 'package.json'), {
+      name: 'undeclared-dep',
+      version: '1.0.0',
+      type: 'module',
+      exports: './index.js',
+    });
+    write(path.join(dep, 'index.js'), ``);
+    const r = await verify();
+    expect(r.ok).toBe(false);
+    expect(r.apps[0].message).toMatch(/@vt\/prc:AuditPlugin cannot be loaded/);
+    expect(r.apps[0].message).toMatch(
+      /"undeclared-dep" is not in the package's dependencies/,
+    );
+  });
+
+  it('should refuse a package with no app, component or plugin, unless a profile is given', async () => {
+    writePackage(pkgDir);
+    write(path.join(pkgDir, 'src', 'index.ts'), `export const NOTHING = 1;\n`);
+    await expect(verify()).rejects.toThrow(
+      /@vt\/prc has no apps, components or plugins; give a profile with --profile/,
     );
   });
 
