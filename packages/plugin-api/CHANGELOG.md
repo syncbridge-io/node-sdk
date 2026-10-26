@@ -1,5 +1,15 @@
 # Changelog
 
+<!-- rman:documented-up-to 67c2d6ca886b9d0793f951d58fb7d79a79a24d52 -->
+
+## @syncbridge/plugin-api@2.1.0 (2026-10-26)
+
+### ✨ Features
+
+- **plugin-api:** plugins that talk to the user - host.status, how a plugin is doing; host.ui.ask, a question to the admins answered once and kept; host.ui.registerAction, buttons of its own; host.workers.addEnvironment, what every worker starts with - a native library's directory. Drawn by SyncBridge: nothing of a plugin runs in the browser (458ae3f)
+
+---
+
 ## @syncbridge/plugin-api@2.0.0 (2026-10-19)
 
 ### ✨ Features

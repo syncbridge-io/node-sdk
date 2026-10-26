@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to ffbc6d88d7995850ffca3bc97080890e7e937d5f -->
+<!-- rman:documented-up-to 67c2d6ca886b9d0793f951d58fb7d79a79a24d52 -->
+
+## @syncbridge/runtime@2.1.0 (2026-10-26)
+
+### ✨ Features
+
+- **syncbuild:** spm verify checks a package of plugins alone - its classes loaded in a worker from an installation like the engine's, outside the permission model, as the engine runs its plugins in its own process; a plugin that cannot be loaded told with its reason. The runtime's load-only worker loads the plugins' classes with the apps' and components' (ec730f1)
+
+---
 
 ## @syncbridge/runtime@2.0.2 (2026-10-21)
 
