@@ -397,15 +397,22 @@ export namespace AppFactory {
     });
   }
 
+  /**
+   * A running element's values, patched with a new profile's: its hot-plug
+   * settings alone - those of a hot-plug group all of them. A list - of
+   * values or of groups - is replaced whole, never merged into an object.
+   * The paths changed are kept for its 'values-updated' event.
+   */
   function _patchValues(
     ctx: ConfigureComponentsContext | ConfigureAppContext,
     instance: AppBase | ComponentBase,
     target: Record<string, any>,
     valPath: string,
-    newValues: Record<string, any>,
+    newValues: Record<string, any> | undefined,
     newVariables: VariableMetadataRecord,
     oldValues?: Record<string, any>,
     oldVariables?: VariableMetadataRecord,
+    hot = false,
   ) {
     if (oldValues) Object.assign(target, oldValues);
     const updatedValues = ctx.valueUpdates?.get(instance) || [];
@@ -413,25 +420,29 @@ export namespace AppFactory {
     if (newVariables) {
       for (const [varKey, varMeta] of Object.entries(newVariables)) {
         const keyPath = valPath ? valPath + '.' + varKey : varKey;
-        /** Update only hotplug variables */
-        if (varMeta?.hotPlug !== true) continue;
-        if (varMeta.type === 'nested') {
+        /** Update only hotplug variables, and all of a hotplug group */
+        if (!hot && varMeta?.hotPlug !== true) continue;
+        if (varMeta.type === 'nested' && !varMeta.isArray) {
           target[varKey] = {};
           _patchValues(
             ctx,
             instance,
             target[varKey],
             keyPath,
-            newValues[varKey],
+            newValues?.[varKey],
             newVariables[varKey]?.variables || {},
             oldValues?.[varKey],
             oldVariables?.[varKey]?.variables,
+            true,
           );
           continue;
         }
-        if (!equal(target[varKey], newValues[varKey])) {
+        const value = newValues?.[varKey];
+        if (!equal(target[varKey], value)) {
           updatedValues.push(keyPath);
-          target[varKey] = newValues[varKey];
+          /* Its own copy: the profile's left as it is */
+          target[varKey] =
+            value && typeof value === 'object' ? clone(value) : value;
         }
       }
     }
