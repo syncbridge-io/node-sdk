@@ -12,6 +12,7 @@ import {
   VariableType,
 } from '../models/index.js';
 import { ExtensionRegistry } from '../registry/extension-registry.js';
+import { slotInterfaces, slotTakes } from './slot-interfaces.js';
 
 /**
  * Materializes metadata from profile.
@@ -136,6 +137,9 @@ function _materializeComponents(
         }
         materializedComponent = {
           interfaceUri: metadataComponent.interfaceUri,
+          ...(metadataComponent.oneOf
+            ? { oneOf: metadataComponent.oneOf }
+            : {}),
           description: metadataComponent.description,
           required: metadataComponent.required,
         } satisfies ElementComponentMetadata;
@@ -145,12 +149,15 @@ function _materializeComponents(
         if (!profileComponent.uri)
           throw new SbValidationError(`"uri" property required`);
         const reg = ExtensionRegistry.getComponent(profileComponent.uri);
-        if (!(
-          profileComponent.uri === metadataComponent.interfaceUri ||
-          reg.metadata.interfaces?.includes(metadataComponent.interfaceUri)
-        ))
+        if (
+          !slotTakes(
+            metadataComponent,
+            profileComponent.uri,
+            reg.metadata.interfaces,
+          )
+        )
           throw new SbValidationError(
-            `Selected component "${profileComponent.uri}" do not implement ${metadataComponent.interfaceUri}.`,
+            `Selected component "${profileComponent.uri}" do not implement ${slotInterfaces(metadataComponent).join(' or ')}.`,
           );
         if (profileComponent.disabled && metadataComponent.required) {
           throw new SbValidationError(
