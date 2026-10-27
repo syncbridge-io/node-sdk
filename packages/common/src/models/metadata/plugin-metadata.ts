@@ -1,4 +1,5 @@
-import { ApiField, ComplexType, StringType } from '@opra/common';
+import { ApiField, ArrayType, ComplexType, StringType } from '@opra/common';
+import { PluginPermission } from '../enums/plugin-permission.enum.js';
 import { VariableMetadataRecord } from './variable-metadata.js';
 
 /**
@@ -52,4 +53,20 @@ export class PluginMetadata {
     description: 'The settings it is set with, under `plugins.<name>`',
   })
   declare settings?: VariableMetadataRecord;
+
+  @ApiField({
+    label: 'Permissions',
+    description:
+      'What it reaches beyond its own data directory: shown to the admins, given once they approve it',
+    type: ArrayType(PluginPermission),
+  })
+  declare permissions?: PluginPermission[];
+
+  @ApiField({
+    label: 'Hosts',
+    description:
+      'The hosts it reaches, with the network permission: shown and approved, not held yet',
+    type: ArrayType('string'),
+  })
+  declare hosts?: string[];
 }

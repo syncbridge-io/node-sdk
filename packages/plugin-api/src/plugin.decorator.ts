@@ -3,6 +3,7 @@ import {
   CLASS_METADATA,
   CLASS_TYPE,
   type PluginMetadata,
+  PluginPermission,
   readVariables,
 } from '@syncbridge/common';
 import type { Type } from 'ts-gems';
@@ -27,6 +28,19 @@ export function Plugin(options: Plugin.Options) {
     throw new TypeError(
       `Invalid plugin name "${options.name}": lower case letters, digits and "-", starting with a letter`,
     );
+  const known = Object.values(PluginPermission) as string[];
+  for (const p of options.permissions || [])
+    if (!known.includes(p))
+      throw new TypeError(
+        `Plugin "${options.name}": unknown permission "${p}" - one of ${known.join(', ')}`,
+      );
+  if (
+    options.hosts?.length &&
+    !options.permissions?.includes(PluginPermission.Network)
+  )
+    throw new TypeError(
+      `Plugin "${options.name}": hosts are given with the "network" permission`,
+    );
   /* Read now: the settings class is defined before the plugin's */
   const settings = options.settings
     ? readVariables(options.settings)
@@ -43,6 +57,10 @@ export function Plugin(options: Plugin.Options) {
       title: options.title,
       description: options.description,
       settings,
+      ...(options.permissions?.length
+        ? { permissions: [...new Set(options.permissions)] }
+        : {}),
+      ...(options.hosts?.length ? { hosts: [...options.hosts] } : {}),
     };
     Reflect.defineMetadata(CLASS_METADATA, metadata, target);
   };
@@ -56,5 +74,12 @@ export namespace Plugin {
     description?: string;
     /** The class its settings are defined by, with @DefineVariable */
     settings?: Type;
+    /**
+     * What it reaches beyond its own data directory: shown to the server's
+     * admins, given once they approve it, nothing else. Not declared, none
+     */
+    permissions?: PluginPermission[];
+    /** The hosts it reaches, with `PluginPermission.Network` */
+    hosts?: string[];
   }
 }

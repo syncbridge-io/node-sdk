@@ -68,8 +68,9 @@ app, component and plugin class and creates each app from a profile.
 It exits with 1 when one cannot be, with the reason. A package of
 components alone - no app to create - has its classes loaded, unless a
 profile of an app using them is given. So does a package of plugins
-alone, outside Node's permission model: the engine loads its plugins in
-its own process, from an installation like a worker's. So does an app whose default values
+alone, under Node's permission model with what each plugin declares
+(`permissions` in `@Plugin`), as the engine runs each plugin in a process
+of its own. So does an app whose default values
 are not valid - a required component is to be chosen: it is told as not
 created, and creating it takes a profile that chooses its components
 (by `uri`), kept with the package, e.g. `verify/*.yml`.

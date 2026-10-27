@@ -6,7 +6,7 @@ import {
   normalizePluginMetadata,
 } from '@syncbridge/common';
 import { expect } from 'expect';
-import { Plugin, PluginBase } from '../src/index.js';
+import { Plugin, PluginBase, PluginPermission } from '../src/index.js';
 
 describe('@Plugin', () => {
   it('should define the plugin with its settings', async () => {
@@ -42,6 +42,46 @@ describe('@Plugin', () => {
   it('should refuse a name that cannot be a config key', () => {
     expect(() => Plugin({ name: 'Audit Log' })).toThrow(
       /Invalid plugin name "Audit Log"/,
+    );
+  });
+
+  it('should tell what it declares it needs, the hosts it reaches among them', async () => {
+    @Plugin({
+      name: 'oracle-client',
+      permissions: [
+        PluginPermission.WorkerEnvironment,
+        PluginPermission.Network,
+        PluginPermission.Network,
+      ],
+      hosts: ['download.oracle.com'],
+    })
+    class OracleClientPlugin extends PluginBase {
+      activate() {}
+    }
+
+    const metadata = await normalizePluginMetadata(
+      Reflect.getMetadata(CLASS_METADATA, OracleClientPlugin),
+    );
+    expect(metadata.permissions).toEqual(['worker-environment', 'network']);
+    expect(metadata.hosts).toEqual(['download.oracle.com']);
+  });
+
+  it('should declare nothing when nothing is given', async () => {
+    @Plugin({ name: 'quiet' })
+    class QuietPlugin extends PluginBase {
+      activate() {}
+    }
+    const metadata = Reflect.getMetadata(CLASS_METADATA, QuietPlugin);
+    expect(metadata.permissions).toBeUndefined();
+    expect(metadata.hosts).toBeUndefined();
+  });
+
+  it('should refuse a permission it does not know, and hosts without the network', () => {
+    expect(() =>
+      Plugin({ name: 'a', permissions: ['root' as PluginPermission] }),
+    ).toThrow(/unknown permission "root"/);
+    expect(() => Plugin({ name: 'a', hosts: ['example.com'] })).toThrow(
+      /hosts are given with the "network" permission/,
     );
   });
 });

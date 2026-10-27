@@ -12,6 +12,7 @@ import {
   manifestOf,
   missingPermissionOf,
   nodePermissionArgs,
+  PluginPermission,
   Profile,
   SbError,
   toSbextName,
@@ -416,9 +417,9 @@ async function runProfile(
 /**
  * Loads every class of a package of components or plugins alone in a
  * worker, under the permission model as what its classes declare permits:
- * its components are created by an app, verified with a profile of one.
- * A package of plugins alone is loaded outside the model: the engine runs
- * its plugins in its own process, which the model does not hold.
+ * its components are created by an app, verified with a profile of one;
+ * its plugins as the engine runs each, in a process of its own held to
+ * what it declares.
  */
 async function loadPackage(
   pkg: ExtensionPackage,
@@ -450,8 +451,8 @@ async function loadPackage(
     return result;
   }
   /* What any of the classes loaded declares: a component's are its
-   * worker's once an app is given it */
-  const pluginsAlone = !pkg.apps?.length && !pkg.components?.length;
+   * worker's once an app is given it; a plugin's, of those the model
+   * holds, its process's */
   const permissions = new Set<WorkerPermission>();
   for (const planned of Object.values(plan.packages)) {
     const loaded = ctx.packages
@@ -459,13 +460,21 @@ async function loadPackage(
       ?.find(p => p.version === planned.version);
     for (const e of [...(loaded?.apps || []), ...(loaded?.components || [])])
       for (const p of e.metadata?.permissions || []) permissions.add(p);
+    for (const plugin of loaded?.plugins || [])
+      for (const p of plugin.metadata.permissions || [])
+        if (p === PluginPermission.NativeCode)
+          permissions.add(WorkerPermission.NativeCode);
+        else if (p === PluginPermission.ChildProcesses)
+          permissions.add(WorkerPermission.ChildProcesses);
   }
+  const pluginsAlone =
+    !pkg.apps?.length && !pkg.components?.length && !!pkg.plugins?.length;
   const worker = await startWorker({
     plan,
     dataDirectory: ctx.dataDir,
     execArgv: [
       ...(ctx.execArgv || []),
-      ...(ctx.permissionModel && !pluginsAlone
+      ...(ctx.permissionModel
         ? nodePermissionArgs({ permissions: [...permissions] })
         : []),
     ],
@@ -477,7 +486,9 @@ async function loadPackage(
     result.components = [...worker.components.keys()];
   } catch (e: any) {
     result.message =
-      e.message + missingModuleHint(e.message) + permissionHint(e.message);
+      e.message +
+      missingModuleHint(e.message) +
+      permissionHint(e.message, pluginsAlone);
   } finally {
     await worker.stop();
   }
@@ -691,9 +702,15 @@ async function providePeers(
  * package uses a dependency it does not declare.
  */
 /** What a worker refused by the permission model is to declare */
-function permissionHint(message: string): string {
+function permissionHint(message: string, plugin = false): string {
   const missing = missingPermissionOf(message);
   if (!missing) return '';
+  const name = missing === 'native-code' ? 'NativeCode' : 'ChildProcesses';
+  if (plugin)
+    return (
+      `\n  SyncBridge runs each plugin under Node's permission model: declare "${missing}" ` +
+      `on the plugin - permissions: [PluginPermission.${name}] in @Plugin(), approved by the server's admins`
+    );
   return (
     `\n  SyncBridge runs it under Node's permission model: declare "${missing}" ` +
     `on the app or component that needs it - permissions: [WorkerPermission.${
