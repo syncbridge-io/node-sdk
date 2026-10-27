@@ -1,6 +1,6 @@
 {
   "name": "@syncbridge/plugin-api",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "The API SyncBridge plugins are written against",
   "author": "Panates Inc",
   "license": "MIT",
@@ -20,7 +20,7 @@
     "ts-gems": "^4.0.4"
   },
   "peerDependencies": {
-    "@syncbridge/common": "^2.3.1"
+    "@syncbridge/common": "^2.4.0"
   },
   "devDependencies": {
     "expect": "^30.5.2"
