@@ -110,6 +110,19 @@ A component may use components too, with `Component.UseComponent`. A URI
 can name another module's component, for example
 `@syncbridge/net:TcpClient`. Declare that module as a peer as well.
 
+A slot may take one of several kinds that share no interface - a device
+reached as a client or as a server - with `oneOf`, each a class or its
+URI. Required, one of them must be chosen, and only one can be:
+
+```ts
+@App.UseComponent({ oneOf: [HL7Client, HL7Server], required: true })
+declare readonly hl7: HL7Client | HL7Server;
+```
+
+The app tells which it was given (`this.hl7 instanceof HL7Server`). Where
+the kinds do share what the app uses, an abstract base they both extend
+serves better: one slot typed by it, no branching.
+
 ## Variables
 
 `@DefineVariable` describes a setting. Its type is read from the
