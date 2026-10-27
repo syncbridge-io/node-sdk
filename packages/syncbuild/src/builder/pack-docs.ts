@@ -42,7 +42,8 @@ const FRONT_MATTER_FIELDS = new Set(['title', 'order']);
 /**
  * Packs the package's documents: docs/ whole, each file at its path (see
  * package-docs in @syncbridge/common). Each app, component and plugin is
- * told its README, docs/<ClassName>/README.md; one without is told of.
+ * told its README, docs/<ClassName>/README.md - or, without one, the one
+ * its sidebar takes from elsewhere in docs/; one with neither is told of.
  *
  * Refused, all told at once: a file docs/ does not take or larger than its
  * type's limit, all of them larger than theirs; a directory named as a
@@ -170,22 +171,36 @@ export function packDocs(context: Context) {
   const bases = new Set(
     [...docs.values()].filter(d => d.type.kind === 'document').map(d => d.base),
   );
+  const parsed = new Map<string, DocsSidebar>();
   for (const [file, source] of sidebars) {
-    let sidebar: DocsSidebar;
     try {
-      sidebar = parseSidebar(file, JSON.parse(source), bases);
+      parsed.set(file, parseSidebar(file, JSON.parse(source), bases));
     } catch (e: any) {
       errors.push(
         ...(e instanceof SyntaxError
           ? [`${file} is not JSON: ${e.message}`]
           : String(e.message).split('\n')),
       );
-      continue;
     }
+  }
+  /* A module's sidebar taking documents of no module's directory: theirs,
+   * shared - not the package's own for its sidebar to list */
+  const taken = new Set<string>();
+  for (const [file, sidebar] of parsed)
+    if (sidebarOwner(file))
+      for (const doc of sidebarDocs(sidebar)) taken.add(doc);
+  /* A README a module's sidebar lists: its page, when it has none */
+  const readmeOf = new Map<string, string>();
+  for (const [file, sidebar] of parsed) {
     const owner = sidebarOwner(file) || undefined;
     const listed = new Set(sidebarDocs(sidebar));
+    const readme = [...listed].find(d => d.endsWith('/' + README_FILE));
+    if (owner && readme) readmeOf.set(owner, readme);
     const unlisted = [...bases].filter(
-      b => docs.get(firstOf(docs, b))?.module === owner && !listed.has(b),
+      b =>
+        docs.get(firstOf(docs, b))?.module === owner &&
+        !listed.has(b) &&
+        (owner || !taken.has(b)),
     );
     if (unlisted.length)
       warn(
@@ -237,10 +252,12 @@ export function packDocs(context: Context) {
 
   for (const ext of extensions) {
     const file = `${DOCS_DIR}/${ext.className}/${README_FILE}`;
-    if (docs.has(file)) ext.readme = file;
+    /* Its own, else one its sidebar takes: shared by modules alike */
+    const readme = docs.has(file) ? file : readmeOf.get(ext.className);
+    if (readme) ext.readme = readme;
     else
       warn(
-        `${ext.className} has no README: add ${file} - it is shown on its page in the Marketplace`,
+        `${ext.className} has no README: add ${file}, or list a shared one in its ${SIDEBAR_FILE} - it is shown on its page in the Marketplace`,
       );
   }
 }

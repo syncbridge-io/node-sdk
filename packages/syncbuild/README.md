@@ -212,9 +212,34 @@ docs/
   }
   ```
 
+- **Shared:** extensions alike - one device family's - may share
+  documents rather than each keep a copy. They are put in a directory
+  not named as a class (`docs/shared/`), and each extension's sidebar
+  lists those it takes, from where it is: `"../shared/setup.md"`, its
+  languages with it. Taken by an extension, a document is that
+  extension's - shown on its page, not among the package's own unless
+  `docs/sidebar.json` lists it too. Two of five may share one, the
+  other three not.
+
+  ```
+  docs/
+    shared/
+      README.md  README.tr.md
+      setup.md   setup.tr.md
+    GEDash3000/
+      sidebar.json      { "items": ["../shared/README.md", "../shared/setup.md"] }
+    GEDash4000/
+      README.md         # its own page
+      sidebar.json      { "items": ["README.md", "../shared/setup.md"] }
+  ```
+
+  An extension with no README of its own has the one its sidebar lists as
+  its page; a sidebar lists one README at most.
+
 `spm build` and `spm pack` check all of it, every problem told at once,
 and put `docs/` in the package at the same paths, each extension's
-README path in its definition's `readme`. One with no README is told of,
+README path in its definition's `readme` - its own, or the one its
+sidebar shares. One with no README is told of,
 and packed still; so is an image no document shows, and a document a
 sidebar does not list.
 

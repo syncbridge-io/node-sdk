@@ -353,6 +353,59 @@ export class PackComponent extends ComponentBase {}
     );
   });
 
+  it('should take documents shared by modules: listed by their sidebars, a README among them their page', async () => {
+    const told: string[] = [];
+    const shared = path.join(pkgDir, 'docs', 'shared');
+    write(path.join(shared, 'README.md'), '# A family of devices');
+    write(path.join(shared, 'README.tr.md'), '# Bir cihaz ailesi');
+    write(path.join(shared, 'setup.md'), '# Setup');
+    write(path.join(shared, 'setup.tr.md'), '# Kurulum');
+    write(path.join(pkgDir, 'docs', 'guides', 'about.md'), '# About');
+    write(path.join(pkgDir, 'docs', 'sidebar.json'), {
+      items: ['guides/about.md'],
+    });
+    write(path.join(pkgDir, 'docs', 'PackComponent', 'sidebar.json'), {
+      items: [
+        '../shared/README.md',
+        { doc: '../shared/setup.md', title: { en: 'Setup', tr: 'Kurulum' } },
+      ],
+    });
+    await packPackage({
+      packageDir: pkgDir,
+      outDir: 'dist',
+      pack: false,
+      logger: (m: string) => told.push(m),
+    });
+    const manifest = JSON.parse(
+      fs.readFileSync(
+        path.join(pkgDir, 'dist', 'syncbridge-manifest.json'),
+        'utf8',
+      ),
+    );
+    /* No README of its own: the shared one its page */
+    expect(manifest.components[0].readme).toBe('docs/shared/README.md');
+    expect(
+      fs.existsSync(path.join(pkgDir, 'dist', 'docs', 'shared', 'setup.tr.md')),
+    ).toBe(true);
+    /* Taken by a module: not the package's own, its sidebar not told of it */
+    expect(told.join('\n')).not.toMatch(/does not list .*shared/);
+    expect(told.join('\n')).not.toMatch(/PackComponent has no README/);
+
+    /* Its own README the page, the shared one listed as a document */
+    write(path.join(pkgDir, 'docs', 'PackComponent', 'README.md'), '# Pack');
+    write(path.join(pkgDir, 'docs', 'PackComponent', 'sidebar.json'), {
+      items: ['../shared/setup.md'],
+    });
+    await packPackage({ packageDir: pkgDir, outDir: 'dist', pack: false });
+    const again = JSON.parse(
+      fs.readFileSync(
+        path.join(pkgDir, 'dist', 'syncbridge-manifest.json'),
+        'utf8',
+      ),
+    );
+    expect(again.components[0].readme).toBe('docs/PackComponent/README.md');
+  });
+
   it('should keep how a module is found in the Marketplace: its summary by language, its screenshots among its documents', async () => {
     write(
       path.join(pkgDir, 'src', 'pack.component.ts'),
