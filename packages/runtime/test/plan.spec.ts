@@ -82,6 +82,48 @@ describe('computeWorkerPlan', () => {
     expect(r.packages['@syncbridge/sqb'].version).toBe('0.14.9');
   });
 
+  it("should take a SyncBridge module, a peer once, at a newer version installed than the server's", () => {
+    const old = new ExtensionPackage();
+    old.assignManifest({
+      name: '@abisena/iomt-common',
+      version: '1.0.5',
+      peerDependencies: {
+        '@syncbridge/common': '^2.0.0',
+        '@syncbridge/builtins': '^2.0.1',
+      },
+    });
+    old.path = '/ext/iomt-common';
+    old.entryPoint = '/ext/iomt-common/index.js';
+    /* The server's version has no directory of the extensions' */
+    const bundled = pkg('@syncbridge/builtins', '2.0.0');
+    bundled.path = '/app/node_modules/@syncbridge/builtins';
+    const newer = pkg('@syncbridge/builtins', '2.0.1');
+    const r = computeWorkerPlan({
+      app: { pkg: old, version: old.version } as any,
+      versionsOf: registry(old, bundled, newer),
+      isInstalled: p => p.path.startsWith('/ext/'),
+      hostURL: 'file:///app/package.json',
+    });
+    expect(r.packages['@syncbridge/builtins']).toMatchObject({
+      version: '2.0.1',
+      source: 'installed',
+    });
+    /* Not the host's: the loader takes it to the planned version */
+    expect(r.shared).toEqual(['@syncbridge/common']);
+
+    /* The server's, while no newer one is installed */
+    const r2 = computeWorkerPlan({
+      app: { pkg: old, version: old.version } as any,
+      versionsOf: registry(old, pkg('@syncbridge/builtins', '2.1.0')),
+      isInstalled: () => false,
+      hostURL: 'file:///app/package.json',
+    });
+    expect(r2.packages['@syncbridge/builtins']).toMatchObject({
+      version: '2.1.0',
+      source: 'module',
+    });
+  });
+
   it('should take the app at the version the profile resolved to', () => {
     const v1 = pkg('@abisena/lab', '1.0.0');
     const v2 = pkg('@abisena/lab', '2.0.0');

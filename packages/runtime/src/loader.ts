@@ -4,7 +4,8 @@
  * the plan says:
  *
  * - `sb:@vendor/name` -> the one version of that registry package the plan
- *   selected.
+ *   selected. So is one of SyncBridge's modules imported under its own
+ *   name, `@syncbridge/builtins`.
  * - A shared package (`@syncbridge/common`, and every peer the plan's
  *   packages declare) -> the host's copy, even when the importing extension
  *   carries its own. Those modules hold the registry, the decorators'
@@ -23,7 +24,7 @@ import nodeModule from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
-import { parseSbSpecifier } from '@syncbridge/common';
+import { isSyncBridgeModule, parseSbSpecifier } from '@syncbridge/common';
 import type { WorkerPlan } from './plan.js';
 
 /** Starts with `.`, `/` or a URL scheme such as `node:` or `file:` */
@@ -52,7 +53,7 @@ export function installWorkerHooks(plan: WorkerPlan) {
 
   return nodeModule.registerHooks({
     resolve(specifier, context, next) {
-      const sb = parseSbSpecifier(specifier);
+      const sb = parseSbSpecifier(specifier) || plannedModule(specifier, plan);
       if (sb) {
         const pkg = plan.packages[sb.name];
         if (!pkg) {
@@ -99,6 +100,21 @@ export function installWorkerHooks(plan: WorkerPlan) {
       }
     },
   });
+}
+
+/**
+ * One of SyncBridge's modules imported under its own name -
+ * `@syncbridge/builtins/sub` - that the plan has a version of: resolved as
+ * `sb:@syncbridge/builtins/sub` is. One the plan has none of is left to
+ * the rest of the resolution, the host's copy.
+ */
+function plannedModule(
+  specifier: string,
+  plan: WorkerPlan,
+): { name: string; subpath: string } | undefined {
+  const m = /^(@syncbridge\/[^/]+)(\/.*)?$/.exec(specifier);
+  if (!m || !isSyncBridgeModule(m[1]) || !plan.packages[m[1]]) return;
+  return { name: m[1], subpath: m[2] ? '.' + m[2] : '.' };
 }
 
 /**

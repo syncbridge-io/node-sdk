@@ -1,4 +1,4 @@
-import { ApiField, ComplexType } from '@opra/common';
+import { ApiField, ArrayType, ComplexType } from '@opra/common';
 import { LogChannelMetadataRecord } from './log-channel-metadata.js';
 import { VariableMetadataRecord } from './variable-metadata.js';
 
@@ -29,6 +29,14 @@ export class ElementComponentMetadata {
     required: true,
   })
   declare interfaceUri: string;
+
+  @ApiField({
+    label: 'One of',
+    description:
+      'The interfaces the assigned class may implement, one of them: a slot taking either of two kinds (an HL7 client or server). interfaceUri is the first of them, for what reads that alone',
+    type: ArrayType('string'),
+  })
+  declare oneOf?: string[];
 
   @ApiField({
     label: 'Interface URI',

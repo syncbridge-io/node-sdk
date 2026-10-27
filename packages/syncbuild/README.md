@@ -68,8 +68,9 @@ app, component and plugin class and creates each app from a profile.
 It exits with 1 when one cannot be, with the reason. A package of
 components alone - no app to create - has its classes loaded, unless a
 profile of an app using them is given. So does a package of plugins
-alone, outside Node's permission model: the engine loads its plugins in
-its own process, from an installation like a worker's. So does an app whose default values
+alone, under Node's permission model with what each plugin declares
+(`permissions` in `@Plugin`), as the engine runs each plugin in a process
+of its own. So does an app whose default values
 are not valid - a required component is to be chosen: it is told as not
 created, and creating it takes a profile that chooses its components
 (by `uri`), kept with the package, e.g. `verify/*.yml`.
@@ -94,11 +95,11 @@ A profile can use components SyncBridge provides, such as
 `@syncbridge/net:TcpClient`: like the engine at its start, verify registers
 those packages from the project's `node_modules`, so the project needs
 them, as devDependencies at least. A package whose code uses them declares
-them in `peerDependencies` (`spm check` warns about `dependencies`), so it
-gets SyncBridge's copy rather than a second one. One that is a package of
-the same workspace is packed and installed, as a workspace dependency is;
-so is a peer of the same workspace the host provides, its sources not
-being a package to load.
+them in the manifest's `dependencies` (see Registry dependencies), so the
+worker loads the one version its plan picks. One that is a package of the
+same workspace is packed and installed, as a workspace dependency is; so
+is a peer of the same workspace the host provides, its sources not being a
+package to load.
 
 npm dependencies that are packages of the same workspace are installed
 from the workspace when its version satisfies the range, so a package can
@@ -211,9 +212,34 @@ docs/
   }
   ```
 
+- **Shared:** extensions alike - one device family's - may share
+  documents rather than each keep a copy. They are put in a directory
+  not named as a class (`docs/shared/`), and each extension's sidebar
+  lists those it takes, from where it is: `"../shared/setup.md"`, its
+  languages with it. Taken by an extension, a document is that
+  extension's - shown on its page, not among the package's own unless
+  `docs/sidebar.json` lists it too. Two of five may share one, the
+  other three not.
+
+  ```
+  docs/
+    shared/
+      README.md  README.tr.md
+      setup.md   setup.tr.md
+    GEDash3000/
+      sidebar.json      { "items": ["../shared/README.md", "../shared/setup.md"] }
+    GEDash4000/
+      README.md         # its own page
+      sidebar.json      { "items": ["README.md", "../shared/setup.md"] }
+  ```
+
+  An extension with no README of its own has the one its sidebar lists as
+  its page; a sidebar lists one README at most.
+
 `spm build` and `spm pack` check all of it, every problem told at once,
 and put `docs/` in the package at the same paths, each extension's
-README path in its definition's `readme`. One with no README is told of,
+README path in its definition's `readme` - its own, or the one its
+sidebar shares. One with no README is told of,
 and packed still; so is an image no document shows, and a document a
 sidebar does not list.
 
@@ -334,13 +360,17 @@ under `@sbext`: `spm add` adds `@sbext:registry=https://npm.syncbridge.io/`
 to the workspace's `.npmrc` when it is not there (`SB_NPM_MIRROR` names
 another mirror). Public packages need no sign-in.
 
-The modules SyncBridge ships with every server - `@syncbridge/builtins`,
-`@syncbridge/hl7`, ... - are the host's, as the SDK is: `spm add
-@syncbridge/builtins@^2.0.0` declares it in `peerDependencies`, to import
-under its own name, and installs the mirror's copy under that name for
-development (`"npm:@sbext/syncbridge__builtins@^2.0.0"`). The SDK itself
-(`@syncbridge/common`, `runtime`, `syncbuild`, `testing`, `plugin-api`)
-comes from npm.
+SyncBridge's own modules - `@syncbridge/builtins`, `@syncbridge/hl7`, ... -
+are registry packages too. A server comes with a version of each, and
+installs from the registry a newer one a package needs, without an update
+of its own. They are imported under their own name, not with `sb:`:
+`spm add @syncbridge/builtins@^2.0.0` declares it in the manifest's
+`dependencies` and installs the mirror's copy under that name for
+development (`"npm:@sbext/syncbridge__builtins@^2.0.0"`); no `paths` entry
+is needed. A package that still declares one in `peerDependencies`, as
+they once were, installs as if it were in the manifest; `spm add` moves it
+there. The SDK itself (`@syncbridge/common`, `runtime`, `syncbuild`,
+`testing`, `plugin-api`) comes from npm and is the host's: a peer.
 
 A dependency that is a package of the same workspace - linked into
 `node_modules`, not published - needs no `@sbext` copy: `spm add` maps

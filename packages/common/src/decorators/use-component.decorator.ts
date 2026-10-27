@@ -15,7 +15,16 @@ export function UseComponent<T extends AppBase | ComponentBase>(
     if (typeof propertyKey !== 'string')
       throw new TypeError('Property key must be a string');
 
-    let uri = options.uri;
+    /* One of several: each a class, or its uri */
+    const oneOf = options.oneOf?.map(c => {
+      const u = typeof c === 'string' ? c : c?.uri;
+      if (!u)
+        throw new TypeError(
+          `${String(propertyKey)}: oneOf takes components - classes with @Component, or their uris`,
+        );
+      return u;
+    });
+    let uri = options.uri ?? oneOf?.[0];
 
     if (!uri) {
       const designType = Reflect.getMetadata(
@@ -32,7 +41,8 @@ export function UseComponent<T extends AppBase | ComponentBase>(
     metadata.components = metadata.components || {};
     metadata.components[propertyKey] = {
       interfaceUri: uri,
-      ...omit(options as any, ['classUri', 'interfaceUri']),
+      ...omit(options as any, ['classUri', 'interfaceUri', 'oneOf']),
+      ...(oneOf?.length ? { oneOf } : {}),
       propertyKey,
     };
   };
@@ -40,8 +50,13 @@ export function UseComponent<T extends AppBase | ComponentBase>(
 
 export namespace UseComponent {
   export interface Options extends Partial<
-    StrictOmit<ElementComponentMetadata, 'classUri' | 'interfaceUri'>
+    StrictOmit<ElementComponentMetadata, 'classUri' | 'interfaceUri' | 'oneOf'>
   > {
     uri?: string;
+    /**
+     * A slot taking a class of one of these, not of one interface alone:
+     * `oneOf: [HL7Client, HL7Server]` - its property typed as either
+     */
+    oneOf?: (string | { uri: string })[];
   }
 }

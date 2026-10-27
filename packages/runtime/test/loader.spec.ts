@@ -57,6 +57,9 @@ function createLayout(root: string) {
 import { where as b } from 'sb:@vendor/b';
 import { where as bProtocol } from 'sb:@vendor/b/protocol.js';
 import { where as hostdep } from 'hostdep';
+import { where as module } from '@syncbridge/mod';
+import { where as moduleSub } from '@syncbridge/mod/sub.js';
+import { where as hostModule } from '@syncbridge/other';
 import { where as shared } from 'shareddep';
 import { where as sharedSub } from 'shareddep/sub';
 const require = createRequire(import.meta.url);
@@ -64,13 +67,32 @@ let required;
 try { required = require('sb:@vendor/b').where; } catch (e) { required = e.message; }
 let unplanned;
 try { await import('sb:@vendor/c'); } catch (e) { unplanned = e.message; }
-console.log(JSON.stringify({ b, bProtocol, hostdep, shared, sharedSub, required, unplanned }));
+console.log(JSON.stringify({ b, bProtocol, hostdep, module, moduleSub, hostModule, shared, sharedSub, required, unplanned }));
 `,
   );
   const b = path.join(installed, 'vendor__b@2.1.0');
   write(path.join(b, 'package.json'), '{"name":"@vendor/b","type":"module"}');
   write(path.join(b, 'index.js'), `export const where = 'b@2.1.0';`);
   write(path.join(b, 'protocol.js'), `export const where = 'b-protocol';`);
+
+  /* SyncBridge's modules: the server's version of each in its node_modules,
+   * a newer one of @syncbridge/mod installed */
+  for (const name of ['mod', 'other']) {
+    const dir = path.join(host, 'node_modules', '@syncbridge', name);
+    write(
+      path.join(dir, 'package.json'),
+      `{"name":"@syncbridge/${name}","type":"module"}`,
+    );
+    write(path.join(dir, 'index.js'), `export const where = 'host';`);
+    write(path.join(dir, 'sub.js'), `export const where = 'host-sub';`);
+  }
+  const mod = path.join(installed, 'syncbridge__mod@2.0.1');
+  write(
+    path.join(mod, 'package.json'),
+    '{"name":"@syncbridge/mod","type":"module"}',
+  );
+  write(path.join(mod, 'index.js'), `export const where = 'mod@2.0.1';`);
+  write(path.join(mod, 'sub.js'), `export const where = 'mod-sub@2.0.1';`);
 
   const plan: WorkerPlan = {
     packages: {
@@ -86,6 +108,13 @@ console.log(JSON.stringify({ b, bProtocol, hostdep, shared, sharedSub, required,
         version: '2.1.0',
         path: b,
         entryPoint: path.join(b, 'index.js'),
+        source: 'installed',
+      },
+      '@syncbridge/mod': {
+        name: '@syncbridge/mod',
+        version: '2.0.1',
+        path: mod,
+        entryPoint: path.join(mod, 'index.js'),
         source: 'installed',
       },
     },
@@ -132,6 +161,11 @@ describe('loader', function () {
     expect(r.required).toBe('b@2.1.0');
     /* A bare specifier the extension cannot resolve falls back to the host */
     expect(r.hostdep).toBe('host');
+    /* A SyncBridge module under its own name is the planned version, not
+     * the server's; one the plan has none of is the server's */
+    expect(r.module).toBe('mod@2.0.1');
+    expect(r.moduleSub).toBe('mod-sub@2.0.1');
+    expect(r.hostModule).toBe('host');
     /* A shared package is the host's, even with a private copy beside it */
     expect(r.shared).toBe('host');
     expect(r.sharedSub).toBe('host-sub');

@@ -205,7 +205,7 @@ function allOn(
 async function resolveUri(
   registry: ExtensionRegistry,
   use: Type<ComponentBase> | MockComponent<any> | string | undefined,
-  decl: { interfaceUri: string; classUri?: string },
+  decl: { interfaceUri: string; classUri?: string; oneOf?: string[] },
   where: string,
 ): Promise<string> {
   if (typeof use === 'string') return use;
@@ -221,6 +221,11 @@ async function resolveUri(
     if (!registry.findComponent(uri)) await registry.registerClass(cls);
     return uri;
   }
+  /* One of several: which, the test's to tell */
+  if (!decl.classUri && (decl.oneOf?.length ?? 0) > 1)
+    throw new TypeError(
+      `${where} takes one of ${decl.oneOf!.join(', ')}: give one in components`,
+    );
   const declaredUri = decl.classUri || decl.interfaceUri;
   const reg = registry.findComponent(declaredUri);
   if (!reg || reg.metadata.abstract)

@@ -1,6 +1,11 @@
 import { SbError } from '../classes/sb-error.js';
 import type { LocalizedText } from './localized-text.js';
-import { CLASS_DIR_PATTERN, DOCS_DIR, isDocsLanguage } from './package-docs.js';
+import {
+  CLASS_DIR_PATTERN,
+  DOCS_DIR,
+  isDocsLanguage,
+  README_FILE,
+} from './package-docs.js';
 
 /**
  * How a package's documents are listed, where its author tells it: a
@@ -22,6 +27,13 @@ import { CLASS_DIR_PATTERN, DOCS_DIR, isDocsLanguage } from './package-docs.js';
  * the sidebar is - its languages are found by its name (network.md for
  * network.tr.md). A title is text, or text by language. A document not
  * listed is read by a link to it alone.
+ *
+ * A module's sidebar may list documents beyond its directory, shared by
+ * the modules listing them: "../shared/setup.md". Listed by one, a
+ * document of no module's directory is that module's - not the package's
+ * own, unless the package's sidebar lists it too. A README.md it lists is
+ * its page, when it has none of its own; it lists one at most. The
+ * package's sidebar lists none of a module's directory.
  */
 export const SIDEBAR_FILE = 'sidebar.json';
 
@@ -106,9 +118,15 @@ export function parseSidebar(
       else if (part && part !== '.') parts.push(part);
     }
     const path = parts.join('/');
-    if (!path.startsWith(dir + '/') || (!owner && isModuleDoc(path))) {
+    if (!path.startsWith(DOCS_DIR + '/')) {
       errors.push(
-        `${at}: "${name}" is not ${owner ? `${owner}'s` : "the package's own"} - a sidebar lists the documents beside it`,
+        `${at}: "${name}" goes out of ${DOCS_DIR}/ - a sidebar lists the package's documents`,
+      );
+      return;
+    }
+    if (!owner && isModuleDoc(path)) {
+      errors.push(
+        `${at}: "${name}" is a module's - the package's sidebar lists its own documents`,
       );
       return;
     }
@@ -180,6 +198,12 @@ export function parseSidebar(
       errors.push(`${file}: "${unknown.join('", "')}" is not read`);
     result = items((source as { items?: unknown }).items, `${file}: items`, 0);
   }
+  /* A module's page: one README, its own or one it takes */
+  const readmes = [...listed].filter(p => p.endsWith('/' + README_FILE));
+  if (owner && readmes.length > 1)
+    errors.push(
+      `${file}: ${readmes.join(', ')} - a module has one ${README_FILE}, its page: list one`,
+    );
   if (errors.length) throw new SbError(errors.join('\n'));
   return { items: result };
 }

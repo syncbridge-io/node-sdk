@@ -62,6 +62,13 @@ export class Profile {
   declare appVersion?: string;
 
   @ApiField({
+    label: 'Written with',
+    description:
+      "The version of its app its values were last written with: the engine's to set, on every save - what a migration starts from",
+  })
+  declare writtenWith?: string;
+
+  @ApiField({
     label: 'Group',
     description: 'Group of the profile. Profiles are grouped by this value',
   })

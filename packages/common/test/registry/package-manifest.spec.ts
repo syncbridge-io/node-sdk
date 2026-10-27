@@ -30,6 +30,28 @@ describe('package manifest', () => {
       expect(pkg.peerDependencies).toEqual({ '@syncbridge/common': '^0.13.7' });
     });
 
+    it('should take a SyncBridge module declared as a peer for a registry dependency', () => {
+      const pkg = new ExtensionPackage();
+      pkg.assignManifest(
+        {
+          name: '@abisena/iomt-common',
+          version: '1.0.5',
+          peerDependencies: {
+            '@syncbridge/common': '^2.0.0',
+            '@syncbridge/builtins': '^2.0.1',
+            '@syncbridge/sqb': '^2.0.1',
+          },
+        },
+        { dependencies: { '@syncbridge/sqb': '^2.1.0' } },
+      );
+      /* The manifest's range wins over the peer's */
+      expect(pkg.registryDependencies).toEqual({
+        '@syncbridge/sqb': '^2.1.0',
+        '@syncbridge/builtins': '^2.0.1',
+      });
+      expect(pkg.peerDependencies).toEqual({ '@syncbridge/common': '^2.0.0' });
+    });
+
     it("should prefer the manifest's name and default the dependencies", () => {
       const pkg = new ExtensionPackage();
       pkg.assignManifest(
