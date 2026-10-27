@@ -42,6 +42,13 @@ export class ProfileComponent {
   declare uri: string;
 
   @ApiField({
+    label: 'Written with',
+    description:
+      "The version of its component its values were last written with: the engine's to set, on every save - what a migration starts from",
+  })
+  declare writtenWith?: string;
+
+  @ApiField({
     label: 'Values',
     description: 'Values of user defined variables',
     type: 'object',
