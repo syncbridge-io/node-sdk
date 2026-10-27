@@ -71,14 +71,59 @@ describe('docs sidebar', () => {
     }
     expect(message).toMatch(/"extra" is not read/);
     expect(message).toMatch(/items\[1\]: "guides\/install.md" is listed twice/);
-    expect(message).toMatch(
-      /items\[2\]: "Gw\/network.md" is not the package's own/,
-    );
+    expect(message).toMatch(/items\[2\]: "Gw\/network.md" is a module's/);
     expect(message).toMatch(
       /items\[3\]: "guides\/missing.md" is not a document/,
     );
     expect(message).toMatch(/items\[4\].title: text, or text by language/);
     expect(message).toMatch(/items\[5\].items: a list of items/);
     expect(message).toMatch(/items\[6\]: a document \("doc"\) or a category/);
+  });
+
+  it("should let a module's sidebar take documents shared beyond its directory", () => {
+    const shared = new Set([
+      ...docs,
+      'docs/shared/README.md',
+      'docs/shared/setup.md',
+      'docs/Other/notes.md',
+    ]);
+    const sidebar = parseSidebar(
+      'docs/Gw/sidebar.json',
+      {
+        items: [
+          '../shared/README.md',
+          { doc: '../shared/setup.md', title: { en: 'Setup', tr: 'Kurulum' } },
+          '../Other/notes.md',
+          'network.md',
+        ],
+      },
+      shared,
+    );
+    expect(sidebarDocs(sidebar)).toEqual([
+      'docs/shared/README.md',
+      'docs/shared/setup.md',
+      'docs/Other/notes.md',
+      'docs/Gw/network.md',
+    ]);
+  });
+
+  it('should keep a sidebar in docs/, a module to one README', () => {
+    const shared = new Set([...docs, 'docs/shared/README.md']);
+    let message = '';
+    try {
+      parseSidebar(
+        'docs/Gw/sidebar.json',
+        { items: ['README.md', '../shared/README.md', '../../src/index.md'] },
+        shared,
+      );
+    } catch (e: any) {
+      message = e.message;
+    }
+    expect(message).toMatch(
+      /items\[2\]: "..\/..\/src\/index.md" goes out of docs\//,
+    );
+    expect(message).toMatch(
+      /docs\/Gw\/README.md, docs\/shared\/README.md - a module has one README.md/,
+    );
   });
 });
