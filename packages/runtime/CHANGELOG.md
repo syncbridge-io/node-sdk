@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 67c2d6ca886b9d0793f951d58fb7d79a79a24d52 -->
+<!-- rman:documented-up-to d5bd3cc3d819a178b2be0f56d71910f807b30981 -->
+
+## @syncbridge/runtime@2.2.0 (2026-10-27)
+
+### 🧪 Tests
+
+- **runtime:** a SyncBridge module a package declared as a peer planned at a newer version installed than the server's, not shared from the host (c38d7d3)
+
+---
 
 ## @syncbridge/runtime@2.1.0 (2026-10-26)
 
