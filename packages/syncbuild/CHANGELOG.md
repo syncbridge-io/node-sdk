@@ -1,6 +1,19 @@
 # Changelog
 
-<!-- rman:documented-up-to 67c2d6ca886b9d0793f951d58fb7d79a79a24d52 -->
+<!-- rman:documented-up-to d5bd3cc3d819a178b2be0f56d71910f807b30981 -->
+
+## @syncbridge/syncbuild@2.7.0 (2026-10-27)
+
+### ✨ Features
+
+- **common,syncbuild:** documents shared by modules - a module's sidebar.json lists documents beyond its directory ("../shared/setup.md"), their languages with them; taken by a module they are its, not the package's own; a shared README.md listed is the page of a module with none of its own, one at most (fd40c84)
+
+### 💬 General Changes
+
+- Merge branch 'plugin-permissions' into sdk-release (29cc8ad)
+- Merge branch 'docs-shared' into sdk-release (772a0bd)
+
+---
 
 ## @syncbridge/syncbuild@2.6.0 (2026-10-26)
 
