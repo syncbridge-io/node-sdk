@@ -45,6 +45,27 @@ describe('Profile Decode', () => {
     expect(decoded.components!.cmp1.values!.var2).toBe('xyz');
   });
 
+  it('should keep the versions its values were written with', () => {
+    const profile = {
+      id: 'worker-1',
+      displayName: 'Worker 1',
+      appUri: Prc1App.uri,
+      writtenWith: '1.4.2',
+      values: { var1: 'val1' },
+      components: {
+        cmp1: {
+          uri: Cmp1Component.uri,
+          writtenWith: '2.0.1',
+          values: { var1: 'cmp-val1' },
+        },
+      },
+    };
+    for (const out of [decodeProfile(profile), encodeProfile(profile)]) {
+      expect(out.writtenWith).toBe('1.4.2');
+      expect(out.components!.cmp1.writtenWith).toBe('2.0.1');
+    }
+  });
+
   it('should decode profile silently', () => {
     const profile = {
       id: 'worker-1',
