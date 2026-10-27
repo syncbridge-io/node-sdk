@@ -11,6 +11,7 @@ import {
   ElementMetadata,
   PluginMetadata,
 } from '../models/index.js';
+import { isSyncBridgeModule } from '../utils/registry-names.js';
 import { isAppBase, isComponentBase } from '../utils/type-guards.js';
 import type {
   ExtensionPackageJson,
@@ -39,14 +40,21 @@ export class ExtensionPackage {
 
   /**
    * Takes the package's identity and dependencies from its `package.json`
-   * and its manifest (see readExtensionManifest)
+   * and its manifest (see readExtensionManifest).
+   *
+   * SyncBridge's modules (`@syncbridge/builtins`, ...) were once peers the
+   * host provided; a package that still declares one so depends on it as a
+   * registry package, as one built now does in its manifest.
    */
   assignManifest(pkgJson: ExtensionPackageJson, manifest?: SyncBridgeManifest) {
     this.name = manifest?.name || pkgJson.name;
     this.version = pkgJson.version;
     this.description = pkgJson.description!;
     this.registryDependencies = { ...manifest?.dependencies };
-    this.peerDependencies = { ...pkgJson.peerDependencies };
+    this.peerDependencies = {};
+    for (const [name, range] of Object.entries(pkgJson.peerDependencies || {}))
+      if (!isSyncBridgeModule(name)) this.peerDependencies[name] = range;
+      else this.registryDependencies[name] ??= range;
   }
 }
 

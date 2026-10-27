@@ -13,28 +13,6 @@ export const NPM_MIRROR =
 /** The `.npmrc` line that sends `@sbext` to the mirror */
 const MIRROR_SCOPE_LINE = `@${SBEXT_SCOPE}:registry=`;
 
-/** The SDK: on npm, not in the registry */
-const SDK_PACKAGES = [
-  '@syncbridge/common',
-  '@syncbridge/runtime',
-  '@syncbridge/syncbuild',
-  '@syncbridge/testing',
-  '@syncbridge/plugin-api',
-];
-
-/** Whether a name is one of the SDK's packages, which come from npm */
-export const isSdkPackage = (name: string) => SDK_PACKAGES.includes(name);
-
-/**
- * Whether a registry package is one SyncBridge ships with every server
- * (`@syncbridge/builtins`, `@syncbridge/hl7`, ...): a package using it
- * imports it under its own name and declares it in `peerDependencies`, as
- * it does the SDK, rather than as a registry dependency. In development
- * it is the mirror's copy under that name (npm's alias).
- */
-export const isHostProvided = (name: string) =>
-  name.startsWith('@syncbridge/') && !isSdkPackage(name);
-
 /**
  * The workspace root of a package: the first directory, from it upwards,
  * with a lockfile or a `.git` - else the topmost one

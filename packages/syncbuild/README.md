@@ -94,11 +94,11 @@ A profile can use components SyncBridge provides, such as
 `@syncbridge/net:TcpClient`: like the engine at its start, verify registers
 those packages from the project's `node_modules`, so the project needs
 them, as devDependencies at least. A package whose code uses them declares
-them in `peerDependencies` (`spm check` warns about `dependencies`), so it
-gets SyncBridge's copy rather than a second one. One that is a package of
-the same workspace is packed and installed, as a workspace dependency is;
-so is a peer of the same workspace the host provides, its sources not
-being a package to load.
+them in the manifest's `dependencies` (see Registry dependencies), so the
+worker loads the one version its plan picks. One that is a package of the
+same workspace is packed and installed, as a workspace dependency is; so
+is a peer of the same workspace the host provides, its sources not being a
+package to load.
 
 npm dependencies that are packages of the same workspace are installed
 from the workspace when its version satisfies the range, so a package can
@@ -334,13 +334,17 @@ under `@sbext`: `spm add` adds `@sbext:registry=https://npm.syncbridge.io/`
 to the workspace's `.npmrc` when it is not there (`SB_NPM_MIRROR` names
 another mirror). Public packages need no sign-in.
 
-The modules SyncBridge ships with every server - `@syncbridge/builtins`,
-`@syncbridge/hl7`, ... - are the host's, as the SDK is: `spm add
-@syncbridge/builtins@^2.0.0` declares it in `peerDependencies`, to import
-under its own name, and installs the mirror's copy under that name for
-development (`"npm:@sbext/syncbridge__builtins@^2.0.0"`). The SDK itself
-(`@syncbridge/common`, `runtime`, `syncbuild`, `testing`, `plugin-api`)
-comes from npm.
+SyncBridge's own modules - `@syncbridge/builtins`, `@syncbridge/hl7`, ... -
+are registry packages too. A server comes with a version of each, and
+installs from the registry a newer one a package needs, without an update
+of its own. They are imported under their own name, not with `sb:`:
+`spm add @syncbridge/builtins@^2.0.0` declares it in the manifest's
+`dependencies` and installs the mirror's copy under that name for
+development (`"npm:@sbext/syncbridge__builtins@^2.0.0"`); no `paths` entry
+is needed. A package that still declares one in `peerDependencies`, as
+they once were, installs as if it were in the manifest; `spm add` moves it
+there. The SDK itself (`@syncbridge/common`, `runtime`, `syncbuild`,
+`testing`, `plugin-api`) comes from npm and is the host's: a peer.
 
 A dependency that is a package of the same workspace - linked into
 `node_modules`, not published - needs no `@sbext` copy: `spm add` maps

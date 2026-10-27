@@ -13,8 +13,10 @@ npm i @syncbridge/runtime
 
 `installPackage(zipFile, options)` runs the install steps in order:
 extract the archive, read its `syncbridge-manifest.json`, check that the
-registry packages it depends on are installed and the host provides its
-peers, move it into place and install its npm dependencies with pnpm.
+registry packages it depends on are installed - SyncBridge's modules
+(`@syncbridge/builtins`, ...) among them, declared in its manifest or, as
+they once were, as peers - and the host provides its other peers (the
+SDK), move it into place and install its npm dependencies with pnpm.
 A package carries no lockfile: its ranges are resolved when it is
 installed, peers of its dependencies included, and the `pnpm-lock.yaml`
 pnpm writes in its directory records what it runs on. Each step is also exported on its own

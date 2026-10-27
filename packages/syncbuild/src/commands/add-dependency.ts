@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  isSdkPackage,
+  isSyncBridgeModule,
   MANIFEST_FILE,
   SbError,
   toSbextName,
@@ -10,8 +12,6 @@ import * as jsonc from 'jsonc-parser';
 import semver from 'semver';
 import {
   ensureMirrorScope,
-  isHostProvided,
-  isSdkPackage,
   nodeModulesDirs,
   workspaceRoot,
 } from '../npm-mirror.js';
@@ -34,10 +34,11 @@ import { findWorkspacePackage } from '../workspace.js';
  * `@sbext` devDependency, and its `paths` entry, under its own name, points
  * at the declarations its build writes.
  *
- * A package SyncBridge ships with every server (`@syncbridge/builtins`,
- * `@syncbridge/hl7`, ...) is the host's, as the SDK is: it goes into
- * `peerDependencies` and is imported under its own name, the mirror's copy
- * installed under that name for development (`npm:@sbext/...`).
+ * SyncBridge's own modules (`@syncbridge/builtins`, `@syncbridge/hl7`, ...)
+ * are registry packages too, but imported under their own name: the
+ * mirror's copy is installed under that name for development
+ * (`npm:@sbext/...`), and no `paths` entry is needed. A server comes with a
+ * version of each and installs a newer one a package needs.
  *
  * Any package from the mirror needs the workspace's `.npmrc` to send
  * `@sbext` there: written when it does not.
@@ -73,24 +74,7 @@ export function addDependency(
       changed.push(path.relative(packageDir, path.join(root, '.npmrc')));
   };
 
-  if (isHostProvided(name)) {
-    const pkgFile = path.join(packageDir, 'package.json');
-    const before = fs.readFileSync(pkgFile, 'utf8');
-    let text = modify(before, ['peerDependencies', name], range);
-    if (!workspace)
-      text = modify(
-        text,
-        ['devDependencies', name],
-        `npm:${toSbextName(name)}@${range}`,
-      );
-    if (text !== before) {
-      fs.writeFileSync(pkgFile, text);
-      changed.push('package.json');
-    }
-    if (!workspace) mirror();
-    return { name, range, changed };
-  }
-
+  const isModule = isSyncBridgeModule(name);
   const pkgFile = path.join(packageDir, 'package.json');
   let text = fs.readFileSync(pkgFile, 'utf8');
   const before = text;
@@ -98,7 +82,17 @@ export function addDependency(
   const inPackageJson = jsonc.parse(text)?.syncbridge != null;
   if (inPackageJson)
     text = modify(text, ['syncbridge', 'dependencies', name], range);
-  if (!workspace)
+  if (isModule) {
+    /* Once a peer the host provided */
+    if (jsonc.parse(text)?.peerDependencies?.[name] != null)
+      text = modify(text, ['peerDependencies', name], undefined);
+    if (!workspace)
+      text = modify(
+        text,
+        ['devDependencies', name],
+        `npm:${toSbextName(name)}@${range}`,
+      );
+  } else if (!workspace)
     text = modify(text, ['devDependencies', toSbextName(name)], range);
   if (text !== before) {
     fs.writeFileSync(pkgFile, text);
@@ -116,6 +110,7 @@ export function addDependency(
   }
 
   if (!workspace) mirror();
+  if (isModule) return { name, range, changed };
 
   const tsFile = path.resolve(packageDir, tsconfig);
   if (!fs.existsSync(tsFile)) throw new SbError(`${tsconfig} not found`);

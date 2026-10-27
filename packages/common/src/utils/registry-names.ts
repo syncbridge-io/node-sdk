@@ -17,6 +17,29 @@ export const SBEXT_SCOPE = 'sbext';
  */
 export const RESERVED_SCOPES: readonly string[] = [SBEXT_SCOPE, 'syncbridge'];
 
+/** The SDK: on npm, not in the registry; the host provides them */
+export const SDK_PACKAGES: readonly string[] = [
+  '@syncbridge/common',
+  '@syncbridge/runtime',
+  '@syncbridge/syncbuild',
+  '@syncbridge/testing',
+  '@syncbridge/plugin-api',
+];
+
+/** Whether a name is one of the SDK's packages, which come from npm */
+export const isSdkPackage = (name: string) => SDK_PACKAGES.includes(name);
+
+/**
+ * Whether a name is one of SyncBridge's own registry packages
+ * (`@syncbridge/builtins`, `@syncbridge/hl7`, ...). They are registry
+ * packages like any other - a server comes with a version of each, and
+ * installs a newer one a package needs from the registry - but a package
+ * imports one under its own name, `@syncbridge/builtins`, not
+ * `sb:@syncbridge/builtins`.
+ */
+export const isSyncBridgeModule = (name: string) =>
+  name.startsWith('@syncbridge/') && !isSdkPackage(name);
+
 /** npm's limit on the length of a whole package name, scope included */
 const MAX_NAME_LENGTH = 214;
 

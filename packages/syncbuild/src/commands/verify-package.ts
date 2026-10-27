@@ -9,6 +9,7 @@ import {
   type ExtensionPackage,
   ExtensionRegistry,
   initializeModelsDocument,
+  isSyncBridgeModule,
   manifestOf,
   missingPermissionOf,
   nodePermissionArgs,
@@ -514,17 +515,25 @@ async function addWorkspacePackage(
  * theirs, recursively: a package of the same workspace whose version
  * satisfies the range is packed and installed, after its own dependencies;
  * otherwise the npm mirror's `@sbext/` copy in node_modules is used as
- * installed. A package already given with `--with` is not looked up. One
- * that is not found is left for the plan to report, with who asked for it.
+ * installed - a SyncBridge module's under its own name. A package already
+ * given with `--with` is not looked up. One that is not found is left for
+ * the plan to report, with who asked for it.
+ *
+ * A SyncBridge module a package still declares as a peer is a registry
+ * dependency, as a server takes it.
  */
 async function addLocalDependencies(
   pkgJson: any,
   fromDir: string,
   ctx: LocalContext,
 ) {
+  const dependencies: Record<string, string> = {};
   for (const [name, range] of Object.entries<string>(
-    manifestOf(fromDir, pkgJson)?.dependencies || {},
-  )) {
+    pkgJson.peerDependencies || {},
+  ))
+    if (isSyncBridgeModule(name)) dependencies[name] = range;
+  Object.assign(dependencies, manifestOf(fromDir, pkgJson)?.dependencies);
+  for (const [name, range] of Object.entries(dependencies)) {
     if (ctx.packages.get(name)?.some(p => semver.satisfies(p.version, range)))
       continue;
     const ws = findWorkspacePackage(name, fromDir);

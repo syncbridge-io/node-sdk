@@ -4,6 +4,8 @@ import path from 'node:path';
 import {
   type ExtensionPackageJson,
   fromSbextName,
+  isSdkPackage,
+  isSyncBridgeModule,
   manifestOf,
   parseSbSpecifier,
   SBEXT_SCOPE,
@@ -12,11 +14,7 @@ import {
 } from '@syncbridge/common';
 import semver from 'semver';
 import { parseTsConfig } from '../builder/utils/parse-tsconfig.js';
-import {
-  hasMirrorScope,
-  isHostProvided,
-  workspaceRoot,
-} from '../npm-mirror.js';
+import { hasMirrorScope, workspaceRoot } from '../npm-mirror.js';
 import { findWorkspacePackage } from '../workspace.js';
 
 export interface CheckResult {
@@ -65,9 +63,9 @@ export function checkPackage(
       for (const p of problems) errors.push(`manifest dependencies: ${p}`);
       continue;
     }
-    if (isHostProvided(name)) {
+    if (isSdkPackage(name)) {
       errors.push(
-        `manifest dependencies["${name}"]: SyncBridge ships it with every server; declare it in peerDependencies and import it as "${name}". Run: spm add ${name}@${range}`,
+        `manifest dependencies["${name}"]: "${name}" is part of the SDK, on npm; declare it in peerDependencies`,
       );
       continue;
     }
@@ -75,14 +73,20 @@ export function checkPackage(
       errors.push(`manifest dependencies: "${name}" is the package itself`);
       continue;
     }
+    /* SyncBridge's modules are imported under their own name, which the
+     * mirror's copy is installed under: no `sb:` path to map */
+    const isModule = isSyncBridgeModule(name);
     const scopeKey = `sb:@${name.slice(1).split('/')[0]}/*`;
     const workspace = findWorkspacePackage(name, packageDir);
-    pathKeys.set(name, workspace ? [`sb:${name}`, scopeKey] : [scopeKey]);
+    if (!isModule)
+      pathKeys.set(name, workspace ? [`sb:${name}`, scopeKey] : [scopeKey]);
     if (!semver.validRange(range))
       errors.push(
         `manifest dependencies["${name}"]: "${range}" is not a semver range`,
       );
     const sbext = toSbextName(name);
+    const devName = isModule ? name : sbext;
+    const devSpec = isModule ? `npm:${sbext}@${range}` : range;
     if (
       workspace &&
       semver.validRange(range) &&
@@ -91,9 +95,9 @@ export function checkPackage(
       errors.push(
         `manifest dependencies["${name}"]: the workspace has version ${workspace.pkgJson.version}, which does not satisfy ${range}`,
       );
-    else if (!workspace && pkgJson.devDependencies?.[sbext] !== range)
+    else if (!workspace && pkgJson.devDependencies?.[devName] !== devSpec)
       errors.push(
-        `devDependencies["${sbext}"] must be "${range}", the types of "${name}". Run: spm add ${name}@${range}`,
+        `devDependencies["${devName}"] must be "${devSpec}", the types of "${name}". Run: spm add ${name}@${range}`,
       );
     if (pkgJson.dependencies?.[name] || pkgJson.peerDependencies?.[name])
       errors.push(
@@ -101,23 +105,25 @@ export function checkPackage(
       );
   }
 
-  for (const name of Object.keys(pkgJson.dependencies || {}))
-    if (name.startsWith('@syncbridge/') && name !== '@syncbridge/common')
+  for (const name of Object.keys(pkgJson.dependencies || {})) {
+    if (isSyncBridgeModule(name) && !(name in registryDeps))
       warnings.push(
-        `dependencies["${name}"]: SyncBridge provides the @syncbridge packages; declare it in peerDependencies, so the package uses the host's copy rather than a second one of its own`,
+        `dependencies["${name}"]: a SyncBridge module is a registry package; declare it in manifest dependencies, so the server installs the version it needs. Run: spm add ${name}@<range>`,
       );
-
-  /* Those SyncBridge ships: the mirror's copy under their own name, for
-   * development and tests */
-  const devDeps = pkgJson.devDependencies || {};
-  for (const [name, range] of Object.entries(pkgJson.peerDependencies || {})) {
-    if (!isHostProvided(name) || findWorkspacePackage(name, packageDir))
-      continue;
-    if (!devDeps[name]?.startsWith(`npm:${toSbextName(name)}@`))
+    else if (isSdkPackage(name) && name !== '@syncbridge/common')
       warnings.push(
-        `devDependencies["${name}"]: "npm:${toSbextName(name)}@${range}", the npm mirror's copy, gives its types and tests it. Run: spm add ${name}@${range}`,
+        `dependencies["${name}"]: SyncBridge provides the SDK; declare it in peerDependencies, so the package uses the host's copy rather than a second one of its own`,
       );
   }
+
+  /* SyncBridge's modules were once peers the host provided: such a package
+   * still installs, a server takes the peer for a registry dependency */
+  const devDeps = pkgJson.devDependencies || {};
+  for (const [name, range] of Object.entries(pkgJson.peerDependencies || {}))
+    if (isSyncBridgeModule(name) && !(name in registryDeps))
+      warnings.push(
+        `peerDependencies["${name}"]: a SyncBridge module is a registry package; declare it in manifest dependencies instead, so a server installs a newer version it needs. Run: spm add ${name}@${range}`,
+      );
 
   /* The mirror's packages found only when .npmrc sends @sbext there: the
    * workspace's, else one's own (~/.npmrc) - so told, not refused */
@@ -195,9 +201,9 @@ export function checkPackage(
         errors.push(`${where}: ${e.message}`);
         continue;
       }
-      if (sb && isHostProvided(sb.name))
+      if (sb && isSyncBridgeModule(sb.name))
         errors.push(
-          `${where}: imports "${m[2]}"; SyncBridge ships "${sb.name}" with every server: import it as "${m[2].slice(3)}"`,
+          `${where}: imports "${m[2]}"; a SyncBridge module is imported under its own name: import it as "${m[2].slice(3)}"`,
         );
       else if (sb && !(sb.name in registryDeps))
         errors.push(
