@@ -583,7 +583,13 @@ class AuditSettings {
   declare url: string;
 }
 
-@Plugin({ name: 'audit-log', title: 'Audit', settings: AuditSettings })
+@Plugin({
+  name: 'audit-log',
+  title: 'Audit',
+  settings: AuditSettings,
+  permissions: ['log-records', 'network'],
+  hosts: ['audit.example.com'],
+})
 export class AuditPlugin extends PluginBase {
   async activate() {}
 }
@@ -611,6 +617,8 @@ export class AuditPlugin extends PluginBase {
         settings: {
           url: expect.objectContaining({ label: 'URL', required: true }),
         },
+        permissions: ['log-records', 'network'],
+        hosts: ['audit.example.com'],
       },
     ]);
     expect(manifest.components).toHaveLength(1);

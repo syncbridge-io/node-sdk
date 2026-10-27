@@ -1,6 +1,7 @@
 export * from './enums/enum-source.enum.js';
 export * from './enums/log-channel-kind.js';
 export * from './enums/log-level.js';
+export * from './enums/plugin-permission.enum.js';
 export * from './enums/service-status.js';
 export * from './enums/variable-format.enum.js';
 export * from './enums/variable-type.enum.js';
