@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to d5bd3cc3d819a178b2be0f56d71910f807b30981 -->
+<!-- rman:documented-up-to 7b886ca68b6f35cf776f72cc487eab27f095f00c -->
+
+## @syncbridge/common@2.5.0 (2026-10-28)
+
+### ✨ Features
+
+- **common:** what a host provides its packages as peers, in its update check and install plan - HostProvides, sent as `host`; an offer telling its peerDependencies, a newer version the host cannot take told as `held` with what it needs; unmetPeers, judging only the peers the host names (98828d3)
+
+---
 
 ## @syncbridge/common@2.4.0 (2026-10-27)
 
