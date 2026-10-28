@@ -2,9 +2,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect } from 'expect';
+import YAML from 'yaml';
 import { addDependency } from '../src/commands/add-dependency.js';
 import { checkPackage } from '../src/commands/check-package.js';
-import { PNPMFILE, pnpmfileSource } from '../src/pnpm-hook.js';
+import {
+  PNPM_CONFIG_PACKAGE,
+  pnpmConfig,
+  pnpmConfigVersion,
+  PNPMFILE,
+  PNPMFILE_SOURCE,
+} from '../src/pnpm-hook.js';
 
 function write(file: string, content: string | object) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -318,6 +325,8 @@ describe('spm add / spm check', () => {
   });
 
   describe('a workspace installed with pnpm', () => {
+    const added: string[] = [];
+    const add = pnpmConfig.add;
     beforeEach(() => {
       fs.rmSync(path.join(root, 'package-lock.json'));
       write(path.join(root, 'pnpm-lock.yaml'), 'lockfileVersion: 9.0\n');
@@ -325,18 +334,43 @@ describe('spm add / spm check', () => {
         path.join(pkgDir, 'src', 'index.ts'),
         `import { peerOf } from '@syncbridge/hl7';\nexport const x = peerOf;\n`,
       );
+      /* pnpm adds the config dependency, its integrity with it */
+      added.length = 0;
+      pnpmConfig.add = (dir, spec) => {
+        added.push(spec);
+        const version = spec.slice(spec.lastIndexOf('@') + 1);
+        const file = path.join(dir, 'pnpm-workspace.yaml');
+        const doc = YAML.parseDocument(fs.readFileSync(file, 'utf8'));
+        doc.setIn(
+          ['configDependencies', PNPM_CONFIG_PACKAGE],
+          `${version}+sha512-x`,
+        );
+        write(file, String(doc));
+      };
+    });
+    afterEach(() => {
+      pnpmConfig.add = add;
     });
     const pnpmfile = () => path.join(root, PNPMFILE);
+    const own = pnpmConfigVersion();
 
-    it('should write the hook giving the mirror packages the modules they name, once', () => {
+    it('should add the config dependency and the .pnpmfile.cjs taking its hook, once', () => {
       const r = addDependency(pkgDir, '@syncbridge/hl7@>=2.0.1 <3');
       expect(r.changed).toEqual([
         'package.json',
         'syncbridge-manifest.json',
         '../../.npmrc',
+        '../../pnpm-workspace.yaml',
         `../../${PNPMFILE}`,
       ]);
-      expect(fs.readFileSync(pnpmfile(), 'utf8')).toBe(pnpmfileSource());
+      expect(added).toEqual([`${PNPM_CONFIG_PACKAGE}@${own}`]);
+      expect(fs.readFileSync(pnpmfile(), 'utf8')).toBe(PNPMFILE_SOURCE);
+      /* minimumReleaseAge off, so a new pnpm-config is taken at once */
+      expect(
+        YAML.parse(
+          fs.readFileSync(path.join(root, 'pnpm-workspace.yaml'), 'utf8'),
+        ).minimumReleaseAge,
+      ).toBe(0);
       /* Its alias spaceless, as pnpm parses it */
       const pkg = JSON.parse(
         fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'),
@@ -347,15 +381,29 @@ describe('spm add / spm check', () => {
       expect(
         addDependency(pkgDir, '@syncbridge/hl7@>=2.0.1 <3').changed,
       ).toEqual([]);
+      expect(added).toHaveLength(1);
       expect(checkPackage(pkgDir)).toEqual({ errors: [], warnings: [] });
     });
 
-    it('should bring an older hook of its own up to date, and keep one of the workspace', () => {
-      write(pnpmfile(), '// Written by spm (@syncbridge/syncbuild): older\n');
-      expect(addDependency(pkgDir, '@syncbridge/hl7@^2.0.1').changed).toContain(
-        `../../${PNPMFILE}`,
+    it('should bring an older config dependency up to date, and keep a .pnpmfile.cjs of the workspace', () => {
+      addDependency(pkgDir, '@syncbridge/hl7@^2.0.1');
+      write(
+        path.join(root, 'pnpm-workspace.yaml'),
+        `minimumReleaseAge: 1440\nconfigDependencies:\n  '${PNPM_CONFIG_PACKAGE}': 0.0.1+sha512-x\n`,
       );
-      expect(fs.readFileSync(pnpmfile(), 'utf8')).toBe(pnpmfileSource());
+      expect(checkPackage(pkgDir).warnings).toEqual([
+        expect.stringMatching(/as a config dependency, up to date/),
+      ]);
+      expect(addDependency(pkgDir, '@syncbridge/hl7@^2.0.1').changed).toEqual([
+        '../../pnpm-workspace.yaml',
+      ]);
+      /* The workspace's own minimumReleaseAge kept */
+      expect(
+        YAML.parse(
+          fs.readFileSync(path.join(root, 'pnpm-workspace.yaml'), 'utf8'),
+        ).minimumReleaseAge,
+      ).toBe(1440);
+      expect(checkPackage(pkgDir)).toEqual({ errors: [], warnings: [] });
 
       write(pnpmfile(), 'module.exports = { hooks: {} };\n');
       addDependency(pkgDir, '@syncbridge/hl7@^2.0.2');
@@ -363,9 +411,7 @@ describe('spm add / spm check', () => {
         'module.exports = { hooks: {} };\n',
       );
       expect(checkPackage(pkgDir).warnings).toEqual([
-        expect.stringMatching(
-          /\.pnpmfile\.cjs: the workspace's own hook is kept/,
-        ),
+        expect.stringMatching(/\.pnpmfile\.cjs: the workspace's own is kept/),
       ]);
     });
 
@@ -392,6 +438,9 @@ describe('spm add / spm check', () => {
           ),
         ],
       });
+      /* The file without the config dependency is no hook either */
+      write(pnpmfile(), PNPMFILE_SOURCE);
+      expect(checkPackage(pkgDir).warnings).toHaveLength(1);
       /* npm takes such an alias */
       fs.rmSync(path.join(root, 'pnpm-lock.yaml'));
       write(path.join(root, 'package-lock.json'), '{}');

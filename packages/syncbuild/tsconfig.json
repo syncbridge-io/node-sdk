@@ -9,8 +9,11 @@
     "outDir": "./build",
     "paths": {
       "@syncbridge/common": ["../common/src/index.js"],
+      "@syncbridge/pnpm-config": ["../pnpm-config/src/index.js"],
       "@syncbridge/runtime": ["../runtime/src/index.js"]
     }
   },
-  "references": [{ "path": "../common" }, { "path": "../runtime" }]
+  "references": [{ "path": "../common" }, { "path": "../pnpm-config" },
+    { "path": "../runtime" }
+  ]
 }

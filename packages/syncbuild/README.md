@@ -388,22 +388,39 @@ module by its own name - `@sbext/syncbridge__hl7` peering on
 is not.
 
 In a workspace installed with pnpm (a `pnpm-lock.yaml`, a
-`pnpm-workspace.yaml` or `packageManager: "pnpm@..."`), `spm add` writes a
-`.pnpmfile.cjs` at the workspace root. Its `readPackage` hook gives every
-`@sbext` package the modules it names from the mirror, with the same
-ranges. Nothing else changes: your packages keep the ranges in one place,
-and the modules' own peers (`hl7v2`, `@sqb/postgres`) install as any peer
-does; with `autoInstallPeers`, those your package declares too.
+`pnpm-workspace.yaml` or `packageManager: "pnpm@..."`), `spm add` sets up
+[`@syncbridge/pnpm-config`](../pnpm-config):
 
-- Commit the file. `spm add` brings it up to date when a newer spm writes
-  it differently; `spm check` reports it missing or outdated.
+- It adds the package as a pnpm config dependency, through `pnpm add
+  --config`, into `pnpm-workspace.yaml`. pnpm installs config dependencies
+  before anything else.
+- It sets `minimumReleaseAge: 0` in `pnpm-workspace.yaml`, unless the
+  workspace sets its own: pnpm refuses a config dependency published
+  within it (a day by default), so a new `@syncbridge/pnpm-config` could
+  not be taken for a day. Only this workspace's setting changes.
+- It writes a one-line `.pnpmfile.cjs` at the workspace root that takes
+  the package's hooks:
+
+  ```js
+  module.exports = require('./node_modules/.pnpm-config/@syncbridge/pnpm-config');
+  ```
+
+The package's `readPackage` hook gives every `@sbext` package the modules
+it names from the mirror, with the same ranges. Nothing else changes: your
+packages keep the ranges in one place, and the modules' own peers
+(`hl7v2`, `@sqb/postgres`) install as any peer does; with
+`autoInstallPeers`, those your packages declare too. On a fresh clone the
+hook is in place before anything is resolved.
+
+- Commit `.pnpmfile.cjs`, `pnpm-workspace.yaml` and the lockfile.
+  `spm add` moves the config dependency to the version of the syncbuild
+  it runs with; `spm check` reports it missing or older.
 - pnpm does not parse an alias whose range has spaces
   (`npm:@sbext/x@>=2.0.1 <3`), so `spm add` writes the same range without
   them (`^2.0.1`).
 - If the workspace already has a `.pnpmfile.cjs` of its own, it is kept
-  and `spm check` warns. Its `readPackage` must do what spm's does:
-  `pnpmfileSource()` from `@syncbridge/syncbuild` gives spm's file, to
-  keep beside yours and call from it.
+  and `spm check` warns. Take the config dependency's hooks from it
+  yourself.
 
 ## API
 

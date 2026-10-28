@@ -11,6 +11,7 @@ a Node.js process of its own, managed from SyncBridge Console.
 | [`@syncbridge/testing`](packages/testing) | Tests a module's apps and components without SyncBridge, with any test runner |
 | [`@syncbridge/runtime`](packages/runtime) | How SyncBridge installs a module and runs its apps in workers - the engine's own code, and `spm verify`'s |
 | [`@syncbridge/plugin-api`](packages/plugin-api) | The API SyncBridge plugins (log targets and more) are written against |
+| [`@syncbridge/pnpm-config`](packages/pnpm-config) | pnpm's config dependency for module repositories: SyncBridge's modules from the npm mirror |
 
 ## Getting started
 

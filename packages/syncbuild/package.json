@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@jsopen/objects": "^2.3.4",
+    "@syncbridge/pnpm-config": "^1.0.0",
     "@syncbridge/runtime": "^2.2.0",
     "adm-zip": "^0.6.1",
     "ansi-colors": "^4.1.3",
