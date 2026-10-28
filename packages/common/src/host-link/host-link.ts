@@ -21,6 +21,17 @@ export interface HostWorker {
   id: string;
   name?: string;
   status?: string;
+  /**
+   * Held on the version of its app its configuration was written with:
+   * the newest its range allows cannot take it
+   */
+  heldBack?: { version: string; newest: string; reason: string };
+  /**
+   * Its configuration waits for its classes' own migrations, run as it
+   * starts or its page is opened: the version it is carried to, and the
+   * one it was written with
+   */
+  migrationPending?: { version: string; from?: string };
 }
 
 /** A host's workers, counted: and those needing a look, by name */
@@ -28,12 +39,19 @@ export interface HostWorkerSummary {
   total: number;
   started: number;
   stopped: number;
-  /** Unhealthy, invalid, or needing an init */
+  /** Unhealthy, invalid, needing an init or its configuration */
   problem: number;
   /** Starting, stopping, initializing */
   other: number;
   /** The workers with a problem, the first of them */
   problems: HostWorker[];
+  /**
+   * The workers held on an older version, or whose configuration waits
+   * for its migrations, that have no problem: the first of them. Counted
+   * as started or stopped, as they are; one with a problem keeps both on
+   * its entry in problems
+   */
+  notices: HostWorker[];
 }
 
 /** What a host tells of itself: sent when it connects, and as it changes */
@@ -47,8 +65,13 @@ export interface HostStatusMessage {
 }
 
 /** The statuses of a worker needing a look */
-const PROBLEM_STATUSES = new Set(['unhealthy', 'invalid', 'needs-init']);
-/** The problems named at most: the counts tell the rest */
+const PROBLEM_STATUSES = new Set([
+  'unhealthy',
+  'invalid',
+  'needs-init',
+  'needs-config',
+]);
+/** The problems named at most, and the notices: the counts tell the rest */
 export const MAX_NAMED_PROBLEMS = 10;
 
 /** A host's workers, counted, as it tells Console */
@@ -62,16 +85,24 @@ export function summarizeWorkers(
     problem: 0,
     other: 0,
     problems: [],
+    notices: [],
   };
   for (const worker of workers) {
     summary.total++;
+    const problem = PROBLEM_STATUSES.has(worker.status || '');
     if (worker.status === 'started') summary.started++;
     else if (worker.status === 'stopped') summary.stopped++;
-    else if (PROBLEM_STATUSES.has(worker.status || '')) {
+    else if (problem) {
       summary.problem++;
       if (summary.problems.length < MAX_NAMED_PROBLEMS)
         summary.problems.push(worker);
     } else summary.other++;
+    if (
+      !problem &&
+      (worker.heldBack || worker.migrationPending) &&
+      summary.notices.length < MAX_NAMED_PROBLEMS
+    )
+      summary.notices.push(worker);
   }
   return summary;
 }

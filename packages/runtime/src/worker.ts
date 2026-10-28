@@ -18,7 +18,6 @@ import {
   type ILogger,
   type Profile,
   type ProfileMigrationStep,
-  runProfileMigrations,
 } from '@syncbridge/common';
 import { AppWorker } from './app-worker.js';
 import { endWorker } from './end-worker.js';
@@ -126,6 +125,16 @@ async function migrateOnly(profile: Profile, steps: ProfileMigrationStep[]) {
   if (!plan) throw new Error('The worker was started without a plan');
   const errors = await registerPlanPackages(plan);
   if (errors.length) throw new Error(errors.map(e => e.message).join('\n'));
+  /* Asked for alone: a worker's common may be older than the migrations,
+   * which every other worker runs without (common 2.10) */
+  const { runProfileMigrations } =
+    (await import('@syncbridge/common')) as Partial<
+      typeof import('@syncbridge/common')
+    >;
+  if (typeof runProfileMigrations !== 'function')
+    throw new Error(
+      "Running a class's own migrateProfile needs @syncbridge/common 2.10 or newer: the worker has an older one",
+    );
   const migrated = await runProfileMigrations(profile, steps, step => {
     const ext =
       step.kind === 'app'

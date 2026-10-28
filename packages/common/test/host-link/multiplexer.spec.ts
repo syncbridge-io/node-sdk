@@ -189,5 +189,37 @@ describe('summarizeWorkers', () => {
       name: 'Line 4',
       status: 'unhealthy',
     });
+    expect(summary.notices).toEqual([]);
+  });
+
+  it('should count a worker needing its configuration as a problem, and name those held or waiting for their migrations apart', async () => {
+    const { summarizeWorkers } = await import('../../src/index.js');
+    const held = {
+      version: '1.0.0',
+      newest: '2.0.0',
+      reason: 'Not moved to 2.0.0',
+    };
+    const pending = { version: '2.0.0', from: '1.0.0' };
+    const summary = summarizeWorkers([
+      { id: 'a', status: 'needs-config' },
+      { id: 'b', status: 'started', heldBack: held },
+      { id: 'c', status: 'stopped', migrationPending: pending },
+      { id: 'd', status: 'invalid', heldBack: held },
+      { id: 'e', status: 'started' },
+    ]);
+    expect(summary).toMatchObject({
+      total: 5,
+      started: 2,
+      stopped: 1,
+      problem: 2,
+      other: 0,
+    });
+    expect(summary.problems.map(w => w.id)).toEqual(['a', 'd']);
+    /* A problem keeps what it is held on, on its own entry */
+    expect(summary.problems[1].heldBack).toEqual(held);
+    expect(summary.notices).toEqual([
+      { id: 'b', status: 'started', heldBack: held },
+      { id: 'c', status: 'stopped', migrationPending: pending },
+    ]);
   });
 });
