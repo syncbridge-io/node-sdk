@@ -24,6 +24,7 @@ export const SDK_PACKAGES: readonly string[] = [
   '@syncbridge/syncbuild',
   '@syncbridge/testing',
   '@syncbridge/plugin-api',
+  '@syncbridge/pnpm-config',
 ];
 
 /** Whether a name is one of the SDK's packages, which come from npm */

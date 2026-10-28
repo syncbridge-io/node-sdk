@@ -1,97 +1,44 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { SBEXT_SCOPE, SDK_PACKAGES } from '@syncbridge/common';
+import process from 'node:process';
+import semver from 'semver';
+import YAML from 'yaml';
+
+export { aliasRange } from '@syncbridge/pnpm-config';
 
 /*
  * pnpm and SyncBridge's modules. A module (`@syncbridge/builtins`,
  * `@syncbridge/hl7`, ...) is not on npm: in development it is the npm
  * mirror's copy, `@sbext/syncbridge__<name>`, installed under its own name
- * by an alias. npm installs flatly, and the alias a package declares serves
- * whatever else asks for the module. pnpm installs each package with what
- * it declares alone: a mirror package naming a module by its own name - a
- * peer, as modules once were, or a dependency - is looked for on npm.
+ * by an alias. pnpm installs each package with what it declares alone: a
+ * mirror package naming a module by its own name would be looked for on
+ * npmjs.org.
  *
- * So a workspace installed with pnpm gets a `.pnpmfile.cjs` whose
- * readPackage hook hands each module a mirror package names to it from the
- * mirror, the range kept: the ranges stay in the packages alone, and the
- * modules' own peers (`hl7v2`, `@sqb/postgres`) install as any peer.
+ * `@syncbridge/pnpm-config` holds the readPackage hook that gives the
+ * mirror's packages those modules from the mirror. It is a pnpm config
+ * dependency - in pnpm-workspace.yaml's `configDependencies`, installed
+ * before anything else - and the workspace's `.pnpmfile.cjs` is one line
+ * taking its hooks: on a fresh clone too, the hook is in place before the
+ * packages are resolved.
  */
 
 /** The file pnpm reads its hooks from, at the workspace root */
 export const PNPMFILE = '.pnpmfile.cjs';
 
+/** The config dependency holding the hook */
+export const PNPM_CONFIG_PACKAGE = '@syncbridge/pnpm-config';
+
 /** The first line of the file spm writes: what tells it is spm's */
 const MARKER = '// Written by spm (@syncbridge/syncbuild)';
 
-/**
- * A range as an alias takes it: pnpm does not parse one with spaces
- * (`npm:@sbext/x@>=2.0.1 <3`). The same range spaceless where there is
- * one - `>=2.0.1 <3` as `^2.0.1`, `>=1.2.0 <1.3.0` as `~1.2.0` - else its
- * lowest version up to the next major. Self-contained: written into the
- * hook as it is.
- */
-export function aliasRange(range: string): string {
-  const text = String(range).trim();
-  if (!/\s/.test(text)) return text;
-  const m =
-    /^>=\s*(\d+)\.(\d+)\.(\d+)\s+<\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:-0)?$/.exec(
-      text,
-    );
-  if (m) {
-    const major = Number(m[1]);
-    const minor = Number(m[2]);
-    const upper = [Number(m[4]), Number(m[5] || 0), Number(m[6] || 0)];
-    const min = `${major}.${minor}.${m[3]}`;
-    if (major > 0 && upper[0] === major + 1 && !upper[1] && !upper[2])
-      return `^${min}`;
-    if (upper[0] === major && upper[1] === minor + 1 && !upper[2])
-      return major === 0 ? `^${min}` : `~${min}`;
-  }
-  const low = /(\d+\.\d+\.\d+)/.exec(text);
-  return low ? `^${low[1]}` : '*';
-}
-
-/** The hook as spm writes it */
-export function pnpmfileSource(): string {
-  return `${MARKER}: spm add keeps it current - edit it there, not here.
-//
-// SyncBridge's modules (@syncbridge/builtins, @syncbridge/hl7, ...) are not
-// on npm: in development they come from the registry's npm mirror as
-// @${SBEXT_SCOPE}/syncbridge__<name>. A package of the mirror naming one by its
-// own name - a peer, or a dependency - would be looked for on npm: this
-// hands it to it from the mirror, its range kept. Nothing else is changed.
-const SDK = new Set(${JSON.stringify(SDK_PACKAGES)});
-const SCOPE = '@syncbridge/';
-const MIRROR = '@${SBEXT_SCOPE}/syncbridge__';
-
-const aliasRange = ${aliasRange.toString()};
-
-function readPackage(pkg, context) {
-  if (!String(pkg.name || '').startsWith('@${SBEXT_SCOPE}/')) return pkg;
-  const take = (name, range, from) => {
-    pkg.dependencies = pkg.dependencies || {};
-    pkg.dependencies[name] = 'npm:' + MIRROR + name.slice(SCOPE.length) + '@' + aliasRange(range);
-    context.log(pkg.name + ': ' + name + ' ' + range + ' (' + from + ') from the mirror');
-  };
-  for (const [name, range] of Object.entries(pkg.peerDependencies || {})) {
-    if (!name.startsWith(SCOPE) || SDK.has(name)) continue;
-    delete pkg.peerDependencies[name];
-    if (pkg.peerDependenciesMeta) delete pkg.peerDependenciesMeta[name];
-    take(name, range, 'a peer');
-  }
-  for (const [name, range] of Object.entries(pkg.dependencies || {})) {
-    if (name.startsWith(SCOPE) && !SDK.has(name) && !String(range).startsWith('npm:'))
-      take(name, range, 'a dependency');
-    /* The mirror's own name for a module: under the name it is imported by too */
-    else if (name.startsWith(MIRROR) && !pkg.dependencies[SCOPE + name.slice(MIRROR.length)])
-      take(SCOPE + name.slice(MIRROR.length), range, name);
-  }
-  return pkg;
-}
-
-module.exports = { hooks: { readPackage } };
+/** The workspace's `.pnpmfile.cjs` as spm writes it */
+export const PNPMFILE_SOURCE = `${MARKER}: SyncBridge's modules from the npm mirror.
+// The hooks of ${PNPM_CONFIG_PACKAGE}, a config dependency (pnpm-workspace.yaml):
+// pnpm installs it before anything else.
+module.exports = require('./node_modules/.pnpm-config/${PNPM_CONFIG_PACKAGE}');
 `;
-}
 
 /** Whether a workspace is installed with pnpm */
 export function usesPnpm(root: string): boolean {
@@ -111,9 +58,33 @@ export function usesPnpm(root: string): boolean {
   }
 }
 
+/** The version of `@syncbridge/pnpm-config` this syncbuild takes */
+export function pnpmConfigVersion(): string {
+  const require = createRequire(import.meta.url);
+  return JSON.parse(
+    fs.readFileSync(
+      require.resolve(`${PNPM_CONFIG_PACKAGE}/package.json`),
+      'utf8',
+    ),
+  ).version;
+}
+
+/** The version of `@syncbridge/pnpm-config` the workspace takes as a config dependency */
+export function configuredVersion(root: string): string | undefined {
+  const file = path.join(root, 'pnpm-workspace.yaml');
+  if (!fs.existsSync(file)) return;
+  const spec = YAML.parse(fs.readFileSync(file, 'utf8'))?.configDependencies?.[
+    PNPM_CONFIG_PACKAGE
+  ];
+  /* "1.0.0+sha512-...": the version, then its integrity */
+  const version = typeof spec === 'string' ? spec.split('+')[0] : undefined;
+  return version && semver.valid(version) ? version : undefined;
+}
+
 /**
- * The workspace's `.pnpmfile.cjs`: none, spm's as it writes it now, an
- * older one of spm's, or one of the workspace's own
+ * The workspace's hook: none (no `.pnpmfile.cjs`, or no config dependency),
+ * spm's as it is now, spm's with an older `@syncbridge/pnpm-config`, or a
+ * `.pnpmfile.cjs` of the workspace's own
  */
 export function pnpmHookState(
   root: string,
@@ -122,18 +93,64 @@ export function pnpmHookState(
   if (!fs.existsSync(file)) return 'missing';
   const text = fs.readFileSync(file, 'utf8');
   if (!text.startsWith(MARKER)) return 'own';
-  return text === pnpmfileSource() ? 'current' : 'outdated';
+  if (text !== PNPMFILE_SOURCE) return 'outdated';
+  const configured = configuredVersion(root);
+  if (!configured) return 'missing';
+  return semver.lt(configured, pnpmConfigVersion()) ? 'outdated' : 'current';
 }
 
 /**
- * Writes spm's hook into a workspace installed with pnpm, or brings an
- * older one up to date. One of the workspace's own is kept: `spm check`
- * tells what it must do. Whether it was written.
+ * How the config dependency is added: by pnpm, which writes it with its
+ * integrity into pnpm-workspace.yaml and installs it. An object, so tests
+ * can stand in for it.
  */
-export function ensurePnpmHook(root: string): boolean {
-  if (!usesPnpm(root)) return false;
-  const state = pnpmHookState(root);
-  if (state === 'current' || state === 'own') return false;
-  fs.writeFileSync(path.join(root, PNPMFILE), pnpmfileSource());
-  return true;
+export const pnpmConfig = {
+  add(root: string, spec: string): void {
+    const [node, ...pnpm] = pnpmCommand();
+    execFileSync(node, [...pnpm, 'add', '--config', spec], {
+      cwd: root,
+      stdio: 'pipe',
+    });
+  },
+};
+
+/**
+ * Puts spm's hook into a workspace installed with pnpm, or brings it up
+ * to date: `@syncbridge/pnpm-config` as a config dependency and the
+ * one-line `.pnpmfile.cjs`. One of the workspace's own is kept: `spm
+ * check` tells what it must do. The files written, relative to the root.
+ */
+export function ensurePnpmHook(root: string): string[] {
+  if (!usesPnpm(root) || pnpmHookState(root) === 'own') return [];
+  const written: string[] = [];
+  const own = pnpmConfigVersion();
+  const configured = configuredVersion(root);
+  if (!configured || semver.lt(configured, own)) {
+    pnpmConfig.add(root, `${PNPM_CONFIG_PACKAGE}@${own}`);
+    written.push('pnpm-workspace.yaml');
+  }
+  const file = path.join(root, PNPMFILE);
+  if (
+    !fs.existsSync(file) ||
+    fs.readFileSync(file, 'utf8') !== PNPMFILE_SOURCE
+  ) {
+    fs.writeFileSync(file, PNPMFILE_SOURCE);
+    written.push(PNPMFILE);
+  }
+  return written;
+}
+
+/**
+ * The pnpm syncbuild depends on, through its Node.js entry rather than the
+ * native binary its install script puts in place, which is platform-specific
+ * and missing where install scripts are blocked
+ */
+export function pnpmCommand(): string[] {
+  const require = createRequire(import.meta.url);
+  const bin = path.join(
+    path.dirname(require.resolve('pnpm/package.json')),
+    'bin',
+    'pnpm.mjs',
+  );
+  return [process.execPath, bin];
 }

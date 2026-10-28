@@ -33,6 +33,7 @@ import * as jsonc from 'jsonc-parser';
 import semver from 'semver';
 import * as yaml from 'yaml';
 import { packPackage } from '../pack-package.js';
+import { pnpmCommand } from '../pnpm-hook.js';
 import {
   findWorkspaceNpmPackage,
   findWorkspacePackage,
@@ -748,21 +749,6 @@ function findPackageRoot(name: string, fromDir: string): string | undefined {
       return fs.realpathSync(candidate);
     if (dir === path.dirname(dir)) return;
   }
-}
-
-/**
- * The pnpm syncbuild depends on, through its Node.js entry rather than the
- * native binary its install script puts in place, which is platform-specific
- * and missing where install scripts are blocked
- */
-function pnpmCommand(): string[] {
-  const require = createRequire(import.meta.url);
-  const bin = path.join(
-    path.dirname(require.resolve('pnpm/package.json')),
-    'bin',
-    'pnpm.mjs',
-  );
-  return [process.execPath, bin];
 }
 
 const PROFILE_EXTENSIONS = ['.yml', '.yaml', '.json'];

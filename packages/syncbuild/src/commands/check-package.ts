@@ -15,7 +15,13 @@ import {
 import semver from 'semver';
 import { parseTsConfig } from '../builder/utils/parse-tsconfig.js';
 import { hasMirrorScope, workspaceRoot } from '../npm-mirror.js';
-import { aliasRange, PNPMFILE, pnpmHookState, usesPnpm } from '../pnpm-hook.js';
+import {
+  aliasRange,
+  PNPM_CONFIG_PACKAGE,
+  PNPMFILE,
+  pnpmHookState,
+  usesPnpm,
+} from '../pnpm-hook.js';
 import { findWorkspacePackage } from '../workspace.js';
 
 export interface CheckResult {
@@ -149,11 +155,11 @@ export function checkPackage(
   const hook = fromMirror && pnpm ? pnpmHookState(root) : 'current';
   if (hook === 'missing' || hook === 'outdated')
     warnings.push(
-      `${PNPMFILE}: the workspace is installed with pnpm, which looks for the SyncBridge modules the npm mirror's packages name on npmjs.org. Run spm add again: it writes the hook that takes them from the mirror`,
+      `${PNPMFILE}: the workspace is installed with pnpm, which looks for the SyncBridge modules the npm mirror's packages name on npmjs.org. Run spm add again: it adds ${PNPM_CONFIG_PACKAGE} as a config dependency, ${hook === 'outdated' ? 'up to date, ' : ''}and the ${PNPMFILE} taking its hook`,
     );
   else if (hook === 'own')
     warnings.push(
-      `${PNPMFILE}: the workspace's own hook is kept; it must take the SyncBridge modules the npm mirror's packages name from the mirror, as spm's does (see syncbuild's README, "pnpm"), or pnpm looks for them on npmjs.org`,
+      `${PNPMFILE}: the workspace's own is kept; it must take the hooks of ${PNPM_CONFIG_PACKAGE}, a config dependency (see syncbuild's README, "pnpm"), or pnpm looks for the SyncBridge modules the npm mirror's packages name on npmjs.org`,
     );
 
   if (pkgJson.dependencies?.['@syncbridge/common'])
