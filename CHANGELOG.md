@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to 654a7746df633496f6cc57fa7744babce44240e1 -->
+<!-- rman:documented-up-to 53f6bda7c31777f3abfb9e6708b7398fa6553dbb -->
+
+## v2026.10.28-1152 (2026-10-28)
+
+### ✨ Features
+
+- **pnpm-config,syncbuild:** @syncbridge/pnpm-config, pnpm's config dependency for module repositories - the readPackage hook taking SyncBridge's modules the npm mirror's packages name from the mirror, in a package of its own with no dependencies; spm add adds it with pnpm add --config and writes a .pnpmfile.cjs of one line taking its hooks, so the code stays in the SDK and is in place on a fresh clone before anything is resolved. spm check tells it missing or older than syncbuild's; common counts it in the SDK (0e9c3d1)
+
+### 🧹 Chores
+
+- sync lockfile [skip ci] (fd9d68d)
+
+---
 
 ## v2026.10.28-944 (2026-10-28)
 
