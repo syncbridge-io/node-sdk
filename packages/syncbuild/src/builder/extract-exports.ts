@@ -8,10 +8,12 @@ import {
   normalizeAppMetadata,
   normalizeComponentMetadata,
   normalizePluginMetadata,
+  VARIABLE_CONTAINER,
 } from '@syncbridge/common';
 import typescript from 'typescript';
 import { Context } from '../context.js';
 import { installResolveHooks } from '../hooks.js';
+import type { LocaleBase } from './pack-locales.js';
 import { describeLoadError } from './utils/load-error.js';
 
 /**
@@ -23,6 +25,7 @@ import { describeLoadError } from './utils/load-error.js';
 export async function extractExports(context: Context) {
   const { manifest } = context;
   const abstractClassNames: string[] = (context.abstractClassNames = []);
+  const bases: Map<string, LocaleBase> = (context.localeBases = new Map());
   /* The package imports its externals and its registry dependencies, from
    * the output directory; see installResolveHooks for how they resolve */
   const hooks = installResolveHooks();
@@ -40,6 +43,11 @@ export async function extractExports(context: Context) {
       if (typeof v !== 'function') continue;
       const classType = Reflect.getMetadata(CLASS_TYPE, v);
       const metadata = Reflect.getMetadata(CLASS_METADATA, v);
+      /* A class of settings, for others to take: its texts in locales/ */
+      if (!classType && v.prototype) {
+        const variables = Reflect.getMetadata(VARIABLE_CONTAINER, v.prototype);
+        if (variables) bases.set(k, { kind: 'variables', variables });
+      }
       if (!metadata || !['component', 'app', 'plugin'].includes(classType))
         continue;
       const entryPoint = await moduleOf(context, k, v, modules.get(k));
@@ -54,6 +62,10 @@ export async function extractExports(context: Context) {
         /* An abstract one: a base of others, never run nor offered */
         if (definition.abstract) {
           abstractClassNames.push(definition.className);
+          bases.set(definition.className, {
+            kind: 'class',
+            variables: definition.variables,
+          });
           continue;
         }
         (manifest.components = manifest.components || []).push({
@@ -65,6 +77,10 @@ export async function extractExports(context: Context) {
         const definition = await normalizeAppMetadata(metadata);
         if (definition.abstract) {
           abstractClassNames.push(definition.className);
+          bases.set(definition.className, {
+            kind: 'class',
+            variables: definition.variables,
+          });
           continue;
         }
         (manifest.apps = manifest.apps || []).push({
