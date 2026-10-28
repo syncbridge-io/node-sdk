@@ -1,6 +1,15 @@
 # Changelog
 
-<!-- rman:documented-up-to 64942ccafb990a1ec5eb4403c0dc727cdf6fc435 -->
+<!-- rman:documented-up-to b83964b6a4d6df34aad20e6256fa2fa8322760d6 -->
+
+## v2026.10.28-1531 (2026-10-28)
+
+### 🧹 Chores
+
+- sync lockfile [skip ci] (51010bd)
+- update dependencies - pnpm 12.16 (8d40383)
+
+---
 
 ## v2026.10.28-1404 (2026-10-28)
 
