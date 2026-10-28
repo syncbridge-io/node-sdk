@@ -4,6 +4,7 @@ import path from 'node:path';
 import { expect } from 'expect';
 import { addDependency } from '../src/commands/add-dependency.js';
 import { checkPackage } from '../src/commands/check-package.js';
+import { PNPMFILE, pnpmfileSource } from '../src/pnpm-hook.js';
 
 function write(file: string, content: string | object) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -313,6 +314,88 @@ describe('spm add / spm check', () => {
           /peerDependencies\["@syncbridge\/hl7"\]: .* declare it in manifest dependencies instead/,
         ),
       ]);
+    });
+  });
+
+  describe('a workspace installed with pnpm', () => {
+    beforeEach(() => {
+      fs.rmSync(path.join(root, 'package-lock.json'));
+      write(path.join(root, 'pnpm-lock.yaml'), 'lockfileVersion: 9.0\n');
+      write(
+        path.join(pkgDir, 'src', 'index.ts'),
+        `import { peerOf } from '@syncbridge/hl7';\nexport const x = peerOf;\n`,
+      );
+    });
+    const pnpmfile = () => path.join(root, PNPMFILE);
+
+    it('should write the hook giving the mirror packages the modules they name, once', () => {
+      const r = addDependency(pkgDir, '@syncbridge/hl7@>=2.0.1 <3');
+      expect(r.changed).toEqual([
+        'package.json',
+        'syncbridge-manifest.json',
+        '../../.npmrc',
+        `../../${PNPMFILE}`,
+      ]);
+      expect(fs.readFileSync(pnpmfile(), 'utf8')).toBe(pnpmfileSource());
+      /* Its alias spaceless, as pnpm parses it */
+      const pkg = JSON.parse(
+        fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'),
+      );
+      expect(pkg.devDependencies['@syncbridge/hl7']).toBe(
+        'npm:@sbext/syncbridge__hl7@^2.0.1',
+      );
+      expect(
+        addDependency(pkgDir, '@syncbridge/hl7@>=2.0.1 <3').changed,
+      ).toEqual([]);
+      expect(checkPackage(pkgDir)).toEqual({ errors: [], warnings: [] });
+    });
+
+    it('should bring an older hook of its own up to date, and keep one of the workspace', () => {
+      write(pnpmfile(), '// Written by spm (@syncbridge/syncbuild): older\n');
+      expect(addDependency(pkgDir, '@syncbridge/hl7@^2.0.1').changed).toContain(
+        `../../${PNPMFILE}`,
+      );
+      expect(fs.readFileSync(pnpmfile(), 'utf8')).toBe(pnpmfileSource());
+
+      write(pnpmfile(), 'module.exports = { hooks: {} };\n');
+      addDependency(pkgDir, '@syncbridge/hl7@^2.0.2');
+      expect(fs.readFileSync(pnpmfile(), 'utf8')).toBe(
+        'module.exports = { hooks: {} };\n',
+      );
+      expect(checkPackage(pkgDir).warnings).toEqual([
+        expect.stringMatching(
+          /\.pnpmfile\.cjs: the workspace's own hook is kept/,
+        ),
+      ]);
+    });
+
+    it('should report the hook missing, and an alias pnpm cannot parse', () => {
+      write(path.join(root, '.npmrc'), '@sbext:registry=https://x/\n');
+      write(path.join(pkgDir, 'syncbridge-manifest.json'), {
+        dependencies: { '@syncbridge/hl7': '>=2.0.1 <3' },
+      });
+      const pkgFile = path.join(pkgDir, 'package.json');
+      const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
+      pkg.devDependencies = {
+        '@syncbridge/hl7': 'npm:@sbext/syncbridge__hl7@>=2.0.1 <3',
+      };
+      write(pkgFile, pkg);
+      expect(checkPackage(pkgDir)).toEqual({
+        errors: [
+          expect.stringMatching(
+            /devDependencies\["@syncbridge\/hl7"\] must be "npm:@sbext\/syncbridge__hl7@\^2\.0\.1"/,
+          ),
+        ],
+        warnings: [
+          expect.stringMatching(
+            /\.pnpmfile\.cjs: the workspace is installed with pnpm/,
+          ),
+        ],
+      });
+      /* npm takes such an alias */
+      fs.rmSync(path.join(root, 'pnpm-lock.yaml'));
+      write(path.join(root, 'package-lock.json'), '{}');
+      expect(checkPackage(pkgDir)).toEqual({ errors: [], warnings: [] });
     });
   });
 

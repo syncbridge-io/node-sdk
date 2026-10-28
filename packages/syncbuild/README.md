@@ -378,6 +378,33 @@ A dependency that is a package of the same workspace - linked into
 `outDir`), and `sb:` imports resolve to its build, before an `@sbext` copy.
 Build it before the package that uses it, as for any project reference.
 
+### pnpm
+
+npm installs flatly: the mirror's copy of a SyncBridge module, installed
+under its own name, serves every package that asks for it. pnpm installs
+each package with what it declares alone, so a mirror package that names a
+module by its own name - `@sbext/syncbridge__hl7` peering on
+`@syncbridge/builtins` - would have pnpm look for it on npmjs.org, where it
+is not.
+
+In a workspace installed with pnpm (a `pnpm-lock.yaml`, a
+`pnpm-workspace.yaml` or `packageManager: "pnpm@..."`), `spm add` writes a
+`.pnpmfile.cjs` at the workspace root. Its `readPackage` hook gives every
+`@sbext` package the modules it names from the mirror, with the same
+ranges. Nothing else changes: your packages keep the ranges in one place,
+and the modules' own peers (`hl7v2`, `@sqb/postgres`) install as any peer
+does; with `autoInstallPeers`, those your package declares too.
+
+- Commit the file. `spm add` brings it up to date when a newer spm writes
+  it differently; `spm check` reports it missing or outdated.
+- pnpm does not parse an alias whose range has spaces
+  (`npm:@sbext/x@>=2.0.1 <3`), so `spm add` writes the same range without
+  them (`^2.0.1`).
+- If the workspace already has a `.pnpmfile.cjs` of its own, it is kept
+  and `spm check` warns. Its `readPackage` must do what spm's does:
+  `pnpmfileSource()` from `@syncbridge/syncbuild` gives spm's file, to
+  keep beside yours and call from it.
+
 ## API
 
 ```typescript

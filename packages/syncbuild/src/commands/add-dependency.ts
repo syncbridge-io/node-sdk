@@ -15,6 +15,7 @@ import {
   nodeModulesDirs,
   workspaceRoot,
 } from '../npm-mirror.js';
+import { aliasRange, ensurePnpmHook, PNPMFILE } from '../pnpm-hook.js';
 import { findWorkspacePackage } from '../workspace.js';
 
 /**
@@ -41,7 +42,9 @@ import { findWorkspacePackage } from '../workspace.js';
  * version of each and installs a newer one a package needs.
  *
  * Any package from the mirror needs the workspace's `.npmrc` to send
- * `@sbext` there: written when it does not.
+ * `@sbext` there: written when it does not. A workspace installed with
+ * pnpm gets the hook that gives the mirror's packages the modules they name
+ * from the mirror too (pnpm-hook.ts).
  */
 export function addDependency(
   dir: string,
@@ -72,6 +75,9 @@ export function addDependency(
     const root = workspaceRoot(packageDir);
     if (ensureMirrorScope(root))
       changed.push(path.relative(packageDir, path.join(root, '.npmrc')));
+    /* pnpm: the modules the mirror's packages name, from the mirror */
+    if (ensurePnpmHook(root))
+      changed.push(path.relative(packageDir, path.join(root, PNPMFILE)));
   };
 
   const isModule = isSyncBridgeModule(name);
@@ -90,7 +96,7 @@ export function addDependency(
       text = modify(
         text,
         ['devDependencies', name],
-        `npm:${toSbextName(name)}@${range}`,
+        `npm:${toSbextName(name)}@${aliasRange(range)}`,
       );
   } else if (!workspace)
     text = modify(text, ['devDependencies', toSbextName(name)], range);
