@@ -10,6 +10,7 @@ import {
   type DocsSidebar,
   isDocContent,
   isDocsLanguage,
+  localizedTextProblems,
   parseDocPath,
   parseSidebar,
   README_FILE,
@@ -27,6 +28,7 @@ import { gfm } from 'micromark-extension-gfm';
 import { visit } from 'unist-util-visit';
 import * as yaml from 'yaml';
 import type { Context } from '../context.js';
+import { packLocales } from './pack-locales.js';
 
 /** A link's scheme, when it has one: it leaves the package */
 const SCHEME = /^([a-zA-Z][a-zA-Z0-9+.-]*):/;
@@ -208,6 +210,9 @@ export function packDocs(context: Context) {
       );
   }
 
+  /* The texts of locales/ taken in: each by language from now on */
+  errors.push(...packLocales(context.packageDir, manifest, language, warn));
+
   /* How each app and component is found in the Marketplace: checked, and
    * kept as the registry takes it - its summary by language, its
    * screenshots as paths among the documents */
@@ -221,6 +226,11 @@ export function packDocs(context: Context) {
     });
     errors.push(
       ...problems,
+      ...localizedTextProblems(ext.displayName, `${ext.className}'s name`),
+      ...localizedTextProblems(
+        ext.description,
+        `${ext.className}'s description`,
+      ),
       ...variableTextProblems(ext.variables as any, ext.className),
     );
     Object.assign(ext, catalog);
@@ -233,6 +243,11 @@ export function packDocs(context: Context) {
   /* A plugin's settings: their labels and descriptions, as told */
   for (const plugin of manifest.plugins ?? [])
     errors.push(
+      ...localizedTextProblems(plugin.title, `${plugin.className}'s title`),
+      ...localizedTextProblems(
+        plugin.description,
+        `${plugin.className}'s description`,
+      ),
       ...variableTextProblems(plugin.settings as any, plugin.className),
     );
 
