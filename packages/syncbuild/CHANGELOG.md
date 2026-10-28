@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to d5bd3cc3d819a178b2be0f56d71910f807b30981 -->
+<!-- rman:documented-up-to 654a7746df633496f6cc57fa7744babce44240e1 -->
+
+## @syncbridge/syncbuild@2.8.0 (2026-10-28)
+
+### ✨ Features
+
+- **syncbuild:** SyncBridge's modules in a workspace installed with pnpm - spm add writes a .pnpmfile.cjs whose readPackage hook gives the npm mirror's packages the modules they name (a peer, as they once were, a dependency, or the mirror's own @sbext name) from the mirror, their ranges kept: pnpm no longer looks for @syncbridge/builtins on npmjs.org, and the modules' own peers install as any peer. A module's alias written spaceless (>=2.0.1 <3 as ^2.0.1), as pnpm parses it; spm check tells the hook missing or outdated, and a workspace's own kept (5c121c4)
+
+---
 
 ## @syncbridge/syncbuild@2.7.0 (2026-10-27)
 
