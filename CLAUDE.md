@@ -13,7 +13,7 @@ The platform consumes these packages from npm: the engine
 touching both is done by the same Claude session (named `syncbridge`):
 the SDK change here, released first; the platform then takes the new
 version. Until it is released, the platform and
-[public-modules](https://github.com/syncbridge-io/public-modules) take
+[syncbridge-extensions](https://github.com/syncbridge-io/syncbridge-extensions) take
 this repository's local builds.
 
 ## How to work here
@@ -29,7 +29,7 @@ this repository's local builds.
   about the private platform.
 - **Checks** before a commit: `npx tsc -b tsconfig-test.json --noEmit`,
   `npx rman lint`, `npx rman check`, `npx mocha`.
-- **Builds** for the platform and public-modules: `npx rman build`
+- **Builds** for the platform and the extensions: `npx rman build`
   (plain tsc leaves `build/package.json` stale).
 - A peer dependency on a sibling (`@syncbridge/common`): on its new major,
   move the dependents' ranges by hand first (`version.dependentRanges:
