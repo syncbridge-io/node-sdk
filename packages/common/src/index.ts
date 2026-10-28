@@ -21,6 +21,7 @@ export * from './host-link/host-values.js';
 export * from './host-link/host-workers.js';
 export * from './host-link/multiplexer.js';
 export * from './host-link/sealed-box.js';
+export * from './host-link/sealed-box-web.js';
 export * from './interfaces/index.js';
 export * from './models/index.js';
 export * as models from './models/index.js';
