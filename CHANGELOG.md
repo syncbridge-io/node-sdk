@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 87d11ec1009b3df3dda45c7109f669a4216f9344 -->
+<!-- rman:documented-up-to 64942ccafb990a1ec5eb4403c0dc727cdf6fc435 -->
+
+## v2026.10.28-1404 (2026-10-28)
+
+### 🧹 Chores
+
+- sync lockfile [skip ci] (39001dd)
+
+---
 
 ## v2026.10.28-1248 (2026-10-28)
 
