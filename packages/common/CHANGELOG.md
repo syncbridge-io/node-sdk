@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 53f6bda7c31777f3abfb9e6708b7398fa6553dbb -->
+<!-- rman:documented-up-to 87d11ec1009b3df3dda45c7109f669a4216f9344 -->
+
+## @syncbridge/common@2.7.0 (2026-10-28)
+
+### ✨ Features
+
+- **common:** references to the values a host or its workspace keeps - ${{ vars.NAME }} anywhere in a worker's string values, ${{ secrets.NAME }} reserved, $${{ the text itself, anything else between ${{ }} an error; parseValueRefs, resolveValueRefs (the values trees alone, what is missing qualified), profileValueRefs, hasValueRef; the codec keeps a value holding a reference unchecked when told the profile is not resolved (unresolved); the host link's values: HOST_VALUES_PATH, HOST_VALUES_CHANGED_PATH, HostValuesRequest/Response with the names a host's workers use, hostVariable (9d10a76)
+
+---
 
 ## @syncbridge/common@2.6.0 (2026-10-28)
 
