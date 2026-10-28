@@ -53,6 +53,14 @@ export class ElementComponentMetadata {
   declare version?: string;
 
   @ApiField({
+    label: 'Formerly',
+    description:
+      "The names the slot had in the module's earlier versions: a profile written with one has its component moved here, if it has none here",
+    type: ArrayType('string'),
+  })
+  declare formerly?: string[];
+
+  @ApiField({
     label: 'Description',
     description: 'Description of the component',
   })

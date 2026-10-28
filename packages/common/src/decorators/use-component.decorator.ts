@@ -5,7 +5,7 @@ import { AppBase } from '../classes/app-base.js';
 import { ComponentBase } from '../classes/component-base.js';
 import { CLASS_METADATA } from '../constants.js';
 import { ElementComponentMetadata } from '../models/index.js';
-import { defineOwnMetadata } from './decorator-helpers.js';
+import { defineOwnMetadata, formerNames } from './decorator-helpers.js';
 
 export function UseComponent<T extends AppBase | ComponentBase>(
   options: UseComponent.Options = {},
@@ -39,10 +39,17 @@ export function UseComponent<T extends AppBase | ComponentBase>(
 
     const metadata = defineOwnMetadata(target.constructor, CLASS_METADATA);
     metadata.components = metadata.components || {};
+    const formerly = formerNames(options.formerly);
     metadata.components[propertyKey] = {
       interfaceUri: uri,
-      ...omit(options as any, ['classUri', 'interfaceUri', 'oneOf']),
+      ...omit(options as any, [
+        'classUri',
+        'interfaceUri',
+        'oneOf',
+        'formerly',
+      ]),
       ...(oneOf?.length ? { oneOf } : {}),
+      ...(formerly ? { formerly } : {}),
       propertyKey,
     };
   };
@@ -50,9 +57,14 @@ export function UseComponent<T extends AppBase | ComponentBase>(
 
 export namespace UseComponent {
   export interface Options extends Partial<
-    StrictOmit<ElementComponentMetadata, 'classUri' | 'interfaceUri' | 'oneOf'>
+    StrictOmit<
+      ElementComponentMetadata,
+      'classUri' | 'interfaceUri' | 'oneOf' | 'formerly'
+    >
   > {
     uri?: string;
+    /** The slot's name in earlier versions, or several */
+    formerly?: string | string[];
     /**
      * A slot taking a class of one of these, not of one interface alone:
      * `oneOf: [HL7Client, HL7Server]` - its property typed as either

@@ -31,6 +31,8 @@ function fakeRegistry() {
     requests: [] as any[],
     audiences: [] as (string | null)[],
     sent: [] as { query: string; zip: AdmZip }[],
+    /** Its last published version's apps and components, by class name */
+    ext: {} as Record<string, any>,
   };
   const server = http.createServer((req, res) => {
     const chunks: Buffer[] = [];
@@ -58,6 +60,21 @@ function fakeRegistry() {
         }
         state.sent.push({ query: `ci ${query}`, zip: new AdmZip(body) });
         return json(204);
+      }
+      /* Its extensions, as the last published version has them */
+      if (url === '/registry/pkg/@acme/gw/ext')
+        return json(200, {
+          payload: Object.values(state.ext).map(e => ({
+            classType: e.classType,
+            className: e.className,
+            version: e.version,
+          })),
+        });
+      if (url.startsWith('/registry/pkg/@acme/gw/ext/')) {
+        const found = state.ext[decodeURIComponent(url.split('/').pop()!)];
+        return found
+          ? json(200, { ...found, definition: found })
+          : json(404, { errors: [{ message: 'nope' }] });
       }
       if (req.headers.authorization !== 'Bearer t0k3n')
         return json(401, { errors: [{ message: 'Unauthorized' }] });
@@ -304,5 +321,80 @@ describe('spm publish', function () {
     await expect(publishPackage({ archive, registry })).rejects.toThrow(
       /run spm login/,
     );
+  });
+
+  describe('a version carrying the profiles of the last published one', () => {
+    /** The archive of a version, its app's settings as given */
+    function versionOf(v: string, variables: Record<string, any>) {
+      const zip = new AdmZip(archive);
+      zip.updateFile(
+        'package.json',
+        Buffer.from(JSON.stringify({ name: '@acme/gw', version: v })),
+      );
+      zip.addFile(
+        'syncbridge-manifest.json',
+        Buffer.from(
+          JSON.stringify({
+            name: '@acme/gw',
+            apps: [
+              {
+                exportName: 'GwApp',
+                entryPoint: 'index.js',
+                classType: 'app',
+                className: 'Gw',
+                variables,
+              },
+            ],
+          }),
+        ),
+      );
+      const file = path.join(dir, `acme-gw-${v}.zip`);
+      zip.writeZip(file);
+      return file;
+    }
+
+    beforeEach(() => {
+      fake.state.exists = true;
+      fake.state.ext.Gw = {
+        classType: 'app',
+        className: 'Gw',
+        version: '1.0.0',
+        variables: { address: { type: 'string' }, port: { type: 'number' } },
+      };
+    });
+
+    it('should refuse a minor dropping a setting with nothing declared, sending nothing', async () => {
+      const file = versionOf('1.1.0', {
+        host: { type: 'string', formerly: ['address'] },
+      });
+      await expect(publishPackage({ archive: file, registry })).rejects.toThrow(
+        /cannot carry the profiles written for 1\.0\.0:\n {2}- Gw\.port: a setting no longer there/,
+      );
+      expect(fake.state.prepared).toEqual([]);
+    });
+
+    it('should publish a minor whose changes are declared, and a major telling what it breaks', async () => {
+      const declared = versionOf('1.1.0', {
+        host: { type: 'string', formerly: ['address'] },
+        port: { type: 'number' },
+      });
+      await publishPackage({ archive: declared, registry });
+      expect(fake.state.sent).toHaveLength(1);
+      const told: string[] = [];
+      const major = versionOf('2.0.0', {
+        host: { type: 'string', formerly: ['address'] },
+      });
+      await publishPackage({
+        archive: major,
+        registry,
+        logger: m => told.push(m),
+      });
+      expect(fake.state.sent).toHaveLength(2);
+      expect(told).toContainEqual(
+        expect.stringMatching(
+          /^Changed since 1\.0\.0: Gw\.port: a setting no longer there/,
+        ),
+      );
+    });
   });
 });

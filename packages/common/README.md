@@ -148,6 +148,46 @@ starts and checks it as any value, so the app sees a plain value of the
 variable's type. `parseValueRefs`, `resolveValueRefs` and
 `profileValueRefs` read such references; `$${{` writes `${{` itself.
 
+## Changing what a profile holds
+
+Workers keep the values written for your module's earlier versions. A
+new version that renames what they hold declares it, and SyncBridge
+carries their profiles across as the version is taken - no code of yours
+run:
+
+```ts
+@App({ className: 'LisGateway', formerly: 'LisBridge' })   // a class renamed
+export class LisGateway extends AppBase {
+  @App.UseComponent({ formerly: 'conn' })                  // a slot renamed
+  declare link: TcpClient;
+}
+
+class Settings {
+  @DefineVariable({ formerly: ['address', 'addr'] })     // a setting renamed
+  declare host: string;
+
+  @DefineVariable({
+    enumValues: ['tcp-client', 'tcp-server'],
+    formerlyValues: { tcp: 'tcp-client' },                // a choice renamed
+  })
+  declare mode: string;
+
+  @DefineVariable({ required: true, default: 30 })         // added: a default
+  declare timeout: number;
+}
+```
+
+`formerly` names every earlier name, not the last alone; a class's is its
+own, not its base's, and in its own package. A setting no longer defined
+has its value dropped. The profiles written with an earlier version than
+the one a worker takes - or with one not told - are carried
+(`carryProfile`), the changes told in the worker's changes.
+
+`spm publish` compares the version with its package's last published one:
+a class, a slot, a setting or a choice gone with nothing declared, or a
+setting newly required with no default, refuses a version that is not a
+major (a 0.x minor counts as one), and is told in a major.
+
 ## Lifecycle
 
 Apps and components are `Runnable`s. Override the protected methods, and

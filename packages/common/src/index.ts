@@ -33,6 +33,7 @@ export * from './registry/localized-text.js';
 export * from './registry/module-catalog.js';
 export * from './registry/package-docs.js';
 export * from './registry/package-manifest.js';
+export * from './utils/carry-profile.js';
 export * from './utils/decode-profile.js';
 export {
   SECRET_PREFIX,

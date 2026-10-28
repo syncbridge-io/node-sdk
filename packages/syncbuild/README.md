@@ -332,6 +332,16 @@ lists the rest by their SHA-256. A new package is private unless
 failing: a release publishing each of its packages - most of them
 unchanged - is run again safely.
 
+Before it asks, the version is compared with the package's last
+published one, as the registry keeps it: what a worker's profile written
+for that one cannot be carried across with nothing declared - a class, a
+component slot, a setting or a choice gone, a setting or a slot newly
+required with no default - refuses a version that is not a major (a 0.x
+minor counts as one), and is told in a major. A former name still in use
+(`formerly`, `formerlyValues`) is refused in any version. A registry that
+cannot be reached, or a package it does not show, is told and not
+compared. See [@syncbridge/common](../common/README.md#changing-what-a-profile-holds).
+
 A publish is approved by you, in Console, with your second factor: spm
 shows the address (and opens it, unless `--no-browser`), the page shows
 what is being published - the package and version, its files, where it

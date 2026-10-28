@@ -31,6 +31,14 @@ export class ElementMetadata {
   declare className: string;
 
   @ApiField({
+    label: 'Formerly',
+    description:
+      "The class names it had in its package's earlier versions: a profile naming one is read as naming it. Its own, not its base's",
+    type: ArrayType('string'),
+  })
+  declare formerly?: string[];
+
+  @ApiField({
     label: 'Version',
     description: 'Version of the class',
     examples: ['0.2.1', '2.1.5', '1.18.1-alpha.1'],

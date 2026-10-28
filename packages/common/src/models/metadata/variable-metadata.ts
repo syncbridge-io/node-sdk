@@ -155,6 +155,20 @@ export class VariableMetadata {
 
   @ApiField({
     description:
+      "The names it had in the module's earlier versions: a profile written with one has its value moved here, if it has none here. Every earlier name, not the last alone",
+    type: ArrayType(String),
+  })
+  declare formerly?: string[];
+
+  @ApiField({
+    description:
+      "Values of its choices renamed since the module's earlier versions, by what they were ({ tcp: 'tcp-client' }): a profile written with one has it replaced. Available if type is enum",
+    type: 'object',
+  })
+  declare formerlyValues?: Record<string, string | number>;
+
+  @ApiField({
+    description:
       "How SyncBridge's settings screen treats it, as a log target's or plugin's setting: hidden, not shown there; readonly, shown and not changed there. Either is set only where SyncBridge is deployed. Default: shown and changed there",
   })
   declare ui?: 'hidden' | 'readonly';
