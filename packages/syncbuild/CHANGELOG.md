@@ -1,6 +1,23 @@
 # Changelog
 
-<!-- rman:documented-up-to b83964b6a4d6df34aad20e6256fa2fa8322760d6 -->
+<!-- rman:documented-up-to 0f1654ca4394b2da66777a3c90f9a2eb35b83421 -->
+
+## @syncbridge/syncbuild@2.11.0 (2026-10-28)
+
+### ✨ Features
+
+- a profile carried across a module's declared changes - common: formerly on @App/@Component (a class renamed, its own and not its base's), @UseComponent (a slot) and @DefineVariable (a setting), formerlyValues on an enum's choices; carryProfile(profile) moves what a profile written for earlier versions holds to the names declared now, drops what is no longer defined and tells each change, no code of the module's run. syncbuild: spm publish compares the version with the package's last published one as the registry keeps it - a class, a slot, a setting or a choice gone with nothing declared, a setting or a slot newly required with no default, refuse a version that is not a major and are told in a major; a former name still in use is refused in any; a registry that cannot tell is told, not compared (d21a0a6)
+- a class's translations taken from the class it is built on - in locales/, "@extends": "<ClassName>", or "@vendor/name:<ClassName>" of a registry dependency, on a class (its base's texts, all but its name) or on a group of settings (a class of settings' texts), its own over them; locales/ may tell the texts of the abstract apps and components and the classes of settings the package exports, and is packed with each "@extends" taken in, for the packages built on it; an "@extends" naming a package not among the dependencies, a class the package has not, or going round fails the build (6f9ba1e)
+
+### 🧹 Chores
+
+- update dependencies - @panates/rman-preset 2, pnpm 12.16 (9e74389)
+
+### 💬 General Changes
+
+- Merge branch 'dev' into sdk-carry (8c0066f)
+
+---
 
 ## @syncbridge/syncbuild@2.10.0 (2026-10-28)
 
