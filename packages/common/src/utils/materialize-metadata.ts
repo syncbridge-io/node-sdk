@@ -132,6 +132,7 @@ function _materializeComponents(
           if (metadataComponent.required)
             throw new SbValidationError(
               `Component "${componentName}" should be configured`,
+              { rule: 'required' },
             );
           return;
         }

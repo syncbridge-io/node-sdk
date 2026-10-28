@@ -122,8 +122,8 @@ function renamedClass(
   for (const versions of all.values())
     for (const ext of versions)
       if (
-        ext.pkg.name === packageName &&
-        ext.metadata.formerly?.includes(className)
+        ext?.pkg?.name === packageName &&
+        ext.metadata?.formerly?.includes(className)
       )
         return ext.uri;
 }

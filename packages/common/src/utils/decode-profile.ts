@@ -266,6 +266,14 @@ function _checkLogChannels(
 }
 
 /**
+ * Whether an issue of a profile is a value only its user can give: a
+ * setting or a component required, not given and with no default
+ */
+export function isMissingValue(issue: unknown): boolean {
+  return (issue as { rule?: unknown } | undefined)?.rule === 'required';
+}
+
+/**
  * Decodes values by the variables that define them - checks each against
  * its type and rules and sets the defaults - as a profile's values are.
  * Values no variable defines are left out. Issues are located by the

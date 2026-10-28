@@ -11,6 +11,11 @@ export enum ServiceStatus {
   needsInit = 'needs-init',
   /** Its packages are being installed */
   initializing = 'initializing',
+  /**
+   * Its configuration lacks what only its user can give - a setting or a
+   * component required, with no default: it waits for it
+   */
+  needsConfig = 'needs-config',
 }
 
 EnumType(ServiceStatus, {
