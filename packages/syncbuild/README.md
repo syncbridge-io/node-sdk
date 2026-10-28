@@ -298,10 +298,40 @@ their dotted path:
 
 A plugin's name is its `title`. Building takes them into the manifest:
 each text becomes text by language (`{ "en": "HL7 Client", "tr": "HL7
-İstemcisi" }`), and `locales/` itself is not packed. A file not of a
-language, a class or a setting the package has not, or a text not text
-fails the build; what a language lacks is told as a warning, shown in the
-package's own language meanwhile.
+İstemcisi" }`). A file not of a language, a class or a setting the
+package has not, or a text not text fails the build; what a language
+lacks is told as a warning, shown in the package's own language
+meanwhile.
+
+A class built on another's takes its texts with `"@extends"`: a class
+built on a base class, or a group of settings whose settings are a class
+of settings - the package's own (`"IomtBaseApp"`), or one of a registry
+dependency (`"@abisena/iomt-common:IomtBaseApp"`):
+
+```json
+{
+  "GeDashApp": {
+    "@extends": "@abisena/iomt-common:IomtBaseApp",
+    "displayName": "GE Dash monitörü",
+    "variables": {
+      "breathChannels": {
+        "@extends": "@abisena/iomt-common:TestConfigurationVariables",
+        "label": "Nefes kanalları"
+      }
+    }
+  }
+}
+```
+
+The base's texts come first - all but its name - then the class's own
+over them. So a package others build on tells, in its own `locales/`, the
+texts of what it exports for them: its abstract apps and components, and
+its classes of settings (`"TestConfigurationVariables": { "variables":
+{ ... } }`). `locales/` is packed with each `"@extends"` taken in: a
+dependency is read from the workspace, or as installed - one built
+without it gives no texts, and what it does not give is told as lacking.
+An `"@extends"` naming a package not among the manifest's dependencies,
+a class the package has not, or going round fails the build.
 
 ## Publishing a package
 
