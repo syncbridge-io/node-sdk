@@ -1,6 +1,15 @@
 # Changelog
 
-<!-- rman:documented-up-to 654a7746df633496f6cc57fa7744babce44240e1 -->
+<!-- rman:documented-up-to 53f6bda7c31777f3abfb9e6708b7398fa6553dbb -->
+
+## @syncbridge/syncbuild@2.9.0 (2026-10-28)
+
+### ✨ Features
+
+- **pnpm-config,syncbuild:** @syncbridge/pnpm-config, pnpm's config dependency for module repositories - the readPackage hook taking SyncBridge's modules the npm mirror's packages name from the mirror, in a package of its own with no dependencies; spm add adds it with pnpm add --config and writes a .pnpmfile.cjs of one line taking its hooks, so the code stays in the SDK and is in place on a fresh clone before anything is resolved. spm check tells it missing or older than syncbuild's; common counts it in the SDK (0e9c3d1)
+- **syncbuild:** spm add turns off pnpm's minimumReleaseAge in the workspace, unless it sets its own - pnpm refuses a config dependency published within it, a new @syncbridge/pnpm-config for a day (9aee055)
+
+---
 
 ## @syncbridge/syncbuild@2.8.0 (2026-10-28)
 
