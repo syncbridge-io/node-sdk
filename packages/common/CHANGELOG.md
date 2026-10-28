@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 0f1654ca4394b2da66777a3c90f9a2eb35b83421 -->
+<!-- rman:documented-up-to a3064a01fa5063924bf611a5c89b4ea83f49ba2a -->
+
+## @syncbridge/common@2.11.0 (2026-10-28)
+
+### ✨ Features
+
+- **common:** what Console tells of a host's workers - needs-config a problem; HostWorker tells heldBack and migrationPending, and HostWorkerSummary names the workers held on an older version or waiting for their migrations that have no problem (notices, the first ten), counted as started or stopped as they are (f2a6f33)
+
+---
 
 ## @syncbridge/common@2.10.0 (2026-10-28)
 
