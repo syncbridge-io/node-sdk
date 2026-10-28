@@ -15,6 +15,7 @@ import {
 import semver from 'semver';
 import { parseTsConfig } from '../builder/utils/parse-tsconfig.js';
 import { hasMirrorScope, workspaceRoot } from '../npm-mirror.js';
+import { aliasRange, PNPMFILE, pnpmHookState, usesPnpm } from '../pnpm-hook.js';
 import { findWorkspacePackage } from '../workspace.js';
 
 export interface CheckResult {
@@ -55,6 +56,8 @@ export function checkPackage(
 
   const manifest = manifestOf(packageDir, pkgJson);
   const registryDeps = manifest?.dependencies || {};
+  const root = workspaceRoot(packageDir);
+  const pnpm = usesPnpm(root);
   /** `paths` keys of which one must be there, per dependency */
   const pathKeys = new Map<string, string[]>();
   for (const [name, range] of Object.entries(registryDeps)) {
@@ -86,7 +89,12 @@ export function checkPackage(
       );
     const sbext = toSbextName(name);
     const devName = isModule ? name : sbext;
-    const devSpec = isModule ? `npm:${sbext}@${range}` : range;
+    const devSpec = isModule ? `npm:${sbext}@${aliasRange(range)}` : range;
+    /* An alias written before its range was made spaceless: as good to
+     * npm, not to pnpm */
+    const written = pkgJson.devDependencies?.[devName];
+    const devSpecs =
+      isModule && !pnpm ? [devSpec, `npm:${sbext}@${range}`] : [devSpec];
     if (
       workspace &&
       semver.validRange(range) &&
@@ -95,7 +103,7 @@ export function checkPackage(
       errors.push(
         `manifest dependencies["${name}"]: the workspace has version ${workspace.pkgJson.version}, which does not satisfy ${range}`,
       );
-    else if (!workspace && pkgJson.devDependencies?.[devName] !== devSpec)
+    else if (!workspace && !devSpecs.includes(written as string))
       errors.push(
         `devDependencies["${devName}"] must be "${devSpec}", the types of "${name}". Run: spm add ${name}@${range}`,
       );
@@ -132,9 +140,20 @@ export function checkPackage(
       name.startsWith(`@${SBEXT_SCOPE}/`) ||
       String(spec).startsWith(`npm:@${SBEXT_SCOPE}/`),
   );
-  if (fromMirror && !hasMirrorScope(workspaceRoot(packageDir)))
+  if (fromMirror && !hasMirrorScope(root))
     warnings.push(
       `.npmrc: "@${SBEXT_SCOPE}:registry=" is not in the workspace's .npmrc; unless yours sends it, npm looks for the npm mirror's packages on npmjs.org. Run spm add again, or add: @${SBEXT_SCOPE}:registry=https://npm.syncbridge.io/`,
+    );
+  /* pnpm installs a mirror package with what it declares alone: the
+   * modules it names come from the mirror by spm's hook */
+  const hook = fromMirror && pnpm ? pnpmHookState(root) : 'current';
+  if (hook === 'missing' || hook === 'outdated')
+    warnings.push(
+      `${PNPMFILE}: the workspace is installed with pnpm, which looks for the SyncBridge modules the npm mirror's packages name on npmjs.org. Run spm add again: it writes the hook that takes them from the mirror`,
+    );
+  else if (hook === 'own')
+    warnings.push(
+      `${PNPMFILE}: the workspace's own hook is kept; it must take the SyncBridge modules the npm mirror's packages name from the mirror, as spm's does (see syncbuild's README, "pnpm"), or pnpm looks for them on npmjs.org`,
     );
 
   if (pkgJson.dependencies?.['@syncbridge/common'])

@@ -7,6 +7,7 @@ export * from './commands/view-package.js';
 export * from './context.js';
 export * from './hooks.js';
 export * from './pack-package.js';
+export * from './pnpm-hook.js';
 export * from './registry/credentials.js';
 export * from './registry/registry-client.js';
 export * from './types.js';
