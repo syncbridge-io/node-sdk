@@ -13,6 +13,7 @@ import {
 } from '../models/index.js';
 import { isSyncBridgeModule } from '../utils/registry-names.js';
 import { isAppBase, isComponentBase } from '../utils/type-guards.js';
+import { textIn } from './localized-text.js';
 import type {
   ExtensionPackageJson,
   SyncBridgeManifest,
@@ -91,8 +92,16 @@ export abstract class ExtensionBase {
     return this.pkg.name + ':' + this.metadata.className;
   }
 
+  /** Its name in English, else in the language it is told in */
   get displayName(): string {
-    return this.metadata.displayName;
+    return this.displayNameIn('en');
+  }
+
+  /** Its name in a language: else its base language's, else English */
+  displayNameIn(language: string): string {
+    return (
+      textIn(this.metadata.displayName, language) ?? this.metadata.className
+    );
   }
 
   get version(): string {
