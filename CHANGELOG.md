@@ -1,6 +1,28 @@
 # Changelog
 
-<!-- rman:documented-up-to b83964b6a4d6df34aad20e6256fa2fa8322760d6 -->
+<!-- rman:documented-up-to 0f1654ca4394b2da66777a3c90f9a2eb35b83421 -->
+
+## v2026.10.28-2142 (2026-10-28)
+
+### ✨ Features
+
+- a class carrying its own values from its earlier versions - common: @App.MigrateProfile() / @Component.MigrateProfile() mark a static method (staticEvents.migrateProfile, components' too), given a ProfileMigration ({ values, from, to, path }) and answering the values; profileMigrations(profile) tells the classes to run, runProfileMigrations runs them, a sealed secret moved or dropped, never made; carryProfile keeps what a migrating class no longer defines, for it to read. runtime: a worker sent "migrate" runs them, its plan's packages registered, nothing created. testing: migrateProfileTo(profile) carries and checks one in the test's process. syncbuild: spm verify carries the profiles of test/profiles/<version>/ to the package, in a worker, and checks them (5e3a0a5)
+
+### 📚 Documentation
+
+- the modules repository is syncbridge-io/syncbridge-extensions, renamed from public-modules (287d3f2)
+
+### 🧹 Chores
+
+- sync lockfile [skip ci] (6d0b726)
+- update dependencies - @panates/rman-preset 2, pnpm 12.16 (9e74389)
+- update dependencies - @types/node 26.6.6, valgen 7.0.6 (dcc258b)
+
+### 💬 General Changes
+
+- Merge branch 'sdk-locales-extends' into dev (b9562e8)
+
+---
 
 ## v2026.10.28-1531 (2026-10-28)
 

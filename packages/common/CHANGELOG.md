@@ -1,6 +1,19 @@
 # Changelog
 
-<!-- rman:documented-up-to b83964b6a4d6df34aad20e6256fa2fa8322760d6 -->
+<!-- rman:documented-up-to 0f1654ca4394b2da66777a3c90f9a2eb35b83421 -->
+
+## @syncbridge/common@2.10.0 (2026-10-28)
+
+### ✨ Features
+
+- a profile carried across a module's declared changes - common: formerly on @App/@Component (a class renamed, its own and not its base's), @UseComponent (a slot) and @DefineVariable (a setting), formerlyValues on an enum's choices; carryProfile(profile) moves what a profile written for earlier versions holds to the names declared now, drops what is no longer defined and tells each change, no code of the module's run. syncbuild: spm publish compares the version with the package's last published one as the registry keeps it - a class, a slot, a setting or a choice gone with nothing declared, a setting or a slot newly required with no default, refuse a version that is not a major and are told in a major; a former name still in use is refused in any; a registry that cannot tell is told, not compared (d21a0a6)
+- **common:** a worker waiting for its configuration - ServiceStatus needs-config, for one lacking only what its user can give; isMissingValue(issue) tells such an issue, a setting or a component required and not given (a component's now told with rule "required" as a setting's is); carryProfile skips a registry record of no package (39771ad)
+
+### 🧹 Chores
+
+- update dependencies - @types/node 26.6.6, valgen 7.0.6 (dcc258b)
+
+---
 
 ## @syncbridge/common@2.9.0 (2026-10-28)
 
