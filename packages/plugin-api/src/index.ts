@@ -1,3 +1,4 @@
+export * from './contributions.js';
 export * from './log-target.js';
 export * from './plugin.decorator.js';
 export * from './plugin-base.js';
