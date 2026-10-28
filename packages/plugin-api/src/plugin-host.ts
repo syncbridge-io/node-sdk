@@ -1,4 +1,5 @@
 import type { Type } from 'ts-gems';
+import type { Contribution, ContributionPoint } from './contributions.js';
 import type { LogTarget } from './log-target.js';
 
 /**
@@ -165,6 +166,21 @@ export namespace PluginHost {
     forget(id: string): void;
     /** A button on its card; returns what removes it */
     registerAction<TInput = any>(action: Action<TInput>): () => void;
+    /**
+     * Adds a component at a point of the web UI (contributions.ts), since
+     * 2.3: its own contributions named apart by `id`, one given again
+     * replacing it. Returns what removes it; undone too when the plugin is
+     * deactivated.
+     */
+    contribute<P extends ContributionPoint>(
+      point: P,
+      contribution: Contribution<P> & { id: string },
+    ): () => void;
+    /**
+     * What a contribution's `resolve` answered, asked again: where it is
+     * drawn for one item alone (a worker's id), or everywhere - since 2.3
+     */
+    refresh(point: ContributionPoint, id: string, key?: string): void;
   }
 
   /** A worker as a plugin sees it: a copy, taken when asked */

@@ -111,6 +111,83 @@ Starting programs and native addons are held by Node's permission model;
 A directory given to the workers by `addEnvironment` is one under
 `<dataDirectory>/shared`, which the workers may read.
 
+## Lifecycle hooks (2.3)
+
+Beside `activate` and `deactivate`, a plugin may have:
+
+- `install({ from, to })`: once for each version, before it is first
+  activated - `from` the version installed before it, none the first
+  time. Its data directory is copied first (the last three kept): a failed
+  install puts it back, and so does going back to an older version.
+- `uninstall()`: as its package is removed, to clean up what it made
+  outside its data directory; the directory is removed after it.
+- `settingsChanged(next, previous)`: its settings changed while it runs;
+  `true` takes them as they are, otherwise SyncBridge restarts it alone.
+- `checkSettings(candidate)`: before they are saved; the problems it
+  returns (`{ field, message }`) are shown and nothing is saved.
+
+```ts
+async install({ from }: PluginBase.Install) {
+  if (from && semver.lt(from, '2.0.0')) await this.moveQueue();
+}
+
+settingsChanged(next: ElasticSettings, previous: ElasticSettings) {
+  return next.url === previous.url; // a new URL: restarted
+}
+```
+
+## UI contributions (2.3)
+
+A plugin adds to exact places in the UI, each a point by name -
+`<page>.<area>.<place>` - with the component it draws there. It gives
+the component's properties and SyncBridge draws it; no code, HTML or SVG
+of the plugin reaches the browser. Icons are named from the UI's icon
+set ([lucide](https://lucide.dev/icons)): `database`, `send`.
+
+```ts
+this.host.ui.contribute('worker.header.menu', {
+  id: 'send',
+  component: 'menu-item',
+  properties: { variant: 'toggle', label: 'Send to Oracle', icon: 'database' },
+  when: { app: ['@acme/iomt:*'], status: ['started'] },
+  requires: 'host.workers.control',
+  resolve: ({ worker }) => ({ checked: this.sending.has(worker.id) }),
+  run: ({ worker, checked }) => {
+    this.toggle(worker.id, checked);
+    return { message: `${worker.name}: ${checked ? 'sending' : 'stopped'}` };
+  },
+});
+```
+
+| Point | Component | Where |
+| --- | --- | --- |
+| `shell.sidebar.top` | `nav-item` | the side menu, under its own items |
+| `shell.topbar.indicator` | `badge` | the top bar |
+| `workers.toolbar.button` | `button` | the Workers list's toolbar |
+| `workers.row.menu` | `menu-item` | a worker's row menu |
+| `workers.row.badge` | `badge` | beside a worker's name in the list |
+| `worker.header.menu` | `menu-item` | a worker page's menu |
+| `worker.header.badge` | `badge` | a worker page's title |
+| `worker.overview.card` | `card` | a worker's Overview |
+| `logs.toolbar.button` | `button` | a log's toolbar |
+| `logs.record.menu` | `menu-item` | a log record's menu |
+| `server.header.menu` | `menu-item` | the Server logs page's menu |
+| `plugin.card.button` | `button` | its own card in Settings → Plugins |
+
+- `when`: where it is shown, by the filters its point offers (a worker's
+  `app` as a glob, its `status` and `group`; a log's `source`, `app`, a
+  record's `level` and `channel`). SyncBridge checks it again before a run.
+- `requires`: the permission a user needs to run it; the server's
+  settings permission when not given. Points telling of the workers need
+  `PluginPermission.Workers`, of the logs `LogRecords`.
+- `resolve(context)`: its properties where it is drawn - checked, hidden,
+  a count - kept until `this.host.ui.refresh(point, id)` says they changed.
+- `run(context, { checked, input, item })`: the user chose it; the
+  context is built by SyncBridge, not taken from the browser. Its
+  `message` and `link` are shown.
+
+`registerAction` stays, as a button on its own card.
+
 ## License
 
 MIT
