@@ -88,3 +88,11 @@ export const CONSOLE_USER_NAME_HEADER = 'x-sb-console-user-name';
 export const CONSOLE_ROLE_HEADER = 'x-sb-console-role';
 /** What the user may do inside the host: HostPermission values, comma-separated */
 export const CONSOLE_PERMISSIONS_HEADER = 'x-sb-console-permissions';
+
+/**
+ * A request Console makes itself, for no user: the jobs only Console may
+ * ask of a host (a workspace key made, handed over, rotated). Taken only
+ * from a stream of the link, with none of the user headers; Console never
+ * passes it on for a user.
+ */
+export const HOST_CONSOLE_SERVICE_HEADER = 'x-sb-console-service';

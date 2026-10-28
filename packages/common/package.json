@@ -40,6 +40,10 @@
       "types": "./index.d.ts",
       "default": "./index.js"
     },
+    "./web": {
+      "types": "./web.d.ts",
+      "default": "./web.js"
+    },
     "./package.json": "./package.json"
   },
   "engines": {
