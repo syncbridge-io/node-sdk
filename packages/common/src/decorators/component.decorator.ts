@@ -11,6 +11,7 @@ import {
   locatePackageJson,
   resolvePackageJson,
 } from '../utils/locate-package-json.js';
+import { MigrateProfile as _MigrateProfile } from './app-events.decorator.js';
 import { defineOwnMetadata, formerNames } from './decorator-helpers.js';
 import { UseComponent as _UseComponent } from './use-component.decorator.js';
 import { UseVariables as _UseVariables } from './use-variables.decorator.js';
@@ -120,5 +121,13 @@ export namespace Component {
     options?: _UseComponent.Options,
   ) {
     return _UseComponent<T>(options);
+  }
+
+  /**
+   * A static method carrying the component's own values from its earlier
+   * versions: (migration: ProfileMigration) => values
+   */
+  export function MigrateProfile<T extends ComponentBase>() {
+    return _MigrateProfile<Type<T>>();
   }
 }

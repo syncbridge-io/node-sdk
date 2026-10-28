@@ -183,6 +183,32 @@ has its value dropped. The profiles written with an earlier version than
 the one a worker takes - or with one not told - are carried
 (`carryProfile`), the changes told in the worker's changes.
 
+What no declaration tells - a value split in two, a unit changed - a
+class carries itself, in a static method marked `@App.MigrateProfile()`
+or `@Component.MigrateProfile()`:
+
+```ts
+@App.MigrateProfile()
+static migrateProfile(m: ProfileMigration) {
+  /* { values, from, to, path }: its own values, after what it declares */
+  if (semver.lt(m.from ?? '0.0.0', '2.0.0')) {
+    const [host, port] = String(m.values.address ?? '').split(':');
+    return { ...m.values, host, port: Number(port) || 2575 };
+  }
+  return m.values;
+}
+```
+
+It runs where the worker runs - in a process of the worker's, its
+packages installed, never in SyncBridge's own - as the worker starts or
+its page is opened, once, when its values were written with an earlier
+version. What it reads may no longer be defined: such values are kept
+for it, and dropped after it. A sealed secret in them is a token: moved
+or dropped, never made or changed. Should it fail, or leave values that
+are not valid, the worker is held on the version they were written with,
+told why. `profileMigrations` and `runProfileMigrations` run them as
+SyncBridge does.
+
 `spm publish` compares the version with its package's last published one:
 a class, a slot, a setting or a choice gone with nothing declared, or a
 setting newly required with no default, refuses a version that is not a

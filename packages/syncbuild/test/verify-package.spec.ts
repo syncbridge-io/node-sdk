@@ -219,6 +219,87 @@ describe('spm verify', function () {
     expect(r.ok).toBe(true);
   });
 
+  it("should carry the profiles of the package's earlier versions - what it declares, then its own migrateProfile, in a worker - and refuse one that fails", async () => {
+    writePackage(pkgDir);
+    write(
+      path.join(pkgDir, 'src', 'common.d.ts'),
+      `declare module '@syncbridge/common' {
+  export const App: any;
+  export const DefineVariable: any;
+  export class AppBase {
+    logger?: any;
+    protected _start(signal?: AbortSignal): Promise<void>;
+  }
+}`,
+    );
+    write(
+      path.join(pkgDir, 'src', 'index.ts'),
+      `import { App, AppBase, DefineVariable } from '@syncbridge/common';
+
+class VerifyVariables {
+  @DefineVariable({ formerly: 'server' })
+  declare host?: string;
+
+  @DefineVariable({ required: true })
+  declare port: number;
+}
+
+@App({ displayName: 'Verify' })
+export class VerifyApp extends AppBase {
+  @App.UseVariables(VerifyVariables)
+  declare values: VerifyVariables;
+
+  /* 0.9 kept the port in the host: "lis:2575" */
+  @App.MigrateProfile()
+  static migrateProfile(m: any) {
+    const [host, port] = String(m.values.host ?? '').split(':');
+    return port ? { ...m.values, host, port: Number(port) } : m.values;
+  }
+}
+`,
+    );
+    write(path.join(pkgDir, 'test', 'profiles', '0.9.0', 'ward.json'), {
+      appUri: '@vt/prc:VerifyApp',
+      values: { server: 'lis:2575' },
+    });
+    const carried = await verifyPackage({
+      packageDir: pkgDir,
+      execArgv: EXEC_ARGV,
+      permissionModel: false,
+      timeout: 10000,
+      /* Its default values have no port: the app created from this one */
+      profile: path.join(pkgDir, 'test', 'profiles', '0.9.0', 'ward.json'),
+    });
+    expect(carried.carried).toEqual([
+      {
+        file: path.join('test', 'profiles', '0.9.0', 'ward.json'),
+        from: '0.9.0',
+        ok: true,
+        changes: 1,
+        migrated: ['@vt/prc:VerifyApp'],
+      },
+    ]);
+    /* One its migration cannot carry: no port told */
+    write(path.join(pkgDir, 'test', 'profiles', '0.9.0', 'ward.json'), {
+      appUri: '@vt/prc:VerifyApp',
+      values: { server: 'lis' },
+    });
+    write(path.join(pkgDir, 'test', 'profiles', 'given.json'), {
+      appUri: '@vt/prc:VerifyApp',
+      values: { host: 'lis', port: 2575 },
+    });
+    const failed = await verifyPackage({
+      packageDir: pkgDir,
+      execArgv: EXEC_ARGV,
+      permissionModel: false,
+      timeout: 10000,
+      profile: path.join(pkgDir, 'test', 'profiles', 'given.json'),
+    });
+    expect(failed.ok).toBe(false);
+    expect(failed.carried[0]).toMatchObject({ ok: false, from: '0.9.0' });
+    expect(failed.carried[0].message).toMatch(/values\/port/);
+  });
+
   it('should keep the npm dependencies in a store of its own, shared by every verify', async () => {
     expect(defaultStoreDir()).toBe(store);
     writePackage(pkgDir);

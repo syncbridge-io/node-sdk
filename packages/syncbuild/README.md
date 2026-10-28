@@ -86,6 +86,12 @@ the project's `node_modules`, so a package used without being declared in
 provides only `@syncbridge/common` and the package's peers, as SyncBridge
 does, so `spm verify` fails the same way.
 
+Profiles of the package's earlier versions, kept in
+`test/profiles/<version>/` (YAML or JSON), are carried to it as
+SyncBridge carries them - what its classes declare, then their own
+`migrateProfile`, in the worker - and each must then be a valid profile
+of it; one that is not fails the verify, telling why.
+
 The worker runs under Node's permission model, as SyncBridge runs it:
 native addons and other programs only as the app and its components
 declare them (`permissions: [WorkerPermission.NativeCode]`,

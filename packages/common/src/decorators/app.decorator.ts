@@ -12,6 +12,7 @@ import {
   resolvePackageJson,
 } from '../utils/locate-package-json.js';
 import {
+  MigrateProfile as _MigrateProfile,
   OnCreateProfile as _OnCreateProfile,
   OnUpdateProfile as _OnUpdateProfile,
 } from './app-events.decorator.js';
@@ -114,6 +115,14 @@ export namespace App {
    */
   export function OnUpdateProfile<T extends AppBase>() {
     return _OnUpdateProfile<Type<T>>();
+  }
+
+  /**
+   * A static method carrying the app's own values from its earlier
+   * versions: (migration: ProfileMigration) => values
+   */
+  export function MigrateProfile<T extends AppBase>() {
+    return _MigrateProfile<Type<T>>();
   }
 }
 

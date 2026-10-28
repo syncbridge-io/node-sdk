@@ -23,4 +23,7 @@ export class ComponentMetadata extends ElementMetadata {
     type: ArrayType('string'),
   })
   declare interfaces: string[];
+
+  /** Its static methods SyncBridge runs, by what for: migrateProfile */
+  staticEvents?: Record<string, string>;
 }

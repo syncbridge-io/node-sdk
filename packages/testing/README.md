@@ -240,6 +240,22 @@ test every channel writes, unless the app is created with
 - `env.channelLogs(app, 'device/communication')`: the records written
   to a log channel, by its full name
 
+## migrateProfileTo(profile)
+
+A profile written for an earlier version of the classes - its
+`writtenWith` telling which - carried to them as registered now, as
+SyncBridge carries it: what they declare (`formerly`...), then their own
+`migrateProfile`, in this process; then checked.
+
+```ts
+const r = await migrateProfileTo({ ...oldProfile, writtenWith: '1.4.0' });
+expect(r.issues).toEqual([]);
+expect(r.profile.values).toEqual({ host: 'lis', port: 2575 });
+```
+
+`changes` tells what the declarations changed, `migrated` the classes
+whose own migration ran.
+
 ## expectSnapshot(value, name, { ignore? })
 
 Compares `value` with a snapshot kept beside the test in
