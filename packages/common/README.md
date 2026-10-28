@@ -141,6 +141,13 @@ property's TypeScript type when not given. Some options:
 | `hotPlug` | A change applies while running, without a restart |
 | `index` | Its order in the UI |
 
+A worker's configuration may name a value its server or its workspace
+keeps, set once in SyncBridge Console, instead of holding it:
+`${{ vars.HBYS_URL }}/api`. SyncBridge puts the value in before the app
+starts and checks it as any value, so the app sees a plain value of the
+variable's type. `parseValueRefs`, `resolveValueRefs` and
+`profileValueRefs` read such references; `$${{` writes `${{` itself.
+
 ## Lifecycle
 
 Apps and components are `Runnable`s. Override the protected methods, and
