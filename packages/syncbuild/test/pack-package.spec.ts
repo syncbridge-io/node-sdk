@@ -541,6 +541,136 @@ export class PackComponent extends ComponentBase {
     ).rejects.toThrow(/PackComponent's port label is told in "english"/);
   });
 
+  it("should take locales/ into the manifest - its classes' texts by language, those of its settings down groups - and pack no locales/", async () => {
+    write(
+      path.join(pkgDir, 'src', 'pack.component.ts'),
+      `import { Component, ComponentBase, DefineVariable } from '@syncbridge/common';
+
+class TlsVars {
+  @DefineVariable({ label: 'Certificate' })
+  declare cert: string;
+}
+
+class PackVars {
+  @DefineVariable({ label: 'Port', description: 'The port' })
+  declare port: number;
+
+  @DefineVariable({ label: 'TLS', variables: TlsVars })
+  declare tls: TlsVars;
+}
+
+@Component({
+  className: 'PackComponent',
+  displayName: 'Pack client',
+  description: 'Packs things.',
+  summary: 'Packs things.',
+})
+export class PackComponent extends ComponentBase {
+  @Component.UseVariables(PackVars)
+  declare values: PackVars;
+}
+`,
+    );
+    write(
+      path.join(pkgDir, 'src', 'common.d.ts'),
+      `declare module '@syncbridge/common' {
+  export const Component: any;
+  export const DefineVariable: any;
+  export class ComponentBase { constructor(...args: any[]); }
+}`,
+    );
+    write(path.join(pkgDir, 'locales', 'tr.json'), {
+      PackComponent: {
+        displayName: 'Paketleme istemcisi',
+        description: 'Bir şeyleri paketler.',
+        summary: 'Bir şeyleri paketler.',
+        variables: {
+          port: { label: 'Bağlantı noktası', description: 'Port' },
+          tls: { label: 'TLS' },
+          'tls.cert': { label: 'Sertifika' },
+        },
+      },
+    });
+    /* Some of it alone: the rest in English meanwhile, told */
+    write(path.join(pkgDir, 'locales', 'pt-BR.json'), {
+      PackComponent: { displayName: 'Cliente de empacotamento' },
+    });
+    const logged: string[] = [];
+    await packPackage({
+      packageDir: pkgDir,
+      outDir: 'dist',
+      pack: false,
+      logger: m => logged.push(m),
+    });
+    const manifest = JSON.parse(
+      fs.readFileSync(
+        path.join(pkgDir, 'dist', 'syncbridge-manifest.json'),
+        'utf8',
+      ),
+    );
+    const [component] = manifest.components;
+    expect(component.displayName).toEqual({
+      en: 'Pack client',
+      tr: 'Paketleme istemcisi',
+      'pt-BR': 'Cliente de empacotamento',
+    });
+    expect(component.description).toEqual({
+      en: 'Packs things.',
+      tr: 'Bir şeyleri paketler.',
+    });
+    expect(component.summary).toEqual({
+      en: 'Packs things.',
+      tr: 'Bir şeyleri paketler.',
+    });
+    expect(component.variables.port.label).toEqual({
+      en: 'Port',
+      tr: 'Bağlantı noktası',
+    });
+    expect(component.variables.tls.variables.cert.label).toEqual({
+      en: 'Certificate',
+      tr: 'Sertifika',
+    });
+    expect(fs.existsSync(path.join(pkgDir, 'dist', 'locales'))).toBe(false);
+    expect(logged.join('\n')).toMatch(
+      /locales\/pt-BR\.json lacks 6 texts, shown in en meanwhile: PackComponent description, PackComponent summary, PackComponent's port label/,
+    );
+    expect(logged.join('\n')).not.toMatch(/locales\/tr\.json lacks/);
+  });
+
+  it('should refuse locales/ naming what the package has not, all told at once', async () => {
+    write(path.join(pkgDir, 'locales', 'tr.json'), {
+      PackComponent: {
+        displayName: 'Paket',
+        title: 'Başlık',
+        description: '',
+        variables: { port: { label: 'Port' } },
+      },
+      Gone: { displayName: 'Yok' },
+    });
+    write(path.join(pkgDir, 'locales', 'turkish.json'), {});
+    write(path.join(pkgDir, 'locales', 'en.json'), {});
+    const message = await packPackage({
+      packageDir: pkgDir,
+      outDir: 'dist',
+      pack: false,
+    }).then(
+      () => '',
+      (e: Error) => e.message,
+    );
+    expect(message).toMatch(
+      /locales\/en\.json is in "en", the package's own language/,
+    );
+    expect(message).toMatch(/locales\/turkish\.json is not a language's/);
+    expect(message).toMatch(
+      /locales\/tr\.json: "Gone" is not a class of the package/,
+    );
+    expect(message).toMatch(/PackComponent's "title" is not a text of it/);
+    expect(message).toMatch(
+      /PackComponent's description is empty, or not text/,
+    );
+    expect(message).toMatch(/PackComponent has no setting "port"/);
+  });
+
   it('should leave an abstract class out: a base of others, never run nor offered', async () => {
     write(
       path.join(pkgDir, 'src', 'pack-base.component.ts'),

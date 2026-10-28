@@ -272,6 +272,37 @@ Nothing that is not spm's is removed:
 | `--tsconfig <fileName>`         | tsconfig file                                      | `tsconfig.json` |
 | `--clean`                       | `spm build`: empty an output directory not a build | -               |
 
+### Translations
+
+The names, descriptions and summaries of the apps, components and
+plugins, and the labels and descriptions of their settings, are shown in
+SyncBridge's UI and the Marketplace in the reader's language. The code
+tells them in the package's own language (`docsLanguage`, English unless
+told); the others are in `locales/<language>.json` at the package root,
+one file a language (`tr.json`, `pt-BR.json`), by class name, settings by
+their dotted path:
+
+```json
+{
+  "HL7Client": {
+    "displayName": "HL7 İstemcisi",
+    "description": "...",
+    "summary": "...",
+    "variables": {
+      "host": { "label": "Sunucu", "description": "..." },
+      "tls.cert": { "label": "Sertifika" }
+    }
+  }
+}
+```
+
+A plugin's name is its `title`. Building takes them into the manifest:
+each text becomes text by language (`{ "en": "HL7 Client", "tr": "HL7
+İstemcisi" }`), and `locales/` itself is not packed. A file not of a
+language, a class or a setting the package has not, or a text not text
+fails the build; what a language lacks is told as a warning, shown in the
+package's own language meanwhile.
+
 ## Publishing a package
 
 ```sh

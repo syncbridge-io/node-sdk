@@ -1,4 +1,5 @@
 import { ApiField, ArrayType, ComplexType, StringType } from '@opra/common';
+import type { LocalizedText } from '../../registry/localized-text.js';
 import { PluginPermission } from '../enums/plugin-permission.enum.js';
 import { VariableMetadataRecord } from './variable-metadata.js';
 
@@ -35,11 +36,21 @@ export class PluginMetadata {
   })
   declare className: string;
 
-  @ApiField({ label: 'Title', description: 'Human friendly name' })
-  declare title?: string;
+  @ApiField({
+    label: 'Title',
+    description:
+      "Human friendly name: text, or text by language ({ en: '...', tr: '...' })",
+    type: 'any',
+  })
+  declare title?: LocalizedText;
 
-  @ApiField({ label: 'Description', description: 'Long description' })
-  declare description?: string;
+  @ApiField({
+    label: 'Description',
+    description:
+      "Long description: text, or text by language ({ en: '...', tr: '...' })",
+    type: 'any',
+  })
+  declare description?: LocalizedText;
 
   @ApiField({
     label: 'README',

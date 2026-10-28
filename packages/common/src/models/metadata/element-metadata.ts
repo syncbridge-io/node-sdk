@@ -1,4 +1,5 @@
 import { ApiField, ArrayType, ComplexType } from '@opra/common';
+import type { LocalizedText } from '../../registry/localized-text.js';
 import type { ModuleSummary } from '../../registry/module-catalog.js';
 import { WorkerPermission } from '../enums/worker-permission.enum.js';
 import type { ElementComponentMetadataRecord } from './element-component-metadata.js';
@@ -39,10 +40,12 @@ export class ElementMetadata {
 
   @ApiField({
     label: 'Name',
-    description: 'Human friendly name',
+    description:
+      "Human friendly name: text, or text by language ({ en: '...', tr: '...' }) - shown in the reader's language; spm takes the package's locales/ into it",
     required: true,
+    type: 'any',
   })
-  declare displayName: string;
+  declare displayName: LocalizedText;
 
   @ApiField({
     label: 'Icon',
@@ -52,9 +55,11 @@ export class ElementMetadata {
 
   @ApiField({
     label: 'Description',
-    description: 'Long description',
+    description:
+      "Long description: text, or text by language ({ en: '...', tr: '...' })",
+    type: 'any',
   })
-  declare description?: string;
+  declare description?: LocalizedText;
 
   @ApiField({
     label: 'README',
