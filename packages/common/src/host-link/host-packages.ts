@@ -1,3 +1,5 @@
+import semver from 'semver';
+
 /*
  * Packages a host installs from the registry: it asks Console for a plan -
  * the version of what it wants, the registry packages it needs that it
@@ -17,6 +19,37 @@ export interface HostPackagesResolveRequest {
   range?: string;
   /** What it has: each package's versions installed */
   installed?: Record<string, string[]>;
+  /** What it provides the packages as peers: versions it cannot take not planned */
+  host?: HostProvides;
+}
+
+/**
+ * The npm packages a host provides its registry packages as peers - the
+ * SDK's, "@syncbridge/common" and the like - each with its version: a
+ * version peering on a newer one than the host has cannot run there, and
+ * is not offered to it
+ */
+export type HostProvides = Record<string, string>;
+
+/**
+ * The peers of a version the host does not satisfy: each named with the
+ * range it asks. Only the peers the host names are judged; any other is
+ * left to the host's own check as it installs.
+ */
+export function unmetPeers(
+  peers: Record<string, string> | undefined,
+  host: HostProvides | undefined,
+): Record<string, string> {
+  const unmet: Record<string, string> = {};
+  for (const [name, range] of Object.entries(peers || {})) {
+    const version = host?.[name];
+    if (
+      version &&
+      !semver.satisfies(version, range, { includePrerelease: true })
+    )
+      unmet[name] = range;
+  }
+  return unmet;
 }
 
 /** A package of the plan, to be installed in its turn */
@@ -58,6 +91,12 @@ export interface HostPackageUpdatesRequest {
   mode: 'check' | 'download';
   /** "@org/name" -> its newest version installed (check), or the one it installs (download) */
   packages: Record<string, string>;
+  /**
+   * check: what it provides the packages as peers - a version peering on
+   * more than it has is not offered, but told as held. Not sent (a host
+   * before it): offered as before.
+   */
+  host?: HostProvides;
 }
 
 /** A version offered: what it needs of the registry's packages */
@@ -65,6 +104,15 @@ export interface HostPackageOffer {
   version: string;
   /** Registry packages it depends on: name -> range */
   dependencies: Record<string, string>;
+  /** What it needs of the host: npm package -> range; checked again by the host */
+  peerDependencies?: Record<string, string>;
+}
+
+/** A newer version the host cannot take: what it lacks of what it would need */
+export interface HostPackageHeld {
+  version: string;
+  /** The peers the host does not satisfy: npm package -> the range asked */
+  needs: Record<string, string>;
 }
 
 /** What is newer of a package, or why it was not told */
@@ -82,6 +130,12 @@ export interface HostPackageUpdate {
   patch?: HostPackageOffer;
   /** check: the newest of its major, newer than the one sent */
   minor?: HostPackageOffer;
+  /**
+   * check: the newest of its major newer than `minor` (or than the one
+   * sent) that the host cannot take - peering on more than it provides:
+   * told, waiting for the host's update
+   */
+  held?: HostPackageHeld;
   /** check: a newer major's newest - told, never installed without asking */
   major?: string;
   /** download: the version sent, its grant in its link; a few minutes good */
