@@ -148,6 +148,72 @@ starts and checks it as any value, so the app sees a plain value of the
 variable's type. `parseValueRefs`, `resolveValueRefs` and
 `profileValueRefs` read such references; `$${{` writes `${{` itself.
 
+## Changing what a profile holds
+
+Workers keep the values written for your module's earlier versions. A
+new version that renames what they hold declares it, and SyncBridge
+carries their profiles across as the version is taken - no code of yours
+run:
+
+```ts
+@App({ className: 'LisGateway', formerly: 'LisBridge' })   // a class renamed
+export class LisGateway extends AppBase {
+  @App.UseComponent({ formerly: 'conn' })                  // a slot renamed
+  declare link: TcpClient;
+}
+
+class Settings {
+  @DefineVariable({ formerly: ['address', 'addr'] })     // a setting renamed
+  declare host: string;
+
+  @DefineVariable({
+    enumValues: ['tcp-client', 'tcp-server'],
+    formerlyValues: { tcp: 'tcp-client' },                // a choice renamed
+  })
+  declare mode: string;
+
+  @DefineVariable({ required: true, default: 30 })         // added: a default
+  declare timeout: number;
+}
+```
+
+`formerly` names every earlier name, not the last alone; a class's is its
+own, not its base's, and in its own package. A setting no longer defined
+has its value dropped. The profiles written with an earlier version than
+the one a worker takes - or with one not told - are carried
+(`carryProfile`), the changes told in the worker's changes.
+
+What no declaration tells - a value split in two, a unit changed - a
+class carries itself, in a static method marked `@App.MigrateProfile()`
+or `@Component.MigrateProfile()`:
+
+```ts
+@App.MigrateProfile()
+static migrateProfile(m: ProfileMigration) {
+  /* { values, from, to, path }: its own values, after what it declares */
+  if (semver.lt(m.from ?? '0.0.0', '2.0.0')) {
+    const [host, port] = String(m.values.address ?? '').split(':');
+    return { ...m.values, host, port: Number(port) || 2575 };
+  }
+  return m.values;
+}
+```
+
+It runs where the worker runs - in a process of the worker's, its
+packages installed, never in SyncBridge's own - as the worker starts or
+its page is opened, once, when its values were written with an earlier
+version. What it reads may no longer be defined: such values are kept
+for it, and dropped after it. A sealed secret in them is a token: moved
+or dropped, never made or changed. Should it fail, or leave values that
+are not valid, the worker is held on the version they were written with,
+told why. `profileMigrations` and `runProfileMigrations` run them as
+SyncBridge does.
+
+`spm publish` compares the version with its package's last published one:
+a class, a slot, a setting or a choice gone with nothing declared, or a
+setting newly required with no default, refuses a version that is not a
+major (a 0.x minor counts as one), and is told in a major.
+
 ## Lifecycle
 
 Apps and components are `Runnable`s. Override the protected methods, and

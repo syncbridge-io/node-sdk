@@ -75,7 +75,7 @@ export async function viewPackage(options: ViewOptions): Promise<ViewResult> {
 }
 
 /** A request to a registry as nobody: undefined for a 404 */
-async function anonymousFetch(
+export async function anonymousFetch(
   registry: string,
   path: string,
 ): Promise<Response | undefined> {

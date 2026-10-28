@@ -188,6 +188,24 @@ program
             ),
           );
       }
+      for (const c of r.carried) {
+        if (c.ok)
+          console.log(
+            colors.green(`✔ ${c.file} carried from ${c.from}`) +
+              colors.gray(
+                [
+                  c.changes ? ` (${c.changes} declared changes)` : '',
+                  c.migrated.length
+                    ? ` (migrateProfile: ${c.migrated.join(', ')})`
+                    : '',
+                ].join(''),
+              ),
+          );
+        else
+          console.error(
+            colors.red(`✖ ${c.file}, written for ${c.from}: ${c.message}`),
+          );
+      }
       if (r.sandbox) console.log(`Sandbox kept at ${r.sandbox}`);
       if (!r.ok) process.exitCode = 1;
     } catch (e) {

@@ -1,3 +1,5 @@
+import type { Profile } from '@syncbridge/common';
+
 /** What a worker started with `startWorker` reports to its host */
 export type WorkerMessage =
   | { type: 'ready' }
@@ -7,6 +9,8 @@ export type WorkerMessage =
   | { type: 'invalid'; issues: { message: string; location?: string }[] }
   /** Created without being started (`createOnly`), with its components' paths */
   | { type: 'created'; components: string[] }
+  /** Its classes' own migrateProfile run (`migrate`): the profile they left */
+  | { type: 'migrated'; profile: Profile }
   /** Its plan's classes loaded alone (`loadOnly`): their URIs */
   | { type: 'loaded'; classes: string[] }
   | { type: 'failed'; message: string }

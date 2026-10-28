@@ -9,12 +9,14 @@ import {
   DOCS_MANIFEST_FILE,
   type DocsManifestFile,
   isDocLeftOut,
+  MANIFEST_FILE,
   packageDigest,
   parseDocPath,
   SbError,
   SIDEBAR_FILE,
 } from '@syncbridge/common';
 import AdmZip from 'adm-zip';
+import semver from 'semver';
 import { version as spmVersion } from '../constants.js';
 import { packPackage } from '../pack-package.js';
 import { resolveRegistry } from '../registry/credentials.js';
@@ -24,6 +26,12 @@ import {
   RegistryError,
   registryFetch,
 } from '../registry/registry-client.js';
+import {
+  compareMetadata,
+  type ElementDefinition,
+  isMajorChange,
+  publishedDefinitions,
+} from './compare-published.js';
 
 export type PackageAccess = 'public' | 'private';
 
@@ -261,6 +269,7 @@ export async function publishPackage(
     if (!pkgEntry)
       throw new SbError(`${archive} is not a package: no package.json`);
     const { name, version } = JSON.parse(zip.readAsText(pkgEntry));
+    await checkCarried(registry, zip, name, version, log);
     const docs = docsOf(zip);
     /* As the CI job it runs in, or as its signed-in user */
     const ci = options.ci ?? inGitHubActions();
@@ -372,6 +381,53 @@ export async function publishPackage(
   } finally {
     if (packed) fs.rmSync(packed, { recursive: true, force: true });
   }
+}
+
+/**
+ * The profiles written for the package's last published version carried
+ * to this one: what changed with nothing declared to carry it refuses a
+ * version that is not a major, and is told in a major. A registry that
+ * cannot tell is told, not refused: the comparison is a help, its check
+ * the package's own
+ */
+async function checkCarried(
+  registry: string,
+  zip: AdmZip,
+  name: string,
+  version: string,
+  log?: (message: string) => void,
+): Promise<void> {
+  const entry = zip.getEntry(MANIFEST_FILE);
+  if (!entry) return;
+  const manifest = JSON.parse(zip.readAsText(entry));
+  const current: ElementDefinition[] = [
+    ...(manifest.apps || []),
+    ...(manifest.components || []),
+  ];
+  let published: Awaited<ReturnType<typeof publishedDefinitions>>;
+  try {
+    published = await publishedDefinitions(registry, name);
+  } catch (e: any) {
+    log?.(`Not compared with its last published version: ${e.message}`);
+    return;
+  }
+  if (!published) return;
+  if (!semver.gt(version, published.version)) {
+    log?.(
+      `Not compared with ${published.version}, published already: it is not older`,
+    );
+    return;
+  }
+  const r = compareMetadata(published.definitions, current, {
+    major: isMajorChange(published.version, version),
+  });
+  for (const w of r.warnings) log?.(`Changed since ${published.version}: ${w}`);
+  if (r.errors.length)
+    throw new SbError(
+      `${name}@${version} cannot carry the profiles written for ${published.version}:\n  - ` +
+        r.errors.join('\n  - ') +
+        '\nDeclare what changed (formerly, formerlyValues, a default), or make it a major version',
+    );
 }
 
 /** The registry's answer that the version is published already */

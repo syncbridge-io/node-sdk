@@ -7,6 +7,7 @@ import {
   VariableMetadataRecord,
   VariableType,
 } from '../models/index.js';
+import { formerNames } from './decorator-helpers.js';
 
 export function DefineVariable(options: DefineVariable.Options = {}) {
   return function (target: Object, propertyKey: string | symbol) {
@@ -68,6 +69,9 @@ export function DefineVariable(options: DefineVariable.Options = {}) {
         );
       }
     }
+    if (metadata.formerly !== undefined)
+      metadata.formerly = formerNames(metadata.formerly);
+    if (metadata.type !== VariableType.Enum) delete metadata.formerlyValues;
     if (metadata.isArray && !metadata.type)
       throw new TypeError(
         'Array variables must have type defined. ' +
@@ -95,8 +99,16 @@ type TVariable = DeepPartial<VariableMetadataRecord> | Type;
 
 export namespace DefineVariable {
   export interface Options extends Partial<
-    StrictOmit<VariableMetadata, 'variables' | 'enumValues' | 'choice'>
+    StrictOmit<
+      VariableMetadata,
+      'variables' | 'enumValues' | 'choice' | 'formerly'
+    >
   > {
+    /**
+     * Its name in earlier versions of the module, or several: a profile
+     * written with one has its value moved here
+     */
+    formerly?: string | string[];
     variables?: TVariable | Promise<TVariable>;
     /**
      * Values known when the module is written. Ones that depend on the

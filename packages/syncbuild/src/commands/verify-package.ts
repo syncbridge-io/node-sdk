@@ -5,16 +5,19 @@ import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import {
+  carryProfile,
   decodeProfileSilent,
   type ExtensionPackage,
   ExtensionRegistry,
   initializeModelsDocument,
   isSyncBridgeModule,
   manifestOf,
+  materializeMetadataSilent,
   missingPermissionOf,
   nodePermissionArgs,
   PluginPermission,
   Profile,
+  profileMigrations,
   SbError,
   toSbextName,
   WorkerPermission,
@@ -98,9 +101,29 @@ export interface VerifyAppResult {
   components: string[];
 }
 
+/**
+ * A profile written for an earlier version of the package - one of
+ * test/profiles/<version>/ - carried to this one, as SyncBridge carries it
+ */
+export interface VerifyCarriedResult {
+  /** Its file, relative to the package */
+  file: string;
+  /** The version it was written for */
+  from: string;
+  ok: boolean;
+  /** How many changes what the classes declare made */
+  changes: number;
+  /** The classes whose own migrateProfile ran */
+  migrated: string[];
+  /** Why it could not be carried */
+  message?: string;
+}
+
 export interface VerifyResult {
   ok: boolean;
   apps: VerifyAppResult[];
+  /** The profiles of its earlier versions, carried: test/profiles/ */
+  carried: VerifyCarriedResult[];
   /** The sandbox, when it was kept */
   sandbox?: string;
 }
@@ -119,6 +142,11 @@ export interface VerifyResult {
  * device, a database, a service - is the environment's, not the package's,
  * and verify cannot tell one from the other. Whether the app works is
  * for the package's tests.
+ *
+ * Profiles of the package's earlier versions - test/profiles/<version>/,
+ * YAML or JSON - are carried to it as SyncBridge carries them: what its
+ * classes declare, then their own migrateProfile, in a worker; each must
+ * then be a valid profile of it.
  *
  * Registry packages it depends on come from `--with` archives, then from
  * the project: a package of the same workspace is packed and installed as
@@ -296,7 +324,8 @@ export async function verifyPackage(
      * One of the same workspace - not built where it is linked - is packed
      * and installed, as a dependency of the workspace is */
     const provided = new Set<string>();
-    for (const profile of profiles)
+    const older = findOlderProfiles(packageDir);
+    for (const profile of [...profiles, ...older.map(o => o.profile)])
       for (const name of profilePackages(profile)) {
         if (packages.has(name)) continue;
         const ws = findWorkspacePackage(name, packageDir);
@@ -326,9 +355,22 @@ export async function verifyPackage(
         }),
       );
     }
+    const carried: VerifyCarriedResult[] = [];
+    for (const o of older)
+      carried.push(
+        await carryOlder(o, {
+          packages,
+          provided,
+          ...workerOptions,
+          hostDir: dirs.host,
+          dataDir: path.join(dirs.data, 'carry-' + carried.length),
+          packageDir,
+        }),
+      );
     return {
-      ok: results.every(r => r.created),
+      ok: results.every(r => r.created) && carried.every(c => c.ok),
       apps: results,
+      carried,
       sandbox: options.keep ? sandbox : undefined,
     };
   } finally {
@@ -754,6 +796,128 @@ function findPackageRoot(name: string, fromDir: string): string | undefined {
 const PROFILE_EXTENSIONS = ['.yml', '.yaml', '.json'];
 
 /** The profile files given: files as they are, directories' profile files */
+/** Where a package keeps profiles of its earlier versions, by version */
+const OLDER_PROFILES_DIR = path.join('test', 'profiles');
+
+/** The profiles of the package's earlier versions: test/profiles/<version>/ */
+function findOlderProfiles(
+  packageDir: string,
+): { file: string; version: string; profile: Profile }[] {
+  const dir = path.join(packageDir, OLDER_PROFILES_DIR);
+  if (!fs.existsSync(dir)) return [];
+  const out: { file: string; version: string; profile: Profile }[] = [];
+  for (const version of fs.readdirSync(dir).sort()) {
+    const at = path.join(dir, version);
+    if (!fs.statSync(at).isDirectory()) continue;
+    if (!semver.valid(version))
+      throw new SbError(
+        `${path.join(OLDER_PROFILES_DIR, version)} is not named after a version: test/profiles/<version>/`,
+      );
+    for (const f of fs.readdirSync(at).sort()) {
+      if (!PROFILE_EXTENSIONS.includes(path.extname(f))) continue;
+      const file = path.join(at, f);
+      const profile = readProfile(file);
+      /* Written for that version, unless it tells */
+      profile.writtenWith ??= version;
+      out.push({ file, version, profile });
+    }
+  }
+  return out;
+}
+
+/**
+ * A profile of an earlier version carried to the package as it is: what
+ * its classes declare, then their own migrateProfile - in a worker, as
+ * SyncBridge runs them - and checked as a profile of it
+ */
+async function carryOlder(
+  older: { file: string; version: string; profile: Profile },
+  ctx: {
+    packages: Map<string, ExtensionPackage[]>;
+    provided: Set<string>;
+    hostDir: string;
+    dataDir: string;
+    timeout: number;
+    execArgv?: string[];
+    permissionModel: boolean;
+    packageDir: string;
+  },
+): Promise<VerifyCarriedResult> {
+  const result: VerifyCarriedResult = {
+    file: path.relative(ctx.packageDir, older.file),
+    from: older.version,
+    ok: false,
+    changes: 0,
+    migrated: [],
+  };
+  const { profile: carried, changes } = carryProfile(older.profile);
+  result.changes = changes.length;
+  const steps = profileMigrations(carried);
+  let migrated = carried;
+  if (steps.length) {
+    const app = ExtensionRegistry.findApp(
+      carried.appUri,
+      carried.appVersion || '*',
+    );
+    const materialized = materializeMetadataSilent(carried);
+    if (!app || !materialized.result) {
+      result.message = app
+        ? materialized.issues!.map(i => i.message).join('; ')
+        : `No installed app "${carried.appUri}"`;
+      return result;
+    }
+    let plan;
+    try {
+      plan = computeWorkerPlan({
+        app,
+        metadata: materialized.metadata,
+        versionsOf: n => ctx.packages.get(n),
+        isInstalled: p => !ctx.provided.has(p.name),
+        hostURL: pathToFileURL(path.join(ctx.hostDir, 'package.json')).href,
+      });
+    } catch (e: any) {
+      result.message = e.message;
+      return result;
+    }
+    const permissions = workerPermissionsOf(materialized.metadata, uri => {
+      for (const versions of ctx.packages.values())
+        for (const pkg of versions)
+          for (const c of pkg.components) if (c.uri === uri) return c.metadata;
+    });
+    const worker = await startWorker({
+      plan,
+      profile: carried,
+      dataDirectory: ctx.dataDir,
+      execArgv: [
+        ...(ctx.execArgv || []),
+        ...(ctx.permissionModel ? nodePermissionArgs({ permissions }) : []),
+      ],
+      migrate: steps,
+    });
+    try {
+      await worker.waitForStatus(['migrated'], ctx.timeout);
+      migrated = worker.migrated!;
+      result.migrated = steps.map(s => s.uri);
+    } catch (e: any) {
+      result.message = e.message;
+      return result;
+    } finally {
+      await worker.stop();
+    }
+  }
+  const decoded = decodeProfileSilent(migrated);
+  if (!decoded.result) {
+    result.message =
+      'Not a valid profile once carried:\n  ' +
+      decoded.issues
+        .map(i => `- ${i.message}. Location: /${(i as any).location}`)
+        .join('\n  ');
+    return result;
+  }
+  result.ok = true;
+  return result;
+}
+
 function findProfiles(given: string | string[] | undefined): string[] {
   const out: string[] = [];
   for (const p of [given || []].flat()) {

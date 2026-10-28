@@ -86,6 +86,12 @@ the project's `node_modules`, so a package used without being declared in
 provides only `@syncbridge/common` and the package's peers, as SyncBridge
 does, so `spm verify` fails the same way.
 
+Profiles of the package's earlier versions, kept in
+`test/profiles/<version>/` (YAML or JSON), are carried to it as
+SyncBridge carries them - what its classes declare, then their own
+`migrateProfile`, in the worker - and each must then be a valid profile
+of it; one that is not fails the verify, telling why.
+
 The worker runs under Node's permission model, as SyncBridge runs it:
 native addons and other programs only as the app and its components
 declare them (`permissions: [WorkerPermission.NativeCode]`,
@@ -298,10 +304,40 @@ their dotted path:
 
 A plugin's name is its `title`. Building takes them into the manifest:
 each text becomes text by language (`{ "en": "HL7 Client", "tr": "HL7
-İstemcisi" }`), and `locales/` itself is not packed. A file not of a
-language, a class or a setting the package has not, or a text not text
-fails the build; what a language lacks is told as a warning, shown in the
-package's own language meanwhile.
+İstemcisi" }`). A file not of a language, a class or a setting the
+package has not, or a text not text fails the build; what a language
+lacks is told as a warning, shown in the package's own language
+meanwhile.
+
+A class built on another's takes its texts with `"@extends"`: a class
+built on a base class, or a group of settings whose settings are a class
+of settings - the package's own (`"IomtBaseApp"`), or one of a registry
+dependency (`"@abisena/iomt-common:IomtBaseApp"`):
+
+```json
+{
+  "GeDashApp": {
+    "@extends": "@abisena/iomt-common:IomtBaseApp",
+    "displayName": "GE Dash monitörü",
+    "variables": {
+      "breathChannels": {
+        "@extends": "@abisena/iomt-common:TestConfigurationVariables",
+        "label": "Nefes kanalları"
+      }
+    }
+  }
+}
+```
+
+The base's texts come first - all but its name - then the class's own
+over them. So a package others build on tells, in its own `locales/`, the
+texts of what it exports for them: its abstract apps and components, and
+its classes of settings (`"TestConfigurationVariables": { "variables":
+{ ... } }`). `locales/` is packed with each `"@extends"` taken in: a
+dependency is read from the workspace, or as installed - one built
+without it gives no texts, and what it does not give is told as lacking.
+An `"@extends"` naming a package not among the manifest's dependencies,
+a class the package has not, or going round fails the build.
 
 ## Publishing a package
 
@@ -331,6 +367,16 @@ lists the rest by their SHA-256. A new package is private unless
 `--skip-existing` skips a version the registry has already instead of
 failing: a release publishing each of its packages - most of them
 unchanged - is run again safely.
+
+Before it asks, the version is compared with the package's last
+published one, as the registry keeps it: what a worker's profile written
+for that one cannot be carried across with nothing declared - a class, a
+component slot, a setting or a choice gone, a setting or a slot newly
+required with no default - refuses a version that is not a major (a 0.x
+minor counts as one), and is told in a major. A former name still in use
+(`formerly`, `formerlyValues`) is refused in any version. A registry that
+cannot be reached, or a package it does not show, is told and not
+compared. See [@syncbridge/common](../common/README.md#changing-what-a-profile-holds).
 
 A publish is approved by you, in Console, with your second factor: spm
 shows the address (and opens it, unless `--no-browser`), the page shows

@@ -6,12 +6,20 @@
  * AppWorker, as a SyncBridge worker does, and reports back over IPC.
  * Sent `create` rather than `start`, it loads every class of the planned
  * packages and creates the app, without initializing or starting it;
- * sent `load`, it only loads them - a package of components alone.
+ * sent `load`, it only loads them - a package of components alone; sent
+ * `migrate`, it runs the steps' own migrateProfile on the profile and
+ * answers it as they left it.
  * Its host gone (crashed, killed) or a stop signal, it stops and ends: it
  * is never left running alone, nor kept by what the app left open.
  */
 import process from 'node:process';
-import type { ILogger, Profile } from '@syncbridge/common';
+import {
+  ExtensionRegistry,
+  type ILogger,
+  type Profile,
+  type ProfileMigrationStep,
+  runProfileMigrations,
+} from '@syncbridge/common';
 import { AppWorker } from './app-worker.js';
 import { endWorker } from './end-worker.js';
 import { readWorkerPlan } from './loader.js';
@@ -112,6 +120,23 @@ async function loadOnly() {
   send({ type: 'loaded', classes: planClasses(plan) });
 }
 
+/** The classes' own migrateProfile run on the profile, in the worker */
+async function migrateOnly(profile: Profile, steps: ProfileMigrationStep[]) {
+  const plan = readWorkerPlan();
+  if (!plan) throw new Error('The worker was started without a plan');
+  const errors = await registerPlanPackages(plan);
+  if (errors.length) throw new Error(errors.map(e => e.message).join('\n'));
+  const migrated = await runProfileMigrations(profile, steps, step => {
+    const ext =
+      step.kind === 'app'
+        ? ExtensionRegistry.findApp(step.uri, step.version)
+        : ExtensionRegistry.findComponent(step.uri, step.version);
+    if (!ext) throw new Error(`${step.uri} ${step.version} is not installed`);
+    return ext.getClass();
+  });
+  send({ type: 'migrated', profile: migrated });
+}
+
 async function createOnly(profile: Profile) {
   if (await create(profile, true))
     send({ type: 'created', components: componentPaths(worker.app!) });
@@ -149,6 +174,10 @@ process.on('message', (msg: any) => {
     start(msg.profile).catch(e => send({ type: 'failed', message: text(e) }));
   } else if (msg?.type === 'load') {
     loadOnly().catch(e => send({ type: 'failed', message: text(e) }));
+  } else if (msg?.type === 'migrate') {
+    migrateOnly(msg.profile, msg.steps || []).catch(e =>
+      send({ type: 'failed', message: text(e) }),
+    );
   } else if (msg?.type === 'create') {
     createOnly(msg.profile).catch(e =>
       send({ type: 'failed', message: text(e) }),

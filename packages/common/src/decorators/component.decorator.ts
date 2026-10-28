@@ -11,7 +11,8 @@ import {
   locatePackageJson,
   resolvePackageJson,
 } from '../utils/locate-package-json.js';
-import { defineOwnMetadata } from './decorator-helpers.js';
+import { MigrateProfile as _MigrateProfile } from './app-events.decorator.js';
+import { defineOwnMetadata, formerNames } from './decorator-helpers.js';
 import { UseComponent as _UseComponent } from './use-component.decorator.js';
 import { UseVariables as _UseVariables } from './use-variables.decorator.js';
 
@@ -80,6 +81,11 @@ export function Component<T extends ComponentBase>(options: Component.Options) {
         );
     }
 
+    /* The names it had: its own, never its base's */
+    const formerly = formerNames(options.formerly);
+    if (formerly) metadata.formerly = formerly;
+    else delete metadata.formerly;
+
     (target as any).uri = uri;
     (target as any).packageName = packageName;
     (target as any).className = className;
@@ -93,10 +99,18 @@ export namespace Component {
   export type Options = DeepPartial<
     StrictOmit<
       ComponentMetadata,
-      'uri' | 'classType' | 'className' | 'components' | 'variables' | 'version'
+      | 'uri'
+      | 'classType'
+      | 'className'
+      | 'components'
+      | 'variables'
+      | 'version'
+      | 'formerly'
     >
   > & {
     className?: string;
+    /** The class name it had in earlier versions, or several */
+    formerly?: string | string[];
   };
 
   export function UseVariables<T extends ComponentBase>(variablesClass?: Type) {
@@ -107,5 +121,13 @@ export namespace Component {
     options?: _UseComponent.Options,
   ) {
     return _UseComponent<T>(options);
+  }
+
+  /**
+   * A static method carrying the component's own values from its earlier
+   * versions: (migration: ProfileMigration) => values
+   */
+  export function MigrateProfile<T extends ComponentBase>() {
+    return _MigrateProfile<Type<T>>();
   }
 }

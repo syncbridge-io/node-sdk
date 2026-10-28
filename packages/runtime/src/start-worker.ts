@@ -1,7 +1,7 @@
 import { type ChildProcess, fork } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { fileURLToPath } from 'node:url';
-import type { Profile } from '@syncbridge/common';
+import type { Profile, ProfileMigrationStep } from '@syncbridge/common';
 import { LOADER_URL, WORKER_URL } from './paths.js';
 import { type WorkerPlan, writeWorkerPlan } from './plan.js';
 import type { WorkerMessage } from './worker-messages.js';
@@ -28,6 +28,12 @@ export interface StartWorkerOptions {
    * status `loaded`, its classes told as its components
    */
   loadOnly?: boolean;
+  /**
+   * Only run these classes' own migrateProfile on the profile - in the
+   * worker, its plan's packages registered - nothing created; the worker
+   * reaches status `migrated`, the profile as they left it in `migrated`
+   */
+  migrate?: ProfileMigrationStep[];
   /** Node.js options for the worker, before the plan's loader */
   execArgv?: string[];
   env?: NodeJS.ProcessEnv;
@@ -51,6 +57,8 @@ export class WorkerProcess extends EventEmitter {
   failure?: string;
   readonly logs: WorkerLogRecord[] = [];
   readonly components = new Map<string, { status: string; message: string }>();
+  /** The profile as its classes' migrateProfile left it (`migrate`) */
+  migrated?: Profile;
   protected _exited: Promise<number | null>;
   protected _stopping = false;
 
@@ -163,6 +171,11 @@ export class WorkerProcess extends EventEmitter {
         this.status = 'created';
         this.emit('status', 'created', '');
         break;
+      case 'migrated':
+        this.migrated = msg.profile;
+        this.status = 'migrated';
+        this.emit('status', 'migrated', '');
+        break;
       case 'stopped':
         this.status = 'stopped';
         this.emit('status', 'stopped', '');
@@ -237,8 +250,15 @@ export async function startWorker(
     child.once('exit', onExit);
   });
   child.send({
-    type: options.loadOnly ? 'load' : options.createOnly ? 'create' : 'start',
+    type: options.migrate
+      ? 'migrate'
+      : options.loadOnly
+        ? 'load'
+        : options.createOnly
+          ? 'create'
+          : 'start',
     profile: options.profile,
+    ...(options.migrate ? { steps: options.migrate } : {}),
   });
   return worker;
 }
