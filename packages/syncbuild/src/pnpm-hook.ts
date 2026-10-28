@@ -100,6 +100,24 @@ export function pnpmHookState(
 }
 
 /**
+ * Turns off pnpm's minimumReleaseAge in the workspace, unless it sets its
+ * own: pnpm refuses a config dependency published within it (a day by
+ * default), a new `@syncbridge/pnpm-config` among them. Whether
+ * pnpm-workspace.yaml was written.
+ */
+export function allowNewReleases(root: string): boolean {
+  const file = path.join(root, 'pnpm-workspace.yaml');
+  const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  const doc = YAML.parseDocument(text);
+  if (YAML.isMap(doc.contents)) {
+    if (doc.has('minimumReleaseAge')) return false;
+    doc.set('minimumReleaseAge', 0);
+    fs.writeFileSync(file, String(doc));
+  } else fs.writeFileSync(file, `minimumReleaseAge: 0\n${text}`);
+  return true;
+}
+
+/**
  * How the config dependency is added: by pnpm, which writes it with its
  * integrity into pnpm-workspace.yaml and installs it. An object, so tests
  * can stand in for it.
@@ -116,8 +134,8 @@ export const pnpmConfig = {
 
 /**
  * Puts spm's hook into a workspace installed with pnpm, or brings it up
- * to date: `@syncbridge/pnpm-config` as a config dependency and the
- * one-line `.pnpmfile.cjs`. One of the workspace's own is kept: `spm
+ * to date: `@syncbridge/pnpm-config` as a config dependency, with
+ * minimumReleaseAge off, and the one-line `.pnpmfile.cjs`. One of the workspace's own is kept: `spm
  * check` tells what it must do. The files written, relative to the root.
  */
 export function ensurePnpmHook(root: string): string[] {
@@ -126,6 +144,7 @@ export function ensurePnpmHook(root: string): string[] {
   const own = pnpmConfigVersion();
   const configured = configuredVersion(root);
   if (!configured || semver.lt(configured, own)) {
+    allowNewReleases(root);
     pnpmConfig.add(root, `${PNPM_CONFIG_PACKAGE}@${own}`);
     written.push('pnpm-workspace.yaml');
   }

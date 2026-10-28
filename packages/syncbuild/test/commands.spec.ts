@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect } from 'expect';
+import YAML from 'yaml';
 import { addDependency } from '../src/commands/add-dependency.js';
 import { checkPackage } from '../src/commands/check-package.js';
 import {
@@ -338,10 +339,13 @@ describe('spm add / spm check', () => {
       pnpmConfig.add = (dir, spec) => {
         added.push(spec);
         const version = spec.slice(spec.lastIndexOf('@') + 1);
-        write(
-          path.join(dir, 'pnpm-workspace.yaml'),
-          `configDependencies:\n  '${PNPM_CONFIG_PACKAGE}': ${version}+sha512-x\n`,
+        const file = path.join(dir, 'pnpm-workspace.yaml');
+        const doc = YAML.parseDocument(fs.readFileSync(file, 'utf8'));
+        doc.setIn(
+          ['configDependencies', PNPM_CONFIG_PACKAGE],
+          `${version}+sha512-x`,
         );
+        write(file, String(doc));
       };
     });
     afterEach(() => {
@@ -361,6 +365,12 @@ describe('spm add / spm check', () => {
       ]);
       expect(added).toEqual([`${PNPM_CONFIG_PACKAGE}@${own}`]);
       expect(fs.readFileSync(pnpmfile(), 'utf8')).toBe(PNPMFILE_SOURCE);
+      /* minimumReleaseAge off, so a new pnpm-config is taken at once */
+      expect(
+        YAML.parse(
+          fs.readFileSync(path.join(root, 'pnpm-workspace.yaml'), 'utf8'),
+        ).minimumReleaseAge,
+      ).toBe(0);
       /* Its alias spaceless, as pnpm parses it */
       const pkg = JSON.parse(
         fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'),
@@ -379,7 +389,7 @@ describe('spm add / spm check', () => {
       addDependency(pkgDir, '@syncbridge/hl7@^2.0.1');
       write(
         path.join(root, 'pnpm-workspace.yaml'),
-        `configDependencies:\n  '${PNPM_CONFIG_PACKAGE}': 0.0.1+sha512-x\n`,
+        `minimumReleaseAge: 1440\nconfigDependencies:\n  '${PNPM_CONFIG_PACKAGE}': 0.0.1+sha512-x\n`,
       );
       expect(checkPackage(pkgDir).warnings).toEqual([
         expect.stringMatching(/as a config dependency, up to date/),
@@ -387,6 +397,12 @@ describe('spm add / spm check', () => {
       expect(addDependency(pkgDir, '@syncbridge/hl7@^2.0.1').changed).toEqual([
         '../../pnpm-workspace.yaml',
       ]);
+      /* The workspace's own minimumReleaseAge kept */
+      expect(
+        YAML.parse(
+          fs.readFileSync(path.join(root, 'pnpm-workspace.yaml'), 'utf8'),
+        ).minimumReleaseAge,
+      ).toBe(1440);
       expect(checkPackage(pkgDir)).toEqual({ errors: [], warnings: [] });
 
       write(pnpmfile(), 'module.exports = { hooks: {} };\n');

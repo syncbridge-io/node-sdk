@@ -394,6 +394,10 @@ In a workspace installed with pnpm (a `pnpm-lock.yaml`, a
 - It adds the package as a pnpm config dependency, through `pnpm add
   --config`, into `pnpm-workspace.yaml`. pnpm installs config dependencies
   before anything else.
+- It sets `minimumReleaseAge: 0` in `pnpm-workspace.yaml`, unless the
+  workspace sets its own: pnpm refuses a config dependency published
+  within it (a day by default), so a new `@syncbridge/pnpm-config` could
+  not be taken for a day. Only this workspace's setting changes.
 - It writes a one-line `.pnpmfile.cjs` at the workspace root that takes
   the package's hooks:
 
