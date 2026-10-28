@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 87d11ec1009b3df3dda45c7109f669a4216f9344 -->
+<!-- rman:documented-up-to 64942ccafb990a1ec5eb4403c0dc727cdf6fc435 -->
+
+## @syncbridge/common@2.8.0 (2026-10-28)
+
+### ✨ Features
+
+- **common:** secrets of a host and its workspace - sealForWeb, the sealed box made with WebCrypto byte for byte as sealFor makes it, and sealKeyFingerprint, in @syncbridge/common/web, which imports nothing of Node (and the main entry); the host link's secrets: HostSecrets and key grants in host/values, the names a host cannot open yet (locked), the workspace key jobs Console asks of a host (HOST_VALUES_KEY_PATH: made, handed over, rotated) and HOST_CONSOLE_SERVICE_HEADER, Console's own call for no user (55eaf10)
+
+---
 
 ## @syncbridge/common@2.7.0 (2026-10-28)
 
