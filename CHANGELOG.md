@@ -1,6 +1,19 @@
 # Changelog
 
-<!-- rman:documented-up-to 67c2d6ca886b9d0793f951d58fb7d79a79a24d52 -->
+<!-- rman:documented-up-to d5bd3cc3d819a178b2be0f56d71910f807b30981 -->
+
+## v2026.10.27-1450 (2026-10-27)
+
+### ✨ Features
+
+- plugins declare what they reach - `permissions` and `hosts` in @Plugin (PluginPermission: worker-environment, log-records, workers, network, child-processes, native-code), shown to the server's admins and given once they approve it. syncbuild writes them into the manifest; spm verify loads a plugin under Node's permission model with what it declares, telling what it failed to declare (d397bb0)
+- SyncBridge's modules registry packages like any other - a server comes with a version of @syncbridge/builtins, hl7, sqb..., and installs from the registry a newer one a package needs, no update of its own asked. Declared in the manifest's dependencies, imported under their own name: the loader takes @syncbridge/builtins to the version the worker's plan picked, as it does sb:. A package that still declares one as a peer installs as if it were in its manifest; spm add moves it there, spm check tells it. The SDK alone the host's peers (a6067d0)
+
+### 🧹 Chores
+
+- sync lockfile [skip ci] (75b5533)
+
+---
 
 ## v2026.10.26-1456 (2026-10-26)
 

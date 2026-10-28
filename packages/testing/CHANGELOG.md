@@ -1,5 +1,15 @@
 # Changelog
 
+<!-- rman:documented-up-to d5bd3cc3d819a178b2be0f56d71910f807b30981 -->
+
+## @syncbridge/testing@2.1.0 (2026-10-27)
+
+### ✨ Features
+
+- **common:** a component slot of one of several kinds - @UseComponent({ oneOf: [HL7Client, HL7Server], required: true }), each a class or its uri; its metadata's oneOf, interfaceUri the first for what reads that alone; a class of any of them taken, another refused naming them all; slotInterfaces and slotTakes tell it. testing asks which one a test means (5376d24)
+
+---
+
 ## @syncbridge/testing@2.0.0 (2026-10-19)
 
 ### ✨ Features

@@ -1,6 +1,16 @@
 # Changelog
 
-<!-- rman:documented-up-to 26bada1e777b729b4ba1454f070e157df1675d6f -->
+<!-- rman:documented-up-to d5bd3cc3d819a178b2be0f56d71910f807b30981 -->
+
+## @syncbridge/common@2.4.0 (2026-10-27)
+
+### ✨ Features
+
+- **common,syncbuild:** documents shared by modules - a module's sidebar.json lists documents beyond its directory ("../shared/setup.md"), their languages with them; taken by a module they are its, not the package's own; a shared README.md listed is the page of a module with none of its own, one at most (fd40c84)
+- **common:** a profile records the versions its values were written with - writtenWith on a profile (its app's) and on each of its components, kept through decoding and encoding; the engine's to set on every save, what a migration starts from (5340285)
+- **common:** a component slot of one of several kinds - @UseComponent({ oneOf: [HL7Client, HL7Server], required: true }), each a class or its uri; its metadata's oneOf, interfaceUri the first for what reads that alone; a class of any of them taken, another refused naming them all; slotInterfaces and slotTakes tell it. testing asks which one a test means (5376d24)
+
+---
 
 ## @syncbridge/common@2.3.1 (2026-10-26)
 
