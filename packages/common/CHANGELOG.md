@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 64942ccafb990a1ec5eb4403c0dc727cdf6fc435 -->
+<!-- rman:documented-up-to b83964b6a4d6df34aad20e6256fa2fa8322760d6 -->
+
+## @syncbridge/common@2.9.0 (2026-10-28)
+
+### ✨ Features
+
+- translations kept out of the code - locales/<language>.json at a package's root, by class name and settings by their dotted path, taken into the manifest as it is built: each name, description and summary of an app, a component or a plugin (its title), each label and description of their settings, becomes text by language, the code's text in the package's own language; a file not of a language, a class or a setting the package has not, a text not text refuse the build, what a language lacks is told; locales/ is not packed. common: an element's displayName and description, a plugin's title and description, are LocalizedText - a text alone is in the package's own language - ExtensionBase.displayName still English, displayNameIn(language) the reader's (a994fcc)
+
+---
 
 ## @syncbridge/common@2.8.0 (2026-10-28)
 
