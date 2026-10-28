@@ -541,7 +541,7 @@ export class PackComponent extends ComponentBase {
     ).rejects.toThrow(/PackComponent's port label is told in "english"/);
   });
 
-  it("should take locales/ into the manifest - its classes' texts by language, those of its settings down groups - and pack no locales/", async () => {
+  it("should take locales/ into the manifest - its classes' texts by language, those of its settings down groups - and pack them for the packages built on it", async () => {
     write(
       path.join(pkgDir, 'src', 'pack.component.ts'),
       `import { Component, ComponentBase, DefineVariable } from '@syncbridge/common';
@@ -630,11 +630,133 @@ export class PackComponent extends ComponentBase {
       en: 'Certificate',
       tr: 'Sertifika',
     });
-    expect(fs.existsSync(path.join(pkgDir, 'dist', 'locales'))).toBe(false);
+    expect(
+      JSON.parse(
+        fs.readFileSync(
+          path.join(pkgDir, 'dist', 'locales', 'pt-BR.json'),
+          'utf8',
+        ),
+      ),
+    ).toEqual({ PackComponent: { displayName: 'Cliente de empacotamento' } });
     expect(logged.join('\n')).toMatch(
       /locales\/pt-BR\.json lacks 6 texts, shown in en meanwhile: PackComponent description, PackComponent summary, PackComponent's port label/,
     );
     expect(logged.join('\n')).not.toMatch(/locales\/tr\.json lacks/);
+  });
+
+  it("should take the texts a class extends - its base's, a class of settings' for a group - its own over them, and pack them taken in", async () => {
+    write(
+      path.join(pkgDir, 'src', 'pack.component.ts'),
+      `import { Component, ComponentBase, DefineVariable } from '@syncbridge/common';
+
+export class ChannelVars {
+  @DefineVariable({ label: 'Code' })
+  declare code: string;
+
+  @DefineVariable({ label: 'Unit' })
+  declare unit: string;
+}
+
+class BaseVars {
+  @DefineVariable({ label: 'Port' })
+  declare port: number;
+}
+
+@Component({ className: 'PackBase', abstract: true, description: 'Base.' })
+export class PackBase extends ComponentBase {
+  @Component.UseVariables(BaseVars)
+  declare values: BaseVars;
+}
+
+class PackVars extends BaseVars {
+  @DefineVariable({ label: 'Channels', variables: ChannelVars })
+  declare channels: ChannelVars;
+}
+
+@Component({ className: 'PackComponent', displayName: 'Pack client' })
+export class PackComponent extends PackBase {
+  @Component.UseVariables(PackVars)
+  declare values: PackVars;
+}
+`,
+    );
+    write(
+      path.join(pkgDir, 'src', 'common.d.ts'),
+      `declare module '@syncbridge/common' {
+  export const Component: any;
+  export const DefineVariable: any;
+  export class ComponentBase { constructor(...args: any[]); }
+}`,
+    );
+    write(path.join(pkgDir, 'locales', 'tr.json'), {
+      PackBase: {
+        displayName: 'Temel',
+        description: 'Temel.',
+        variables: { port: { label: 'Bağlantı noktası' } },
+      },
+      ChannelVars: {
+        variables: { code: { label: 'Kod' }, unit: { label: 'Birim' } },
+      },
+      PackComponent: {
+        '@extends': 'PackBase',
+        displayName: 'Paketleme istemcisi',
+        variables: {
+          channels: { '@extends': 'ChannelVars', label: 'Kanallar' },
+          'channels.unit': { label: 'Ölçü birimi' },
+        },
+      },
+    });
+    const logged: string[] = [];
+    await packPackage({
+      packageDir: pkgDir,
+      outDir: 'dist',
+      pack: false,
+      logger: m => logged.push(m),
+    });
+    const out = path.join(pkgDir, 'dist');
+    const [component] = JSON.parse(
+      fs.readFileSync(path.join(out, 'syncbridge-manifest.json'), 'utf8'),
+    ).components;
+    /* Its name its own; its description, as in its code, its base's */
+    expect(component.displayName).toEqual({
+      en: 'Pack client',
+      tr: 'Paketleme istemcisi',
+    });
+    expect(component.description).toEqual({ en: 'Base.', tr: 'Temel.' });
+    expect(component.variables.port.label).toEqual({
+      en: 'Port',
+      tr: 'Bağlantı noktası',
+    });
+    expect(component.variables.channels.label).toEqual({
+      en: 'Channels',
+      tr: 'Kanallar',
+    });
+    expect(component.variables.channels.variables.code.label).toEqual({
+      en: 'Code',
+      tr: 'Kod',
+    });
+    expect(component.variables.channels.variables.unit.label).toEqual({
+      en: 'Unit',
+      tr: 'Ölçü birimi',
+    });
+    expect(logged.join('\n')).not.toMatch(/locales\/tr\.json lacks/);
+    /* Packed taken in: what a package built on it reads */
+    const packed = JSON.parse(
+      fs.readFileSync(path.join(out, 'locales', 'tr.json'), 'utf8'),
+    );
+    expect(packed.PackComponent).toEqual({
+      description: 'Temel.',
+      displayName: 'Paketleme istemcisi',
+      variables: {
+        port: { label: 'Bağlantı noktası' },
+        'channels.code': { label: 'Kod' },
+        'channels.unit': { label: 'Ölçü birimi' },
+        channels: { label: 'Kanallar' },
+      },
+    });
+    expect(packed.ChannelVars).toEqual({
+      variables: { code: { label: 'Kod' }, unit: { label: 'Birim' } },
+    });
   });
 
   it('should refuse locales/ naming what the package has not, all told at once', async () => {

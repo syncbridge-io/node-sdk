@@ -28,7 +28,7 @@ import { gfm } from 'micromark-extension-gfm';
 import { visit } from 'unist-util-visit';
 import * as yaml from 'yaml';
 import type { Context } from '../context.js';
-import { packLocales } from './pack-locales.js';
+import { LOCALES_DIR, packLocales } from './pack-locales.js';
 
 /** A link's scheme, when it has one: it leaves the package */
 const SCHEME = /^([a-zA-Z][a-zA-Z0-9+.-]*):/;
@@ -211,7 +211,10 @@ export function packDocs(context: Context) {
   }
 
   /* The texts of locales/ taken in: each by language from now on */
-  errors.push(...packLocales(context.packageDir, manifest, language, warn));
+  const locales = packLocales(context.packageDir, manifest, language, warn, {
+    bases: context.localeBases,
+  });
+  errors.push(...locales.errors);
 
   /* How each app and component is found in the Marketplace: checked, and
    * kept as the registry takes it - its summary by language, its
@@ -257,6 +260,13 @@ export function packDocs(context: Context) {
         errors.join('\n  - '),
     );
 
+  /* locales/ as taken in - each "@extends" in it - for the packages
+   * built on this one's classes */
+  for (const [lang, texts] of Object.entries(locales.files)) {
+    const target = path.join(context.tmpDir, LOCALES_DIR, `${lang}.json`);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, JSON.stringify(texts, null, 2));
+  }
   for (const file of [...docs.keys(), ...sidebars.keys()]) {
     const target = path.join(context.tmpDir, file);
     fs.mkdirSync(path.dirname(target), { recursive: true });

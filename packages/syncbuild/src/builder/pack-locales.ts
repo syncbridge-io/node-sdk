@@ -1,7 +1,13 @@
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { isDocsLanguage, type LocalizedText } from '@syncbridge/common';
+import {
+  isDocsLanguage,
+  type LocalizedText,
+  toSbextName,
+} from '@syncbridge/common';
 import * as jsonc from 'jsonc-parser';
+import { findWorkspacePackage } from '../workspace.js';
 
 /*
  * A package's texts in other languages, kept out of its code: locales/
@@ -14,16 +20,34 @@ import * as jsonc from 'jsonc-parser';
  * taken into its manifest as it is packed: each text its code tells - in
  * the package's own language - becomes text by language, the others' added
  * ({ en: 'HL7 Client', tr: 'HL7 İstemcisi' }). A plugin's name is its
- * `title`. locales/ itself is not packed: the manifest has it all.
+ * `title`.
+ *
+ * A class built on another's - a base class, a class of settings - takes
+ * its texts with "@extends": "<ClassName>", or "@vendor/name:<ClassName>"
+ * for one of a registry dependency, as a class or as a group of settings:
+ *
+ *   { "GeDashApp": { "@extends": "@abisena/iomt-common:IomtBaseApp",
+ *     "variables": { "channels": { "@extends":
+ *     "@abisena/iomt-common:TestConfigurationVariables" } } } }
+ *
+ * The base's texts first - all but its name - then its own over them. So a
+ * file may tell the texts of what the package exports for others to build
+ * on: its abstract classes, its classes of settings. locales/ is packed
+ * with each "@extends" taken in, for the packages built on it.
  */
 
 /** Where a package's translations are */
 export const LOCALES_DIR = 'locales';
 
+/** What a class takes its texts from */
+const EXTENDS = '@extends';
+
 /** The texts of an element a locale file tells */
 const ELEMENT_TEXTS = ['displayName', 'description', 'summary'] as const;
 const PLUGIN_TEXTS = ['title', 'description'] as const;
 const VARIABLE_TEXTS = ['label', 'description'] as const;
+/** What a class built on another does not take of it: its own name */
+const NOT_INHERITED = ['displayName', 'title'];
 
 interface Element {
   className: string;
@@ -36,13 +60,46 @@ interface Manifest {
   apps?: Element[];
   components?: Element[];
   plugins?: Element[];
+  dependencies?: Record<string, string>;
+}
+
+/** A class's texts in one language, its "@extends" taken in */
+interface Texts {
+  fields: Record<string, string>;
+  /** By the settings' dotted paths */
+  variables: Record<string, Record<string, string>>;
+}
+
+export interface PackLocalesOptions {
+  /**
+   * What the package exports that is not in its manifest, by class name:
+   * its abstract apps and components, its classes of settings - a file
+   * may tell their texts, for the classes built on them
+   */
+  bases?: Map<string, LocaleBase>;
+  /** Where a registry dependency is, to read its locales/; else found */
+  dependencyDir?: (name: string) => string | undefined;
+}
+
+/** A class a file may tell the texts of, not in the manifest */
+export interface LocaleBase {
+  /** An abstract app or component, or a class of settings alone */
+  kind: 'class' | 'variables';
+  variables?: Record<string, any>;
+}
+
+export interface PackedLocales {
+  errors: string[];
+  /** Each language's file as packed: by class, "@extends" taken in */
+  files: Record<string, Record<string, any>>;
 }
 
 /**
  * Takes the package's locales/ into its manifest's apps, components and
  * plugins. What is wrong - a file not of a language, a class or a setting
- * the package has not, a text not text - told as errors; what a language
- * lacks of what the code tells, as one warning a language.
+ * the package has not, a text not text, an "@extends" not found - told as
+ * errors; what a language lacks of what the code tells, as one warning a
+ * language.
  */
 export function packLocales(
   packageDir: string,
@@ -50,15 +107,20 @@ export function packLocales(
   /** The package's own language: what its code tells is in */
   language: string,
   warn: (message: string) => void,
-): string[] {
+  options?: PackLocalesOptions,
+): PackedLocales {
   const dir = path.join(packageDir, LOCALES_DIR);
-  if (!fs.existsSync(dir)) return [];
-  const errors: string[] = [];
+  const packed: PackedLocales = { errors: [], files: {} };
+  if (!fs.existsSync(dir)) return packed;
+  const { errors } = packed;
   const elements = new Map<string, { element: Element; plugin: boolean }>();
   for (const e of [...(manifest.apps ?? []), ...(manifest.components ?? [])])
     elements.set(e.className, { element: e, plugin: false });
   for (const p of manifest.plugins ?? [])
     elements.set(p.className, { element: p, plugin: true });
+  const bases = options?.bases ?? new Map();
+  const dependencyDir =
+    options?.dependencyDir ?? (name => registryPackageDir(name, packageDir));
 
   const files = fs
     .readdirSync(dir)
@@ -79,19 +141,24 @@ export function packLocales(
       );
       continue;
     }
-    const parseErrors: jsonc.ParseError[] = [];
-    const texts = jsonc.parse(
-      fs.readFileSync(path.join(dir, file), 'utf8'),
-      parseErrors,
-    );
-    if (parseErrors.length || !isMap(texts)) {
+    const texts = readLocale(path.join(dir, file));
+    if (!texts) {
       errors.push(`${at} is not a JSON object, by class name`);
       continue;
     }
+    const resolver = new Resolver(
+      lang,
+      texts,
+      dependencyDir,
+      manifest,
+      className => elements.has(className) || bases.has(className),
+    );
+    const out: Record<string, any> = {};
     const missing: string[] = [];
     for (const [className, told] of Object.entries(texts)) {
       const found = elements.get(className);
-      if (!found) {
+      const base = bases.get(className);
+      if (!found && !base) {
         errors.push(`${at}: "${className}" is not a class of the package`);
         continue;
       }
@@ -99,58 +166,86 @@ export function packLocales(
         errors.push(`${at}: ${className}'s texts are an object`);
         continue;
       }
-      const { element, plugin } = found;
-      const fields: readonly string[] = plugin ? PLUGIN_TEXTS : ELEMENT_TEXTS;
+      const plugin = !!found?.plugin;
+      /* A class of settings has its settings' texts alone */
+      const fields: readonly string[] = plugin
+        ? PLUGIN_TEXTS
+        : base?.kind === 'variables'
+          ? []
+          : ELEMENT_TEXTS;
+      const variables = found
+        ? plugin
+          ? found.element.settings
+          : found.element.variables
+        : base!.variables;
+      /* Its own: checked against the class */
       for (const [key, value] of Object.entries(told)) {
-        if (key === 'variables') continue;
+        if (key === 'variables' || key === EXTENDS) continue;
         if (!fields.includes(key)) {
           errors.push(
-            `${at}: ${className}'s "${key}" is not a text of it: ${fields.join(', ')}, variables`,
+            `${at}: ${className}'s "${key}" is not a text of it: ${[...fields, 'variables', EXTENDS].join(', ')}`,
           );
           continue;
         }
-        if (!isText(value)) {
+        if (!isText(value))
           errors.push(`${at}: ${className}'s ${key} is empty, or not text`);
-          continue;
-        }
-        element[key] = withLanguage(element[key], language, lang, value);
       }
-      if (told.variables !== undefined) {
-        if (!isMap(told.variables)) {
-          errors.push(
-            `${at}: ${className}'s variables are an object, by setting`,
-          );
+      if (told[EXTENDS] !== undefined && !isText(told[EXTENDS]))
+        errors.push(`${at}: ${className}'s ${EXTENDS} names no class`);
+      if (told.variables !== undefined && !isMap(told.variables)) {
+        errors.push(
+          `${at}: ${className}'s variables are an object, by setting`,
+        );
+        continue;
+      }
+      for (const [setting, vt] of Object.entries<any>(told.variables ?? {})) {
+        if (!variableAt(variables, setting)) {
+          errors.push(`${at}: ${className} has no setting "${setting}"`);
           continue;
         }
-        const variables = plugin ? element.settings : element.variables;
-        for (const [setting, vt] of Object.entries(told.variables)) {
-          const variable = variableAt(variables, setting);
-          if (!variable) {
-            errors.push(`${at}: ${className} has no setting "${setting}"`);
-            continue;
-          }
-          if (!isMap(vt)) {
-            errors.push(`${at}: ${className}'s ${setting} texts are an object`);
-            continue;
-          }
-          for (const [key, value] of Object.entries(vt)) {
-            if (!(VARIABLE_TEXTS as readonly string[]).includes(key)) {
-              errors.push(
-                `${at}: ${className}'s ${setting} "${key}" is not a text of it: label, description`,
-              );
-              continue;
-            }
-            if (!isText(value)) {
-              errors.push(
-                `${at}: ${className}'s ${setting} ${key} is empty, or not text`,
-              );
-              continue;
-            }
-            variable[key] = withLanguage(variable[key], language, lang, value);
-          }
+        if (!isMap(vt)) {
+          errors.push(`${at}: ${className}'s ${setting} texts are an object`);
+          continue;
         }
+        for (const [key, value] of Object.entries(vt)) {
+          if (key === EXTENDS) {
+            if (!isText(value))
+              errors.push(
+                `${at}: ${className}'s ${setting} ${EXTENDS} names no class`,
+              );
+            continue;
+          }
+          if (!(VARIABLE_TEXTS as readonly string[]).includes(key)) {
+            errors.push(
+              `${at}: ${className}'s ${setting} "${key}" is not a text of it: label, description, ${EXTENDS}`,
+            );
+            continue;
+          }
+          if (!isText(value))
+            errors.push(
+              `${at}: ${className}'s ${setting} ${key} is empty, or not text`,
+            );
+        }
+      }
+
+      /* With what it extends: the base's first, its own over them */
+      const resolved = resolver.resolve('', className);
+      errors.push(...resolver.errors.splice(0).map(e => `${at}: ${e}`));
+      out[className] = packedTexts(resolved);
+      if (!found) continue;
+      const { element } = found;
+      for (const [key, value] of Object.entries(resolved.fields))
+        if (fields.includes(key))
+          element[key] = withLanguage(element[key], language, lang, value);
+      /* What a base tells of a setting the class has not: left */
+      for (const [setting, vt] of Object.entries(resolved.variables)) {
+        const variable = variableAt(variables, setting);
+        if (!variable) continue;
+        for (const [key, value] of Object.entries(vt))
+          variable[key] = withLanguage(variable[key], language, lang, value);
       }
     }
+    packed.files[lang] = out;
     /* What the code tells that this language has not */
     for (const [className, { element, plugin }] of elements) {
       const fields = plugin ? PLUGIN_TEXTS : ELEMENT_TEXTS;
@@ -168,7 +263,150 @@ export function packLocales(
           (missing.length > 8 ? `, and ${missing.length - 8} more` : ''),
       );
   }
-  return errors;
+  return packed;
+}
+
+/**
+ * The texts of classes in one language, their "@extends" taken in: of
+ * the package's own file, and of its registry dependencies' locales/ -
+ * each read once
+ */
+class Resolver {
+  readonly errors: string[] = [];
+  private readonly _files = new Map<string, Record<string, any> | undefined>();
+  private readonly _done = new Map<string, Texts>();
+
+  constructor(
+    private readonly _lang: string,
+    own: Record<string, any>,
+    private readonly _dependencyDir: (name: string) => string | undefined,
+    private readonly _manifest: Manifest,
+    /** A class of the package: one with no texts in the file is no error */
+    private readonly _known: (className: string) => boolean,
+  ) {
+    this._files.set('', own);
+  }
+
+  /** A class's texts: of the package (''), or of a registry dependency */
+  resolve(pkg: string, className: string, stack: string[] = []): Texts {
+    const key = `${pkg}:${className}`;
+    const done = this._done.get(key);
+    if (done) return done;
+    const out: Texts = { fields: {}, variables: {} };
+    if (stack.includes(key)) {
+      this.errors.push(
+        `${EXTENDS} goes round: ${[...stack, key].map(k => k.replace(/^:/, '')).join(' -> ')}`,
+      );
+      return out;
+    }
+    const told = this._fileOf(pkg)?.[className];
+    if (!isMap(told)) {
+      if (pkg === '' && stack.length && !this._known(className))
+        this.errors.push(
+          `${EXTENDS} "${className}": not a class of the package`,
+        );
+      return out;
+    }
+    const inner = [...stack, key];
+    if (isText(told[EXTENDS])) {
+      const base = this._ref(told[EXTENDS], pkg, inner);
+      for (const [k, v] of Object.entries(base.fields))
+        if (!NOT_INHERITED.includes(k)) out.fields[k] = v;
+      Object.assign(out.variables, base.variables);
+    }
+    for (const [k, v] of Object.entries(told))
+      if (k !== 'variables' && k !== EXTENDS && isText(v)) out.fields[k] = v;
+    for (const [setting, vt] of Object.entries<any>(
+      isMap(told.variables) ? told.variables : {},
+    )) {
+      if (!isMap(vt)) continue;
+      /* A group of settings: its settings' texts those of the class named */
+      if (isText(vt[EXTENDS])) {
+        const group = this._ref(vt[EXTENDS], pkg, inner);
+        for (const [p, t] of Object.entries(group.variables))
+          out.variables[`${setting}.${p}`] = {
+            ...out.variables[`${setting}.${p}`],
+            ...t,
+          };
+      }
+      for (const [k, v] of Object.entries(vt))
+        if (k !== EXTENDS && isText(v)) (out.variables[setting] ??= {})[k] = v;
+    }
+    this._done.set(key, out);
+    return out;
+  }
+
+  /** "Name" of the package `pkg`, or "@vendor/name:Name" of another */
+  private _ref(ref: string, pkg: string, stack: string[]): Texts {
+    const at = ref.lastIndexOf(':');
+    if (at < 0) return this.resolve(pkg, ref, stack);
+    const name = ref.slice(0, at);
+    const className = ref.slice(at + 1);
+    if (pkg === '' && !this._manifest.dependencies?.[name]) {
+      this.errors.push(
+        `${EXTENDS} "${ref}": ${name} is not among the package's registry dependencies`,
+      );
+      return { fields: {}, variables: {} };
+    }
+    return this.resolve(name, className, stack);
+  }
+
+  private _fileOf(pkg: string): Record<string, any> | undefined {
+    if (this._files.has(pkg)) return this._files.get(pkg);
+    const dir = this._dependencyDir(pkg);
+    let texts: Record<string, any> | undefined;
+    if (!dir)
+      this.errors.push(
+        `${EXTENDS}: ${pkg} is not installed - its texts cannot be read`,
+      );
+    else
+      for (const d of [dir, path.join(dir, 'build')]) {
+        const file = path.join(d, LOCALES_DIR, `${this._lang}.json`);
+        if (fs.existsSync(file)) {
+          texts = readLocale(file);
+          break;
+        }
+      }
+    this._files.set(pkg, texts);
+    return texts;
+  }
+}
+
+/** A class's texts as packed: "@extends" taken in, settings by path */
+function packedTexts(texts: Texts): Record<string, any> {
+  return {
+    ...texts.fields,
+    ...(Object.keys(texts.variables).length
+      ? { variables: texts.variables }
+      : {}),
+  };
+}
+
+/**
+ * Where a registry dependency is, as the package's build finds it: a
+ * package of the workspace, its sources; else installed - as the npm
+ * mirror publishes it, or by its own name
+ */
+export function registryPackageDir(
+  name: string,
+  fromDir: string,
+): string | undefined {
+  const workspace = findWorkspacePackage(name, fromDir);
+  if (workspace) return workspace.dir;
+  const require = createRequire(path.join(fromDir, 'package.json'));
+  for (const n of [toSbextName(name), name]) {
+    try {
+      return path.dirname(require.resolve(`${n}/package.json`));
+    } catch {
+      /* Not by this name */
+    }
+  }
+}
+
+function readLocale(file: string): Record<string, any> | undefined {
+  const parseErrors: jsonc.ParseError[] = [];
+  const texts = jsonc.parse(fs.readFileSync(file, 'utf8'), parseErrors);
+  return parseErrors.length || !isMap(texts) ? undefined : texts;
 }
 
 const isMap = (v: unknown): v is Record<string, any> =>
