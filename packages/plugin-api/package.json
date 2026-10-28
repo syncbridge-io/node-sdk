@@ -1,6 +1,6 @@
 {
   "name": "@syncbridge/plugin-api",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "The API SyncBridge plugins are written against",
   "author": "Panates Inc",
   "license": "MIT",
