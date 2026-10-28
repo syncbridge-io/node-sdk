@@ -27,10 +27,18 @@ import {
 import { getModelsDocument } from '../models-document.js';
 import { secretDecryptor, secretEncryptor } from './encrypt-helpers.js';
 import { materializeMetadataSilent } from './materialize-metadata.js';
+import { hasValueRef } from './value-refs.js';
 
 export interface CodecOptions {
   setDefaultValues?: boolean;
   cryptoSecretKey?: string;
+  /**
+   * The profile's references not resolved yet (`${{ vars.NAME }}`, see
+   * value-refs): a value holding one is kept as written, unchecked, of
+   * whatever type its variable is - checked once resolved. A profile
+   * edited or stored; never one a worker runs with.
+   */
+  unresolved?: boolean;
 }
 
 /**
@@ -319,6 +327,16 @@ function _codecValues(
     for (const [k, defVariable] of Object.entries(defs)) {
       stackExecutor.execute(k, () => {
         if (defVariable == null) return;
+        /* A reference not resolved yet: kept as written */
+        const given = oldVals?.[k];
+        if (
+          options?.unresolved &&
+          (hasValueRef(given) ||
+            (Array.isArray(given) && given.some(hasValueRef)))
+        ) {
+          target[k] = given;
+          return;
+        }
         let valueFn: Validator = isAny;
         /* If variable is ignored and no default value is set, field should be undefined  */
         if (defVariable.ignored && defVariable.default === undefined) {
