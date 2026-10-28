@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to d5bd3cc3d819a178b2be0f56d71910f807b30981 -->
+<!-- rman:documented-up-to a3064a01fa5063924bf611a5c89b4ea83f49ba2a -->
+
+## @syncbridge/runtime@2.3.1 (2026-10-28)
+
+### 🐛 Bug Fixes
+
+- **runtime:** a worker whose common is older than 2.10 loads again - runProfileMigrations taken as a migration is asked, not imported with the worker: its module's imports of @syncbridge/common resolve to the host's, the package's own, and an older one has it not (spm verify failed at once for every package on common 2.3); one asked to migrate on an older common is told so (2b90d8b)
+
+---
 
 ## @syncbridge/runtime@2.2.0 (2026-10-27)
 

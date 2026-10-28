@@ -1,4 +1,4 @@
-export const version = '2.10.0';
+export const version = '2.11.0';
 
 export const CLASS_METADATA = Symbol.for('CLASS_METADATA');
 export const CLASS_TYPE = Symbol.for('CLASS_TYPE');
