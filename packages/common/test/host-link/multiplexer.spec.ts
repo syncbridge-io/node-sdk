@@ -225,28 +225,38 @@ describe('summarizeWorkers', () => {
 });
 
 describe('summarizeUsage', () => {
-  it("should count each version's workers, an installed one none taking as 0, and tell the plugins running", async () => {
+  it("should count each registry version's workers, 0 for none, mark one whose plugin runs, and leave out what is not from the registry", async () => {
     const { summarizeUsage } = await import('../../src/index.js');
     expect(
       summarizeUsage({
         installed: {
           '@acme/hl7': ['2.1.0', '2.0.3'],
-          '@acme/net': ['1.4.2'],
+          '@acme/oracle-client': ['1.0.0'],
         },
         workers: [
-          { '@acme/hl7': '2.1.0', '@acme/net': '1.4.2' },
-          { '@acme/hl7': '2.1.0' },
-          { '@acme/sqb': '3.0.1' },
+          { '@acme/hl7': '2.1.0', '@syncbridge/builtins': '1.0.0' },
+          { '@acme/hl7': '2.1.0', '@acme/local': '0.1.0' },
         ],
-        plugins: [{ package: '@acme/oracle-client', version: '1.0.0' }],
+        plugins: [
+          { package: '@acme/oracle-client', version: '1.0.0' },
+          { package: '@demo/plugin', version: '1.0.0' },
+        ],
       }),
     ).toEqual({
       packages: {
-        '@acme/hl7': { '2.1.0': 2, '2.0.3': 0 },
-        '@acme/net': { '1.4.2': 1 },
-        '@acme/sqb': { '3.0.1': 1 },
+        '@acme/hl7': { '2.1.0': { workers: 2 }, '2.0.3': { workers: 0 } },
+        '@acme/oracle-client': { '1.0.0': { workers: 0, plugin: true } },
       },
-      plugins: { '@acme/oracle-client': '1.0.0' },
     });
+  });
+
+  it('should tell no more than MAX_USAGE_VERSIONS versions', async () => {
+    const { summarizeUsage, MAX_USAGE_VERSIONS } =
+      await import('../../src/index.js');
+    const installed: Record<string, string[]> = {};
+    for (let i = 0; i < MAX_USAGE_VERSIONS + 5; i++)
+      installed[`@acme/p${i}`] = ['1.0.0'];
+    const { packages } = summarizeUsage({ installed, workers: [] });
+    expect(Object.keys(packages).length).toBe(MAX_USAGE_VERSIONS);
   });
 });
