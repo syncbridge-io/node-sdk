@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to f419df37de9d1708b3a0f11a878c0bcbb6423105 -->
+<!-- rman:documented-up-to eda69a6a6c7583143b885e73c1f90784ad05ddf5 -->
+
+## @syncbridge/syncbuild@2.12.1 (2026-10-29)
+
+### 🐛 Bug Fixes
+
+- **syncbuild:** a text of what a class extends taken only where the class's code tells it - a slot or a setting redeclared without it no more gets the translation alone, none in the package's own language; what is left out told as one warning a language. A text the file tells of the class itself taken as before (a133696)
+
+---
 
 ## @syncbridge/syncbuild@2.12.0 (2026-10-29)
 
