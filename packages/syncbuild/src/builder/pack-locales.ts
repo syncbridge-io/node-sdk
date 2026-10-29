@@ -168,6 +168,8 @@ export function packLocales(
     );
     const out: Record<string, any> = {};
     const missing: string[] = [];
+    /* A base's text where the class's code tells none: not taken */
+    const leftOut: string[] = [];
     for (const [className, told] of Object.entries(texts)) {
       const found = elements.get(className);
       const base = bases.get(className);
@@ -288,24 +290,57 @@ export function packLocales(
       out[className] = packedTexts(resolved);
       if (!found) continue;
       const { element } = found;
+      /*
+       * A text the file tells of the class itself: taken, the code telling
+       * it or not. One of what it extends: only where the code tells it -
+       * else a text in this language alone, none in the package's own
+       */
+      const take = (
+        target: Record<string, any>,
+        key: string,
+        value: string,
+        own: unknown,
+        what: string,
+      ) => {
+        if (isText(own) || target[key] !== undefined)
+          target[key] = withLanguage(target[key], language, lang, value);
+        else leftOut.push(`${className}${what} ${key}`);
+      };
       for (const [key, value] of Object.entries(resolved.fields))
-        if (fields.includes(key))
-          element[key] = withLanguage(element[key], language, lang, value);
+        if (fields.includes(key)) take(element, key, value, told[key], '');
       /* What a base tells of a setting the class has not: left */
       for (const [setting, vt] of Object.entries(resolved.variables)) {
         const variable = variableAt(variables, setting);
         if (!variable) continue;
         for (const [key, value] of Object.entries(vt))
-          variable[key] = withLanguage(variable[key], language, lang, value);
+          take(
+            variable,
+            key,
+            value,
+            told.variables?.[setting]?.[key],
+            `'s ${setting}`,
+          );
       }
       /* Likewise a slot */
       for (const [slotPath, st] of Object.entries(resolved.components)) {
         const slot = slotAt(slots, slotPath);
         if (!slot) continue;
         for (const [key, value] of Object.entries(st))
-          slot[key] = withLanguage(slot[key], language, lang, value);
+          take(
+            slot,
+            key,
+            value,
+            told.components?.[slotPath]?.[key],
+            `'s ${slotPath} component`,
+          );
       }
     }
+    if (leftOut.length)
+      warn(
+        `${at}: ${leftOut.length} text${leftOut.length > 1 ? 's' : ''} of what a class extends left out, its code telling none in ${language}: ` +
+          leftOut.slice(0, 8).join(', ') +
+          (leftOut.length > 8 ? `, and ${leftOut.length - 8} more` : ''),
+      );
     packed.files[lang] = out;
     /* What the code tells that this language has not */
     for (const [className, { element, plugin }] of elements) {
@@ -494,7 +529,8 @@ const isText = (v: unknown): v is string => typeof v === 'string' && !!v.trim();
 
 /**
  * A text with another language's added: a text alone is in the package's
- * own language. None told by the code: the translation alone.
+ * own language. None told by the code: the translation alone - a text the
+ * file tells of the class itself, not one of what it extends.
  */
 function withLanguage(
   text: LocalizedText | undefined,
