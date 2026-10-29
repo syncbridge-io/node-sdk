@@ -1,6 +1,15 @@
 # Changelog
 
-<!-- rman:documented-up-to f419df37de9d1708b3a0f11a878c0bcbb6423105 -->
+<!-- rman:documented-up-to 239bc436d2ecc615d83c0a71371323a38da41cd5 -->
+
+## @syncbridge/common@2.13.0 (2026-10-29)
+
+### ✨ Features
+
+- **common:** what of a host's packages is in use, counted alone - HostStatusMessage tells usage: each installed version of each package and how many workers take it (0 for none), and the plugins running by their package; summarizeUsage counts it. No worker named, nothing of their configurations: a package's statistics, for its publisher in Console (a2d42fe)
+- **common:** a host's usage told as Console takes it - one map, a package's registry name then its version, each { workers, plugin? }; what did not come from the registry left out (SyncBridge's own modules, local, linked, a file installed); MAX_USAGE_VERSIONS (500) versions at most (edd0ff7)
+
+---
 
 ## @syncbridge/common@2.12.0 (2026-10-29)
 
