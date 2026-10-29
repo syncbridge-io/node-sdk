@@ -302,6 +302,20 @@ their dotted path:
 }
 ```
 
+An app's or a component's slots (`@UseComponent({ description })`) are
+told under `components`, a slot within one by its dotted path:
+
+```json
+{
+  "Hl7DeviceApp": {
+    "components": {
+      "hl7Client": { "description": "HL7 istemci bileşeni" },
+      "hl7Server.tls": { "description": "TLS" }
+    }
+  }
+}
+```
+
 A plugin's name is its `title`. Building takes them into the manifest:
 each text becomes text by language (`{ "en": "HL7 Client", "tr": "HL7
 İstemcisi" }`). A file not of a language, a class or a setting the

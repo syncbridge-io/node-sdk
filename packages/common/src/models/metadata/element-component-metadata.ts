@@ -1,4 +1,5 @@
 import { ApiField, ArrayType, ComplexType } from '@opra/common';
+import type { LocalizedText } from '../../registry/localized-text.js';
 import { LogChannelMetadataRecord } from './log-channel-metadata.js';
 import { VariableMetadataRecord } from './variable-metadata.js';
 
@@ -62,9 +63,11 @@ export class ElementComponentMetadata {
 
   @ApiField({
     label: 'Description',
-    description: 'Description of the component',
+    description:
+      "What the slot is for: text, or text by language ({ en: '...', tr: '...' }) - shown in the reader's language; spm takes the package's locales/ into it",
+    type: 'any',
   })
-  declare description?: string;
+  declare description?: LocalizedText;
 
   @ApiField({
     label: 'Required',
