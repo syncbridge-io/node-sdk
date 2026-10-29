@@ -54,6 +54,29 @@ export interface HostWorkerSummary {
   notices: HostWorker[];
 }
 
+/** How a package version is used on a host */
+export interface HostPackageUsage {
+  /** How many workers take it: its app, or one of its components */
+  workers: number;
+  /** One of its plugins runs */
+  plugin?: true;
+}
+
+/**
+ * What of the packages a host installed from the registry is in use,
+ * counted alone - no worker named, nothing of their configurations: what
+ * Console's statistics of a package's versions are made of, shown to its
+ * publisher. What did not come from the registry - SyncBridge's own
+ * modules, a local or linked one, a file installed - is left out.
+ */
+export interface HostUsage {
+  /** By the package's registry name ("@scope/name"), then its version */
+  packages: Record<string, Record<string, HostPackageUsage>>;
+}
+
+/** The package versions a host tells at most: Console takes no more */
+export const MAX_USAGE_VERSIONS = 500;
+
 /** What a host tells of itself: sent when it connects, and as it changes */
 export interface HostStatusMessage {
   type: 'status';
@@ -62,6 +85,42 @@ export interface HostStatusMessage {
   /** When SyncBridge started, ISO */
   startTime: string;
   workers: HostWorkerSummary;
+  /** Its packages in use: none from a host older than common 2.13 */
+  usage?: HostUsage;
+}
+
+/**
+ * A host's usage counted: each version it installed from the registry, how
+ * many workers take it - one worker counted once a package - and whether
+ * one of its plugins runs. What a worker or a plugin takes that is not
+ * among them is not counted; past MAX_USAGE_VERSIONS versions, none more.
+ */
+export function summarizeUsage(args: {
+  /** Each package installed from the registry: its versions */
+  installed: Record<string, string[]>;
+  /** Each worker: the version of each package it takes */
+  workers: Iterable<Record<string, string>>;
+  /** The plugins running: their package's name and version */
+  plugins?: Iterable<{ package: string; version: string }>;
+}): HostUsage {
+  const packages: HostUsage['packages'] = {};
+  let count = 0;
+  for (const [name, versions] of Object.entries(args.installed))
+    for (const version of versions) {
+      if (count >= MAX_USAGE_VERSIONS) break;
+      (packages[name] ??= {})[version] = { workers: 0 };
+      count++;
+    }
+  for (const taken of args.workers)
+    for (const [name, version] of Object.entries(taken)) {
+      const usage = packages[name]?.[version];
+      if (usage) usage.workers++;
+    }
+  for (const p of args.plugins ?? []) {
+    const usage = packages[p.package]?.[p.version];
+    if (usage) usage.plugin = true;
+  }
+  return { packages };
 }
 
 /** The statuses of a worker needing a look */
