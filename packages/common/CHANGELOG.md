@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to a3064a01fa5063924bf611a5c89b4ea83f49ba2a -->
+<!-- rman:documented-up-to f419df37de9d1708b3a0f11a878c0bcbb6423105 -->
+
+## @syncbridge/common@2.12.0 (2026-10-29)
+
+### ✨ Features
+
+- a component slot's description told by language - common: ElementComponentMetadata.description is LocalizedText (a text alone in the package's own language), slotTextProblems checks one; syncbuild: locales/ tells a class's slots under "components", a slot within one by its dotted path, a base's taken through "@extends" as its other texts are, what a language lacks of them told, a slot the class has not refused (66655e6)
+
+---
 
 ## @syncbridge/common@2.11.0 (2026-10-28)
 
