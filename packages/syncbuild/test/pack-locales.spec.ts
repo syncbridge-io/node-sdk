@@ -214,6 +214,55 @@ describe("locales/ extending a registry dependency's classes", () => {
       });
     });
 
+    it("should not take a base's text where the class's code tells none - a slot or a setting redeclared without it - and tell it; one the file tells of the class itself, taken", () => {
+      write(path.join(depDir, 'locales', 'tr.json'), {
+        Hl7DeviceApp: {
+          description: 'HL7 cihazı.',
+          components: {
+            hl7Client: { description: 'HL7 istemci bileşeni.' },
+            hl7Server: { description: 'HL7 sunucu bileşeni.' },
+          },
+          variables: { host: { label: 'Sunucu', description: 'Adres.' } },
+        },
+      });
+      write(path.join(pkgDir, 'locales', 'tr.json'), {
+        Hl7App: {
+          '@extends': '@acme/common:Hl7DeviceApp',
+          displayName: 'HL7',
+          components: { 'hl7Server.tls': { description: 'TLS.' } },
+          variables: { port: { description: 'Port numarası.' } },
+        },
+      });
+      const m = slotted();
+      /* Redeclared without its description, as an older common left it */
+      delete m.apps[0].components.hl7Server.description;
+      m.apps[0].variables = {
+        host: { label: 'Host' },
+        port: { label: 'Port' },
+      };
+      const warnings: string[] = [];
+      const r = pack(m, warnings);
+      expect(r.errors).toEqual([]);
+      const [app] = m.apps;
+      expect(app.components.hl7Server.description).toBeUndefined();
+      expect(app.components.hl7Client.description).toEqual({
+        en: 'HL7 client component.',
+        tr: 'HL7 istemci bileşeni.',
+      });
+      expect(app.description).toBeUndefined();
+      expect(app.variables.host).toEqual({
+        label: { en: 'Host', tr: 'Sunucu' },
+      });
+      /* The file's own: the translation alone, as before */
+      expect(app.variables.port.description).toEqual({
+        tr: 'Port numarası.',
+      });
+      expect(warnings).toEqual([
+        "locales/tr.json: 3 texts of what a class extends left out, its code telling none in en: Hl7App description, Hl7App's host description, Hl7App's hl7Server component description",
+        "locales/tr.json lacks 1 text, shown in en meanwhile: Hl7App's port label",
+      ]);
+    });
+
     it('should tell what a slot lacks, and refuse one the class has not, or a text not of a slot', () => {
       write(path.join(pkgDir, 'locales', 'tr.json'), {
         Hl7App: {
