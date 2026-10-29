@@ -55,6 +55,31 @@ interface VariableTexts {
 }
 
 /**
+ * What is wrong with the descriptions of an app's or a component's slots,
+ * those of the slots within them too: each by its path ("ClassName's
+ * server.inner component description")
+ */
+export function slotTextProblems(
+  components: Record<string, any> | undefined,
+  owner: string,
+  at = '',
+): string[] {
+  const problems: string[] = [];
+  for (const [key, slot] of Object.entries(components ?? {})) {
+    if (!slot || typeof slot !== 'object') continue;
+    const path = at + key;
+    problems.push(
+      ...localizedTextProblems(
+        slot.description,
+        `${owner}'s ${path} component description`,
+      ),
+      ...slotTextProblems(slot.components, owner, `${path}.`),
+    );
+  }
+  return problems;
+}
+
+/**
  * What is wrong with the labels and descriptions of an app's, a
  * component's or a plugin's settings, those in groups too: each by its
  * path ("ClassName's tls.cert label")

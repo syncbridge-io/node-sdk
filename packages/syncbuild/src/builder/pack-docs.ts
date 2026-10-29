@@ -18,6 +18,7 @@ import {
   SIDEBAR_FILE,
   sidebarDocs,
   sidebarOwner,
+  slotTextProblems,
   variableTextProblems,
 } from '@syncbridge/common';
 import colors from 'ansi-colors';
@@ -235,6 +236,7 @@ export function packDocs(context: Context) {
         `${ext.className}'s description`,
       ),
       ...variableTextProblems(ext.variables as any, ext.className),
+      ...slotTextProblems(ext.components as any, ext.className),
     );
     Object.assign(ext, catalog);
     if (!catalog.summary)

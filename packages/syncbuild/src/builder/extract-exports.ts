@@ -65,6 +65,7 @@ export async function extractExports(context: Context) {
           bases.set(definition.className, {
             kind: 'class',
             variables: definition.variables,
+            components: definition.components,
           });
           continue;
         }
@@ -80,6 +81,7 @@ export async function extractExports(context: Context) {
           bases.set(definition.className, {
             kind: 'class',
             variables: definition.variables,
+            components: definition.components,
           });
           continue;
         }

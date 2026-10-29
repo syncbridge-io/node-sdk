@@ -30,6 +30,10 @@ import { findWorkspacePackage } from '../workspace.js';
  *     "variables": { "channels": { "@extends":
  *     "@abisena/iomt-common:TestConfigurationVariables" } } } }
  *
+ * A class's component slots are told by their names, a slot within one by
+ * its dotted path: { "components": { "hl7Client": { "description": ...
+ * } } }.
+ *
  * The base's texts first - all but its name - then its own over them. So a
  * file may tell the texts of what the package exports for others to build
  * on: its abstract classes, its classes of settings. locales/ is packed
@@ -68,7 +72,14 @@ interface Texts {
   fields: Record<string, string>;
   /** By the settings' dotted paths */
   variables: Record<string, Record<string, string>>;
+  /** By the component slots' dotted paths */
+  components: Record<string, Record<string, string>>;
 }
+
+/** The texts of a component slot a locale file tells */
+const SLOT_TEXTS = ['description'] as const;
+
+const noTexts = (): Texts => ({ fields: {}, variables: {}, components: {} });
 
 export interface PackLocalesOptions {
   /**
@@ -86,6 +97,8 @@ export interface LocaleBase {
   /** An abstract app or component, or a class of settings alone */
   kind: 'class' | 'variables';
   variables?: Record<string, any>;
+  /** Its component slots: an abstract app's or component's */
+  components?: Record<string, any>;
 }
 
 export interface PackedLocales {
@@ -178,12 +191,21 @@ export function packLocales(
           ? found.element.settings
           : found.element.variables
         : base!.variables;
+      /* An app's or a component's slots: a plugin and a class of settings
+       * have none */
+      const slots = plugin
+        ? undefined
+        : found
+          ? found.element.components
+          : base!.components;
+      const hasSlots = !plugin && base?.kind !== 'variables';
       /* Its own: checked against the class */
       for (const [key, value] of Object.entries(told)) {
         if (key === 'variables' || key === EXTENDS) continue;
+        if (key === 'components' && hasSlots) continue;
         if (!fields.includes(key)) {
           errors.push(
-            `${at}: ${className}'s "${key}" is not a text of it: ${[...fields, 'variables', EXTENDS].join(', ')}`,
+            `${at}: ${className}'s "${key}" is not a text of it: ${[...fields, 'variables', ...(hasSlots ? ['components'] : []), EXTENDS].join(', ')}`,
           );
           continue;
         }
@@ -228,6 +250,38 @@ export function packLocales(
         }
       }
 
+      if (hasSlots && told.components !== undefined) {
+        if (!isMap(told.components))
+          errors.push(
+            `${at}: ${className}'s components are an object, by component`,
+          );
+        else
+          for (const [slot, st] of Object.entries<any>(told.components)) {
+            if (!slotAt(slots, slot)) {
+              errors.push(`${at}: ${className} has no component "${slot}"`);
+              continue;
+            }
+            if (!isMap(st)) {
+              errors.push(
+                `${at}: ${className}'s ${slot} component texts are an object`,
+              );
+              continue;
+            }
+            for (const [key, value] of Object.entries(st)) {
+              if (!(SLOT_TEXTS as readonly string[]).includes(key)) {
+                errors.push(
+                  `${at}: ${className}'s ${slot} component "${key}" is not a text of it: ${SLOT_TEXTS.join(', ')}`,
+                );
+                continue;
+              }
+              if (!isText(value))
+                errors.push(
+                  `${at}: ${className}'s ${slot} component ${key} is empty, or not text`,
+                );
+            }
+          }
+      }
+
       /* With what it extends: the base's first, its own over them */
       const resolved = resolver.resolve('', className);
       errors.push(...resolver.errors.splice(0).map(e => `${at}: ${e}`));
@@ -244,6 +298,13 @@ export function packLocales(
         for (const [key, value] of Object.entries(vt))
           variable[key] = withLanguage(variable[key], language, lang, value);
       }
+      /* Likewise a slot */
+      for (const [slotPath, st] of Object.entries(resolved.components)) {
+        const slot = slotAt(slots, slotPath);
+        if (!slot) continue;
+        for (const [key, value] of Object.entries(st))
+          slot[key] = withLanguage(slot[key], language, lang, value);
+      }
     }
     packed.files[lang] = out;
     /* What the code tells that this language has not */
@@ -255,6 +316,12 @@ export function packLocales(
         for (const key of VARIABLE_TEXTS)
           if (lacks(v[key], lang)) missing.push(`${className}'s ${p} ${key}`);
       });
+      if (!plugin)
+        walkSlots(element.components, (p, slot) => {
+          for (const key of SLOT_TEXTS)
+            if (lacks(slot[key], lang))
+              missing.push(`${className}'s ${p} component ${key}`);
+        });
     }
     if (missing.length)
       warn(
@@ -292,7 +359,7 @@ class Resolver {
     const key = `${pkg}:${className}`;
     const done = this._done.get(key);
     if (done) return done;
-    const out: Texts = { fields: {}, variables: {} };
+    const out = noTexts();
     if (stack.includes(key)) {
       this.errors.push(
         `${EXTENDS} goes round: ${[...stack, key].map(k => k.replace(/^:/, '')).join(' -> ')}`,
@@ -313,9 +380,17 @@ class Resolver {
       for (const [k, v] of Object.entries(base.fields))
         if (!NOT_INHERITED.includes(k)) out.fields[k] = v;
       Object.assign(out.variables, base.variables);
+      Object.assign(out.components, base.components);
     }
     for (const [k, v] of Object.entries(told))
       if (k !== 'variables' && k !== EXTENDS && isText(v)) out.fields[k] = v;
+    for (const [slot, st] of Object.entries<any>(
+      isMap(told.components) ? told.components : {},
+    )) {
+      if (!isMap(st)) continue;
+      for (const [k, v] of Object.entries(st))
+        if (isText(v)) (out.components[slot] ??= {})[k] = v;
+    }
     for (const [setting, vt] of Object.entries<any>(
       isMap(told.variables) ? told.variables : {},
     )) {
@@ -346,7 +421,7 @@ class Resolver {
       this.errors.push(
         `${EXTENDS} "${ref}": ${name} is not among the package's registry dependencies`,
       );
-      return { fields: {}, variables: {} };
+      return noTexts();
     }
     return this.resolve(name, className, stack);
   }
@@ -378,6 +453,9 @@ function packedTexts(texts: Texts): Record<string, any> {
     ...texts.fields,
     ...(Object.keys(texts.variables).length
       ? { variables: texts.variables }
+      : {}),
+    ...(Object.keys(texts.components).length
+      ? { components: texts.components }
       : {}),
   };
 }
@@ -452,6 +530,32 @@ function variableAt(
     if (!isMap(at)) return;
   }
   return at;
+}
+
+/** A component slot by its dotted path, down the slots within: "server.inner" */
+function slotAt(
+  components: Record<string, any> | undefined,
+  dotted: string,
+): Record<string, any> | undefined {
+  let at: any = { components };
+  for (const key of dotted.split('.')) {
+    at = at?.components?.[key];
+    if (!isMap(at)) return;
+  }
+  return at;
+}
+
+/** Each component slot, down the slots within, with its dotted path */
+function walkSlots(
+  components: Record<string, any> | undefined,
+  fn: (path: string, slot: Record<string, any>) => void,
+  at = '',
+) {
+  for (const [key, slot] of Object.entries(components ?? {})) {
+    if (!isMap(slot)) continue;
+    fn(at + key, slot);
+    walkSlots(slot.components, fn, `${at}${key}.`);
+  }
 }
 
 /** Each setting, down groups, with its dotted path */

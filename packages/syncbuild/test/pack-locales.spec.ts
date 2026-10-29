@@ -147,4 +147,93 @@ describe("locales/ extending a registry dependency's classes", () => {
       'locales/tr.json: @extends goes round: DashApp -> @acme/common:A -> @acme/common:B -> @acme/common:A',
     ]);
   });
+
+  describe('the component slots', () => {
+    /** An HL7 app of the dependency's base: its two slots, one within one */
+    const slotted = (): any => ({
+      dependencies: { '@acme/common': '^1.0.0' },
+      apps: [
+        {
+          className: 'Hl7App',
+          displayName: 'HL7',
+          components: {
+            hl7Client: {
+              interfaceUri: '@acme/hl7:Client',
+              description: 'HL7 client component.',
+            },
+            hl7Server: {
+              interfaceUri: '@acme/hl7:Server',
+              description: 'HL7 server component.',
+              components: {
+                tls: { interfaceUri: '@acme/net:Tls', description: 'TLS.' },
+              },
+            },
+          },
+        },
+      ],
+    });
+
+    it('should take a slot\'s description - its base\'s through "@extends", its own over it - and pack it', () => {
+      write(path.join(depDir, 'locales', 'tr.json'), {
+        Hl7DeviceApp: {
+          components: {
+            hl7Client: { description: 'HL7 istemci bileşeni.' },
+            hl7Server: { description: 'HL7 sunucu bileşeni.' },
+          },
+        },
+      });
+      write(path.join(pkgDir, 'locales', 'tr.json'), {
+        Hl7App: {
+          '@extends': '@acme/common:Hl7DeviceApp',
+          displayName: 'HL7',
+          components: { 'hl7Server.tls': { description: 'TLS.' } },
+        },
+      });
+      const m = slotted();
+      const warnings: string[] = [];
+      const r = pack(m, warnings);
+      expect(r.errors).toEqual([]);
+      const { components } = m.apps[0];
+      expect(components.hl7Client.description).toEqual({
+        en: 'HL7 client component.',
+        tr: 'HL7 istemci bileşeni.',
+      });
+      expect(components.hl7Server.description).toEqual({
+        en: 'HL7 server component.',
+        tr: 'HL7 sunucu bileşeni.',
+      });
+      expect(components.hl7Server.components.tls.description).toEqual({
+        en: 'TLS.',
+        tr: 'TLS.',
+      });
+      expect(warnings).toEqual([]);
+      expect(r.files.tr.Hl7App.components).toEqual({
+        hl7Client: { description: 'HL7 istemci bileşeni.' },
+        hl7Server: { description: 'HL7 sunucu bileşeni.' },
+        'hl7Server.tls': { description: 'TLS.' },
+      });
+    });
+
+    it('should tell what a slot lacks, and refuse one the class has not, or a text not of a slot', () => {
+      write(path.join(pkgDir, 'locales', 'tr.json'), {
+        Hl7App: {
+          components: {
+            hl7Client: { description: 'İstemci.', label: 'x' },
+            gone: { description: 'Yok.' },
+          },
+        },
+      });
+      const warnings: string[] = [];
+      const r = pack(slotted(), warnings);
+      expect(r.errors).toEqual([
+        'locales/tr.json: Hl7App\'s hl7Client component "label" is not a text of it: description',
+        'locales/tr.json: Hl7App has no component "gone"',
+      ]);
+      expect(warnings).toEqual([
+        expect.stringMatching(
+          /lacks 3 texts, shown in en meanwhile: Hl7App displayName, Hl7App's hl7Server component description, Hl7App's hl7Server\.tls component description$/,
+        ),
+      ]);
+    });
+  });
 });
