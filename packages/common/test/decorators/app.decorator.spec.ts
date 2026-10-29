@@ -101,6 +101,38 @@ describe('App Decorator', () => {
       expect(metadata.components).toBeTruthy();
       expect(metadata.components.comp1.interfaceUri).toBe('ns:comp1');
     });
+
+    it("should keep the base's description of a slot redeclared without one, and take its own", () => {
+      @App({ abstract: true })
+      class BaseApp extends AppBase {
+        @App.UseComponent({ uri: 'ns:server', description: 'The server' })
+        declare server: any;
+
+        @App.UseComponent({ uri: 'ns:client', description: 'The client' })
+        declare client: any;
+      }
+
+      @App()
+      class DeviceApp extends BaseApp {
+        @App.UseComponent({ uri: 'ns:server', required: true })
+        declare server: any;
+
+        @App.UseComponent({ uri: 'ns:client', description: 'Its own client' })
+        declare client: any;
+      }
+
+      const { components } = Reflect.getOwnMetadata(CLASS_METADATA, DeviceApp);
+      expect(components.server).toMatchObject({
+        interfaceUri: 'ns:server',
+        required: true,
+        description: 'The server',
+      });
+      expect(components.client.description).toBe('Its own client');
+      /* The base's own: untouched */
+      expect(
+        Reflect.getOwnMetadata(CLASS_METADATA, BaseApp).components.server,
+      ).not.toHaveProperty('required');
+    });
   });
 
   describe('App events', () => {
