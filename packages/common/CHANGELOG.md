@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 239bc436d2ecc615d83c0a71371323a38da41cd5 -->
+<!-- rman:documented-up-to eda69a6a6c7583143b885e73c1f90784ad05ddf5 -->
+
+## @syncbridge/common@2.13.1 (2026-10-29)
+
+### 🐛 Bug Fixes
+
+- **common:** a slot redeclared without a description keeps its base's - with the texts its locales give it; one told, its own (abd7ed5)
+
+---
 
 ## @syncbridge/common@2.13.0 (2026-10-29)
 
