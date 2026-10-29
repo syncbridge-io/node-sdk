@@ -54,6 +54,21 @@ export interface HostWorkerSummary {
   notices: HostWorker[];
 }
 
+/**
+ * What of the packages a host has is in use, counted alone - no worker
+ * named, nothing of their configurations: what Console's statistics of a
+ * package's versions are made of, shown to its publisher
+ */
+export interface HostUsage {
+  /**
+   * The packages installed, by name: each version installed, and how many
+   * workers take it - its app, or one of its components - 0 for none
+   */
+  packages: Record<string, Record<string, number>>;
+  /** The plugins running, by their package: its version */
+  plugins: Record<string, string>;
+}
+
 /** What a host tells of itself: sent when it connects, and as it changes */
 export interface HostStatusMessage {
   type: 'status';
@@ -62,6 +77,34 @@ export interface HostStatusMessage {
   /** When SyncBridge started, ISO */
   startTime: string;
   workers: HostWorkerSummary;
+  /** Its packages in use: none from a host older than common 2.13 */
+  usage?: HostUsage;
+}
+
+/**
+ * A host's usage counted: its packages' installed versions, and the
+ * version of each package each worker takes - one worker counted once a
+ * package, whatever it takes of it
+ */
+export function summarizeUsage(args: {
+  /** Each package installed: its versions */
+  installed: Record<string, string[]>;
+  /** Each worker: the version of each package it takes */
+  workers: Iterable<Record<string, string>>;
+  /** The plugins running: their package's name and version */
+  plugins?: Iterable<{ package: string; version: string }>;
+}): HostUsage {
+  const packages: HostUsage['packages'] = {};
+  for (const [name, versions] of Object.entries(args.installed))
+    for (const version of versions) (packages[name] ??= {})[version] ??= 0;
+  for (const taken of args.workers)
+    for (const [name, version] of Object.entries(taken)) {
+      const counts = (packages[name] ??= {});
+      counts[version] = (counts[version] ?? 0) + 1;
+    }
+  const plugins: HostUsage['plugins'] = {};
+  for (const p of args.plugins ?? []) plugins[p.package] = p.version;
+  return { packages, plugins };
 }
 
 /** The statuses of a worker needing a look */

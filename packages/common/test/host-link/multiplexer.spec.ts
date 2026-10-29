@@ -223,3 +223,30 @@ describe('summarizeWorkers', () => {
     ]);
   });
 });
+
+describe('summarizeUsage', () => {
+  it("should count each version's workers, an installed one none taking as 0, and tell the plugins running", async () => {
+    const { summarizeUsage } = await import('../../src/index.js');
+    expect(
+      summarizeUsage({
+        installed: {
+          '@acme/hl7': ['2.1.0', '2.0.3'],
+          '@acme/net': ['1.4.2'],
+        },
+        workers: [
+          { '@acme/hl7': '2.1.0', '@acme/net': '1.4.2' },
+          { '@acme/hl7': '2.1.0' },
+          { '@acme/sqb': '3.0.1' },
+        ],
+        plugins: [{ package: '@acme/oracle-client', version: '1.0.0' }],
+      }),
+    ).toEqual({
+      packages: {
+        '@acme/hl7': { '2.1.0': 2, '2.0.3': 0 },
+        '@acme/net': { '1.4.2': 1 },
+        '@acme/sqb': { '3.0.1': 1 },
+      },
+      plugins: { '@acme/oracle-client': '1.0.0' },
+    });
+  });
+});
