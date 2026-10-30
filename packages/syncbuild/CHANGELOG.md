@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to c0fe5e3e7b6029491a832289c31aae11aa8fd6c3 -->
+<!-- rman:documented-up-to 6d6b711cce938af454e6d085528bb28af6fea939 -->
+
+## @syncbridge/syncbuild@2.14.1 (2026-10-30)
+
+### 🐛 Bug Fixes
+
+- **syncbuild:** the package spm init makes installs again - its @syncbridge/testing ^2.2.0, not ^1.0.0, which took 1.1.1 asking for common ^1.1.3 beside the skeleton's common ^2.14.0: npm stopped with ERESOLVE. A test now checks the range takes this repository's testing and that its peer common meets the skeleton's. Tried: a package made, npm install with one common 2.14.0, its test passing (2fc2d83)
+
+---
 
 ## @syncbridge/syncbuild@2.14.0 (2026-10-30)
 
