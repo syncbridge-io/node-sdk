@@ -494,6 +494,33 @@ describe('spm add / spm check', () => {
       expect(checkPackage(pkgDir)).toEqual({ errors: [], warnings: [] });
     });
 
+    it("should take pnpm's workspace: as it is packed - resolved to the workspace's version, or the range after it - and tell one it cannot resolve", () => {
+      addDependency(pkgDir, '@test/lib@^1.2.0');
+      const manifestFile = path.join(pkgDir, 'syncbridge-manifest.json');
+      const withRange = (range: string) =>
+        write(manifestFile, { dependencies: { '@test/lib': range } });
+      withRange('workspace:^');
+      expect(checkPackage(pkgDir)).toEqual({ errors: [], warnings: [] });
+      withRange('workspace:>=1.0.0 <2');
+      expect(checkPackage(pkgDir)).toEqual({ errors: [], warnings: [] });
+      withRange('workspace:^2.0.0');
+      expect(checkPackage(pkgDir).errors).toEqual([
+        expect.stringMatching(
+          /the workspace has version 1\.2\.0, which does not satisfy \^2\.0\.0/,
+        ),
+      ]);
+      /* An npm package not of the workspace */
+      withRange('workspace:^');
+      const pkgFile = path.join(pkgDir, 'package.json');
+      write(pkgFile, {
+        ...JSON.parse(fs.readFileSync(pkgFile, 'utf8')),
+        dependencies: { 'not-here': 'workspace:*' },
+      });
+      expect(checkPackage(pkgDir).errors).toEqual([
+        'dependencies: "not-here": "workspace:*", but no package of the workspace is "not-here"',
+      ]);
+    });
+
     it('should report a range its version does not satisfy', () => {
       addDependency(pkgDir, '@test/lib@^2.0.0');
       expect(checkPackage(pkgDir).errors).toEqual([

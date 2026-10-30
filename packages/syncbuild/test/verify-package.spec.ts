@@ -451,7 +451,7 @@ export class VerifyApp extends AppBase {
     expect(logs.some(l => l.startsWith('Using @vt/lib'))).toBe(false);
   });
 
-  it('should pack and install a registry package of the same workspace', async () => {
+  it("should pack and install a registry package of the same workspace - pnpm's workspace: range resolved", async () => {
     /* @vt/lib is a package of the workspace, linked into the project and
      * built to build/ by the project's own tsc; the mirror's copy is there
      * as well, and not used */
@@ -490,7 +490,7 @@ export class VerifyApp extends AppBase {
     );
     writePackage(pkgDir, {
       ...USES_LIB,
-      pkgJson: { syncbridge: { dependencies: { '@vt/lib': '^1.0.0' } } },
+      pkgJson: { syncbridge: { dependencies: { '@vt/lib': 'workspace:^' } } },
     });
     const tsFile = path.join(pkgDir, 'tsconfig.json');
     const ts = JSON.parse(fs.readFileSync(tsFile, 'utf8'));
@@ -522,7 +522,7 @@ export class VerifyApp extends AppBase {
     expect(logs.some(l => l.startsWith('Using @vt/lib'))).toBe(false);
   });
 
-  it('should install an npm package of the same workspace from the workspace', async () => {
+  it("should install an npm package of the same workspace from the workspace - by a range, or pnpm's workspace:", async () => {
     /* @vt/util is an npm package of the workspace, not published yet: the
      * package is verified before the release publishes it */
     const utilDir = path.join(root, 'util');
@@ -533,35 +533,35 @@ export class VerifyApp extends AppBase {
       exports: './index.js',
     });
     write(path.join(utilDir, 'index.js'), `export const UTIL = 'util 2.1.0';`);
-    writePackage(pkgDir, {
-      imports: `import { UTIL } from '@vt/util';`,
-      startBody: `this.logger?.info(UTIL);`,
-      pkgJson: { dependencies: { '@vt/util': '^2.0.0' } },
-    });
-    write(
-      path.join(pkgDir, 'src', 'util.d.ts'),
-      `declare module '@vt/util' { export const UTIL: string; }`,
-    );
-    fs.mkdirSync(path.join(pkgDir, 'node_modules', '@vt'), { recursive: true });
-    fs.symlinkSync(
-      utilDir,
-      path.join(pkgDir, 'node_modules', '@vt', 'util'),
-      'junction',
-    );
+    for (const range of ['^2.0.0', 'workspace:^']) {
+      writePackage(pkgDir, {
+        imports: `import { UTIL } from '@vt/util';`,
+        startBody: `this.logger?.info(UTIL);`,
+        pkgJson: { dependencies: { '@vt/util': range } },
+      });
+      write(
+        path.join(pkgDir, 'src', 'util.d.ts'),
+        `declare module '@vt/util' { export const UTIL: string; }`,
+      );
+      const link = path.join(pkgDir, 'node_modules', '@vt', 'util');
+      fs.mkdirSync(path.dirname(link), { recursive: true });
+      if (!fs.existsSync(link)) fs.symlinkSync(utilDir, link, 'junction');
 
-    const logs: string[] = [];
-    const r = await verifyPackage({
-      packageDir: pkgDir,
-      execArgv: EXEC_ARGV,
-      permissionModel: false,
-      timeout: 10000,
-      logger: m => logs.push(m),
-    });
-    expect(r.apps[0].message).toBeUndefined();
-    expect(r.ok).toBe(true);
-    expect(logs).toContain(
-      'Using workspace package @vt/util@2.1.0 from ' + path.join('..', 'util'),
-    );
+      const logs: string[] = [];
+      const r = await verifyPackage({
+        packageDir: pkgDir,
+        execArgv: EXEC_ARGV,
+        permissionModel: false,
+        timeout: 10000,
+        logger: m => logs.push(m),
+      });
+      expect(r.apps[0].message).toBeUndefined();
+      expect(r.ok).toBe(true);
+      expect(logs).toContain(
+        'Using workspace package @vt/util@2.1.0 from ' +
+          path.join('..', 'util'),
+      );
+    }
   });
 
   it('should load the classes of a package of components alone', async () => {
