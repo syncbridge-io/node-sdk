@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to eda69a6a6c7583143b885e73c1f90784ad05ddf5 -->
+<!-- rman:documented-up-to 453a347ef624dab37d3cd8a18a0f68e6e25284f4 -->
+
+## @syncbridge/common@2.14.0 (2026-10-30)
+
+### ✨ Features
+
+- **common:** EngineProvides - what an engine provides a package as its peers, by npm name at its version; hostPeerProblems tells what a host lacks of a package's peers in SyncBridge's own words ("The host does not provide ..."), for spm and the registry to refuse it as a server would (f84144b)
+
+### 🧹 Chores
+
+- update dependencies (777918b)
+
+---
 
 ## @syncbridge/common@2.13.1 (2026-10-29)
 
