@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to eda69a6a6c7583143b885e73c1f90784ad05ddf5 -->
+<!-- rman:documented-up-to 453a347ef624dab37d3cd8a18a0f68e6e25284f4 -->
+
+## @syncbridge/syncbuild@2.13.0 (2026-10-30)
+
+### ✨ Features
+
+- **syncbuild:** spm verify and spm publish refuse a package whose peers SyncBridge does not provide - as a server refuses to install it, in its words - before it is packed or sent: what the latest stable SyncBridge provides asked of the registry (registry/host-provides); none told, or the registry not reached, told and not checked. A SyncBridge module declared a peer is not one: a registry dependency. spm verify takes --registry (5951c83)
+
+---
 
 ## @syncbridge/syncbuild@2.12.1 (2026-10-29)
 
