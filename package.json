@@ -19,7 +19,7 @@
     "citest": "c8 mocha"
   },
   "devDependencies": {
-    "@opra/common": "^1.33.0",
+    "@opra/common": "^1.35.0",
     "@panates/eslint-config": "^2.3.4",
     "@panates/eslint-config-ts": "^2.3.4",
     "@panates/rman-preset": "^2.2.1",
