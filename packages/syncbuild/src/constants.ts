@@ -1,6 +1,6 @@
 import process from 'node:process';
 
-export const version = '2.12.1';
+export const version = '2.13.0';
 
 // Environment variables
 export const NODE_ENV =
