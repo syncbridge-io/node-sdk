@@ -156,6 +156,10 @@ program
     '--store-dir <directory>',
     "pnpm's store, shared by every verify; default: SB_SPM_STORE_DIR, else ~/.cache/syncbridge/pnpm-store",
   )
+  .option(
+    '--registry <url>',
+    'The registry telling what SyncBridge provides as peers; default: SB_REGISTRY_URL, or registry.syncbridge.io',
+  )
   .action(async options => {
     if (options.color === false) colors.enabled = false;
     console.log(colors.yellow('**** SyncBuild v' + version + ' ****'));
@@ -168,6 +172,7 @@ program
         with: options.with,
         timeout: Number(options.timeout),
         keep: options.keep,
+        registry: options.registry,
         logger: console.log,
       });
       for (const p of r.apps) {

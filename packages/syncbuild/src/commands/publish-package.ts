@@ -8,6 +8,7 @@ import {
   DOCS_DIR,
   DOCS_MANIFEST_FILE,
   type DocsManifestFile,
+  type EngineProvides,
   isDocLeftOut,
   MANIFEST_FILE,
   packageDigest,
@@ -20,6 +21,10 @@ import semver from 'semver';
 import { version as spmVersion } from '../constants.js';
 import { packPackage } from '../pack-package.js';
 import { resolveRegistry } from '../registry/credentials.js';
+import {
+  checkHostPeers,
+  fetchEngineProvides,
+} from '../registry/host-provides.js';
 import {
   ciFetch,
   inGitHubActions,
@@ -72,6 +77,11 @@ export interface PublishOptions {
    * safely
    */
   skipExisting?: boolean;
+  /**
+   * What SyncBridge provides as peers, given rather than asked of the
+   * registry; null: not checked here (the registry checks it)
+   */
+  hostProvides?: EngineProvides | null;
   logger?: (message: string) => void;
 }
 
@@ -268,7 +278,16 @@ export async function publishPackage(
     const pkgEntry = zip.getEntry('package.json');
     if (!pkgEntry)
       throw new SbError(`${archive} is not a package: no package.json`);
-    const { name, version } = JSON.parse(zip.readAsText(pkgEntry));
+    const pkgJson = JSON.parse(zip.readAsText(pkgEntry));
+    const { name, version } = pkgJson;
+    /* Peers SyncBridge does not provide: refused before it is sent, as a
+     * server would refuse it */
+    if (options.hostProvides !== null)
+      checkHostPeers(
+        pkgJson,
+        options.hostProvides ?? (await fetchEngineProvides(registry)),
+        log,
+      );
     await checkCarried(registry, zip, name, version, log);
     const docs = docsOf(zip);
     /* As the CI job it runs in, or as its signed-in user */
