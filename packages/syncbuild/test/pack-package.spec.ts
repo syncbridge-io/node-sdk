@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect } from 'expect';
 import { packPackage } from '../src/pack-package.js';
+import { publishedRange } from '../src/workspace.js';
 
 function write(file: string, content: string | object) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -111,6 +112,43 @@ export class PackComponent extends ComponentBase {}
         className: 'PackComponent',
       }),
     ]);
+  });
+
+  it("should publish pnpm's workspace: ranges resolved, as pnpm publish does - the workspace package's version under ^ or ~, itself for *, the range after it", async () => {
+    /* An npm package of the same workspace, linked */
+    write(path.join(root, 'util', 'package.json'), {
+      name: '@test/util',
+      version: '3.4.5',
+    });
+    const link = path.join(root, 'node_modules', '@test', 'util');
+    fs.mkdirSync(path.dirname(link), { recursive: true });
+    fs.symlinkSync(path.join(root, 'util'), link, 'junction');
+    const pkgFile = path.join(pkgDir, 'package.json');
+    write(pkgFile, {
+      ...JSON.parse(fs.readFileSync(pkgFile, 'utf8')),
+      dependencies: { 'date-fns': '^4.4.0', '@test/util': 'workspace:^' },
+      peerDependencies: {
+        '@syncbridge/common': 'workspace:>=0.13.0',
+        '@test/util': 'workspace:*',
+      },
+    });
+    await packPackage({ packageDir: pkgDir, outDir: 'dist', pack: false });
+    const out = JSON.parse(
+      fs.readFileSync(path.join(pkgDir, 'dist', 'package.json'), 'utf8'),
+    );
+    expect(out.dependencies).toEqual({
+      'date-fns': '^4.4.0',
+      '@test/util': '^3.4.5',
+    });
+    expect(out.peerDependencies).toEqual({
+      '@syncbridge/common': '>=0.13.0',
+      '@test/util': '3.4.5',
+    });
+    expect(publishedRange('@test/util', 'workspace:~', pkgDir)).toBe('~3.4.5');
+    expect(publishedRange('@test/util', '^1.0.0', pkgDir)).toBe('^1.0.0');
+    expect(() =>
+      publishedRange('@test/util', 'workspace:@test/other@^1', pkgDir),
+    ).toThrow(/names another package or a path/);
   });
 
   it('should keep where the package lives: its web page and its repository', async () => {
