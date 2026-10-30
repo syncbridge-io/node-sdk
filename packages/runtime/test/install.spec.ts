@@ -1,8 +1,54 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { MANIFEST_FILE } from '@syncbridge/common';
+import AdmZip from 'adm-zip';
 import { expect } from 'expect';
-import { installDependencies, packageManager } from '../src/index.js';
+import {
+  extractPackage,
+  INSTALL_STAMP_FILE,
+  installDependencies,
+  installStamp,
+  packageManager,
+} from '../src/index.js';
+
+describe('extractPackage', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sb-extract-spec-'));
+  });
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  /** A built package's archive, its code as given */
+  const archive = (file: string, code: string) => {
+    const zip = new AdmZip();
+    zip.addFile(
+      'package.json',
+      Buffer.from(JSON.stringify({ name: '@acme/a', version: '1.0.0' })),
+    );
+    zip.addFile(MANIFEST_FILE, Buffer.from('{}'));
+    zip.addFile('index.js', Buffer.from(code));
+    zip.writeZip(path.join(dir, file));
+    return path.join(dir, file);
+  };
+  const sha256 = (file: string) =>
+    createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+
+  it('should tell, in the package, the archive it came from - another archive of the same version, another stamp', () => {
+    const first = archive('a1.zip', 'export const A = 1;');
+    const second = archive('a2.zip', 'export const A = 2;');
+    const one = extractPackage(first, path.join(dir, 'tmp'));
+    const two = extractPackage(second, path.join(dir, 'tmp'));
+    expect(installStamp(one.directory)).toBe(sha256(first));
+    expect(installStamp(two.directory)).toBe(sha256(second));
+    expect(installStamp(one.directory)).not.toBe(installStamp(two.directory));
+    expect(installStamp(path.join(dir, 'none'))).toBeUndefined();
+    expect(fs.existsSync(path.join(one.directory, INSTALL_STAMP_FILE))).toBe(
+      true,
+    );
+  });
+});
 
 describe('installDependencies', () => {
   let dir: string;
