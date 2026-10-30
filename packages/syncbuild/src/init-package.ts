@@ -10,9 +10,10 @@ import { version } from './constants.js';
 
 /**
  * Ranges the skeleton depends on. common is the range syncbuild itself
- * builds against; the rest are tools its test runs with.
+ * builds against; the rest are tools its test runs with. testing's, a
+ * release whose peer common is that range's major: 1.x asks for common 1
  */
-const TESTING_RANGE = '^1.0.0';
+const TESTING_RANGE = '^2.2.0';
 const DEV_TOOLS: Record<string, string> = {
   '@swc-node/register': '^1.12.1',
   '@swc/core': '^1.16.13',

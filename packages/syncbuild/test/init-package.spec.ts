@@ -2,7 +2,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expect } from 'expect';
+import semver from 'semver';
 import { initPackage } from '../src/init-package.js';
+
+/** A package of this repository's: its package.json */
+const sdkPackage = (dir: string) =>
+  JSON.parse(
+    fs.readFileSync(
+      path.join(import.meta.dirname, '..', '..', dir, 'package.json'),
+      'utf8',
+    ),
+  );
 
 describe('spm init', () => {
   let root: string;
@@ -12,6 +22,26 @@ describe('spm init', () => {
   });
 
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it('should ask for a testing release that takes the common it asks for', () => {
+    const dir = path.join(root, 'monitor');
+    initPackage({ name: '@acme/patient-monitor', directory: dir });
+    const pkgJson = JSON.parse(
+      fs.readFileSync(path.join(dir, 'package.json'), 'utf8'),
+    );
+    const common = pkgJson.devDependencies['@syncbridge/common'];
+    const testingRange = pkgJson.devDependencies['@syncbridge/testing'];
+    /* This repository's testing: its version in the range asked, its peer
+     * common the same major as the skeleton's */
+    const testing = sdkPackage('testing');
+    expect(semver.satisfies(testing.version, testingRange)).toBe(true);
+    expect(
+      semver.intersects(testing.peerDependencies['@syncbridge/common'], common),
+    ).toBe(true);
+    expect(semver.minVersion(testingRange)!.major).toBe(
+      semver.minVersion(common)!.major,
+    );
+  });
 
   it('should create a package with an example app and its test', () => {
     const dir = path.join(root, 'monitor');
