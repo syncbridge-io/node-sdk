@@ -22,7 +22,7 @@ import {
   pnpmHookState,
   usesPnpm,
 } from '../pnpm-hook.js';
-import { findWorkspacePackage } from '../workspace.js';
+import { findWorkspacePackage, publishedRange } from '../workspace.js';
 
 export interface CheckResult {
   errors: string[];
@@ -61,7 +61,27 @@ export function checkPackage(
     errors.push(`package.json "name": ${p}`);
 
   const manifest = manifestOf(packageDir, pkgJson);
-  const registryDeps = manifest?.dependencies || {};
+  /* Its ranges as packed: pnpm's `workspace:` resolved; one that cannot
+   * be, told */
+  const published = (
+    field: string,
+    dependencies: Record<string, string> | undefined,
+  ) => {
+    const out: Record<string, string> = {};
+    for (const [name, range] of Object.entries(dependencies || {}))
+      try {
+        out[name] = publishedRange(name, range, packageDir);
+      } catch (e) {
+        errors.push(`${field}: ${(e as Error).message}`);
+      }
+    return out;
+  };
+  const registryDeps = published(
+    'manifest dependencies',
+    manifest?.dependencies,
+  );
+  published('dependencies', pkgJson.dependencies);
+  published('peerDependencies', pkgJson.peerDependencies);
   const root = workspaceRoot(packageDir);
   const pnpm = usesPnpm(root);
   /** `paths` keys of which one must be there, per dependency */

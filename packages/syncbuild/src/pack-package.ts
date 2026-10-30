@@ -22,6 +22,7 @@ import {
 import { checkPackage } from './commands/check-package.js';
 import { Context } from './context.js';
 import type { PackageBuildConfig, PackageJson } from './types.js';
+import { publishedRanges } from './workspace.js';
 
 /** The entry point every package exposes */
 const ENTRY_POINT = 'index.js';
@@ -96,13 +97,14 @@ export async function packPackage(config: PackageBuildConfig) {
        * close the subpaths `sb:@vendor/name/sub` imports */
       main: './' + ENTRY_POINT,
       types: './index.d.ts',
-      dependencies: pkgJson.dependencies,
-      peerDependencies: pkgJson.peerDependencies,
+      /* pnpm's `workspace:` resolved, as `pnpm publish` does */
+      dependencies: publishedRanges(pkgJson.dependencies, packageDir),
+      peerDependencies: publishedRanges(pkgJson.peerDependencies, packageDir),
     } satisfies PackageJson,
     /* What the author wrote; what the package brings is added as found */
     manifest: {
       ...(sourceManifest?.name ? { name: sourceManifest.name } : {}),
-      dependencies: sourceManifest?.dependencies,
+      dependencies: publishedRanges(sourceManifest?.dependencies, packageDir),
       ...(sourceManifest?.docsLanguage !== undefined
         ? { docsLanguage: sourceManifest.docsLanguage }
         : {}),

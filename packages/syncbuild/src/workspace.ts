@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ExtensionPackageJson } from '@syncbridge/common';
-import { manifestOf } from '@syncbridge/common';
+import { manifestOf, SbError } from '@syncbridge/common';
 import { parseTsConfig } from './builder/utils/parse-tsconfig.js';
 
 /**
@@ -68,6 +68,56 @@ export function findWorkspaceNpmPackage(
     dir: fs.existsSync(path.join(build, 'package.json')) ? build : real,
     version: pkgJson.version,
   };
+}
+
+/** pnpm's workspace protocol: a package of the same workspace */
+const WORKSPACE_PROTOCOL = 'workspace:';
+
+/**
+ * A dependency's range as the package is published with it: pnpm's
+ * `workspace:` resolved as `pnpm publish` resolves it - `workspace:^` and
+ * `workspace:~` the workspace package's version under that operator,
+ * `workspace:*` the version itself, `workspace:<range>` the range. Any
+ * other range as it is: SyncBridge, the registry and npm take no
+ * `workspace:`.
+ */
+export function publishedRange(
+  name: string,
+  range: string,
+  fromDir: string,
+): string {
+  if (!range.startsWith(WORKSPACE_PROTOCOL)) return range;
+  const spec = range.slice(WORKSPACE_PROTOCOL.length).trim();
+  if (!['', '*', '^', '~'].includes(spec)) {
+    if (spec.includes('@') || /^[./]/.test(spec))
+      throw new SbError(
+        `"${name}": "${range}" names another package or a path; a package is published with a range of its own`,
+      );
+    return spec;
+  }
+  const dir = findLinked(name, fromDir);
+  if (!dir)
+    throw new SbError(
+      `"${name}": "${range}", but no package of the workspace is "${name}"`,
+    );
+  const { version } = JSON.parse(
+    fs.readFileSync(path.join(dir, 'package.json'), 'utf8'),
+  );
+  return spec === '^' || spec === '~' ? spec + version : version;
+}
+
+/** Each of the dependencies' ranges as published: see publishedRange */
+export function publishedRanges(
+  dependencies: Record<string, string> | undefined,
+  fromDir: string,
+): Record<string, string> | undefined {
+  if (!dependencies) return;
+  return Object.fromEntries(
+    Object.entries(dependencies).map(([name, range]) => [
+      name,
+      publishedRange(name, range, fromDir),
+    ]),
+  );
 }
 
 /**

@@ -46,6 +46,8 @@ import {
 import {
   findWorkspaceNpmPackage,
   findWorkspacePackage,
+  publishedRange,
+  publishedRanges,
   type WorkspacePackage,
 } from '../workspace.js';
 
@@ -176,7 +178,10 @@ export async function verifyPackage(
   /* Peers SyncBridge does not provide: refused, as a server refuses it */
   if (options.hostProvides !== null)
     checkHostPeers(
-      pkgJson,
+      {
+        ...pkgJson,
+        peerDependencies: publishedRanges(pkgJson.peerDependencies, packageDir),
+      },
       options.hostProvides ??
         (await fetchEngineProvides(resolveRegistry(options.registry))),
       log,
@@ -608,7 +613,9 @@ async function addLocalDependencies(
   ))
     if (isSyncBridgeModule(name)) dependencies[name] = range;
   Object.assign(dependencies, manifestOf(fromDir, pkgJson)?.dependencies);
-  for (const [name, range] of Object.entries(dependencies)) {
+  /* As packed: pnpm's `workspace:` resolved */
+  for (const [name, written] of Object.entries(dependencies)) {
+    const range = publishedRange(name, written, fromDir);
     if (ctx.packages.get(name)?.some(p => semver.satisfies(p.version, range)))
       continue;
     const ws = findWorkspacePackage(name, fromDir);
@@ -648,11 +655,15 @@ function workspaceOverrides(
   log: (message: string) => void,
 ): Record<string, string> {
   const overrides: Record<string, string> = {};
-  for (const [name, range] of Object.entries<string>(
+  for (const [name, written] of Object.entries<string>(
     pkgJson.dependencies || {},
   )) {
     const ws = findWorkspaceNpmPackage(name, fromDir);
-    if (!ws || !semver.satisfies(ws.version, range)) continue;
+    if (
+      !ws ||
+      !semver.satisfies(ws.version, publishedRange(name, written, fromDir))
+    )
+      continue;
     overrides[name] = 'link:' + ws.dir;
     log(
       `Using workspace package ${name}@${ws.version} from ${path.relative(fs.realpathSync(fromDir), ws.dir)}`,
