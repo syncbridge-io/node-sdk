@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 453a347ef624dab37d3cd8a18a0f68e6e25284f4 -->
+<!-- rman:documented-up-to c0fe5e3e7b6029491a832289c31aae11aa8fd6c3 -->
+
+## @syncbridge/syncbuild@2.14.0 (2026-10-30)
+
+### ✨ Features
+
+- **syncbuild:** pnpm's workspace: ranges resolved as pnpm publish resolves them - workspace:^ and workspace:~ the workspace package's version under that operator, workspace:* the version itself, workspace:<range> the range - in the package packed (its dependencies, peers and manifest dependencies), so SyncBridge, the registry and npm get ranges they take; spm check and spm verify read them so too. One naming another package or a path, or a package not of the workspace, refused (3b91342)
+
+---
 
 ## @syncbridge/syncbuild@2.13.0 (2026-10-30)
 
