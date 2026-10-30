@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to a3064a01fa5063924bf611a5c89b4ea83f49ba2a -->
+<!-- rman:documented-up-to 6d6b711cce938af454e6d085528bb28af6fea939 -->
+
+## @syncbridge/runtime@2.3.2 (2026-10-30)
+
+### 🐛 Bug Fixes
+
+- **runtime:** a version installed again from another archive is installed again for its workers - extractPackage writes the archive's SHA-256 into the package (.sb-install), carried to its install directory, and planDigest counts it beside the version; the same archive again changes nothing. Before, the digest held names and versions alone, so a worker or a plugin went on running the replaced version's code from its deps-<digest> copy. A package installed before this has no stamp and keeps its digest: no installation is redone for it (80a6401)
+
+---
 
 ## @syncbridge/runtime@2.3.1 (2026-10-28)
 
