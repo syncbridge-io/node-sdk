@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ILogger } from '@syncbridge/common';
 import { SbError } from '@syncbridge/common';
+import { installStamp } from './install.js';
 import { packageManager } from './package-manager.js';
 import type { WorkerPlan, WorkerPlanPackage } from './plan.js';
 
@@ -92,12 +93,18 @@ const INIT_FILE = 'init.json';
 const LOCKFILE = 'pnpm-lock.yaml';
 
 /**
- * Identifies what a plan installs: its installed packages and their
- * versions. Two plans with the same digest share an installation.
+ * Identifies what a plan installs: its installed packages, their versions
+ * and the archives they were installed from - a version installed again
+ * from another archive needs an init again. Two plans with the same digest
+ * share an installation. A package installed before archives were told
+ * counts by its version alone, so its installation stays as it is.
  */
 export function planDigest(plan: WorkerPlan): string {
   const list = installedPackages(plan)
-    .map(p => `${p.name}@${p.version}`)
+    .map(p => {
+      const stamp = installStamp(p.path);
+      return `${p.name}@${p.version}` + (stamp ? `#${stamp}` : '');
+    })
     .sort();
   return createHash('sha256')
     .update(list.join('\n'))

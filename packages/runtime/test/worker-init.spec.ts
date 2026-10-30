@@ -6,6 +6,7 @@ import process from 'node:process';
 import { expect } from 'expect';
 import {
   initWorker,
+  INSTALL_STAMP_FILE,
   installedWorkerPlan,
   planDigest,
   readWorkerInit,
@@ -232,6 +233,39 @@ describe('initWorker', function () {
     /* The previous installation stays until removed */
     expect(removeStaleInstallations(workerDir)).toEqual([first.record.depsDir]);
     expect(workerInitState(plan2, workerDir)).toBe('ready');
+  });
+
+  it('should need an init again for a version installed again from another archive, and run its new code', async () => {
+    const a = writeExtension('@t/a', '1.0.0');
+    const plan = planOf({ name: '@t/a', version: '1.0.0', path: a });
+    /* Installed before archives were told: its version alone, as before */
+    const unstamped = planDigest(plan);
+    await init(plan);
+    expect(workerInitState(plan, workerDir)).toBe('ready');
+
+    /* The same version from another archive: placePackage replaces the
+     * directory, its stamp with it */
+    write(path.join(a, 'index.js'), `export const VERSION = 'fixed';`);
+    write(path.join(a, INSTALL_STAMP_FILE), 'aaa\n');
+    expect(planDigest(plan)).not.toBe(unstamped);
+    expect(workerInitState(plan, workerDir)).toBe('needs-init');
+    const again = await init(plan);
+    const installed = path.join(
+      workerDir,
+      again.record.depsDir,
+      'node_modules',
+      '@t',
+      'a',
+      'index.js',
+    );
+    expect(fs.readFileSync(installed, 'utf8')).toContain("'fixed'");
+    expect(workerInitState(plan, workerDir)).toBe('ready');
+
+    /* The same archive again: nothing to do; another: an init again */
+    write(path.join(a, INSTALL_STAMP_FILE), 'aaa\n');
+    expect(workerInitState(plan, workerDir)).toBe('ready');
+    write(path.join(a, INSTALL_STAMP_FILE), 'bbb\n');
+    expect(workerInitState(plan, workerDir)).toBe('needs-init');
   });
 
   it('should restore the same versions when the installation is gone', async () => {

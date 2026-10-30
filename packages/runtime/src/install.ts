@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ILogger } from '@syncbridge/common';
@@ -27,6 +27,26 @@ export interface ExtractedPackage {
   pkgJson: any;
   /** The temporary directory it was extracted to */
   directory: string;
+}
+
+/**
+ * The file in an installed package's directory naming the archive it was
+ * installed from: its SHA-256. A version installed again from another
+ * archive is another installation to the workers using it (planDigest)
+ */
+export const INSTALL_STAMP_FILE = '.sb-install';
+
+/** The archive an installed package came from, if its directory tells */
+export function installStamp(directory: string): string | undefined {
+  try {
+    return (
+      fs
+        .readFileSync(path.join(directory, INSTALL_STAMP_FILE), 'utf8')
+        .trim() || undefined
+    );
+  } catch {
+    return;
+  }
 }
 
 /**
@@ -65,6 +85,11 @@ export function extractPackage(
   } catch (err: any) {
     throw new SbError(`Unable to extract ${filename}: ${err.message}`);
   }
+  /* Moved with the package to its install directory (placePackage) */
+  fs.writeFileSync(
+    path.join(directory, INSTALL_STAMP_FILE),
+    createHash('sha256').update(fs.readFileSync(zipFile)).digest('hex') + '\n',
+  );
   return { pkgJson, directory };
 }
 
