@@ -183,15 +183,20 @@ describe('spm verify', function () {
   /* One pnpm store for the tests, as for a user's verifies: never theirs */
   let store: string;
   const storeEnv = process.env.SB_SPM_STORE_DIR;
+  const registryEnv = process.env.SB_REGISTRY_URL;
 
   before(() => {
     store = fs.mkdtempSync(path.join(os.tmpdir(), 'syncbuild-store-'));
     process.env.SB_SPM_STORE_DIR = store;
+    /* No registry asked what SyncBridge provides: one that is not there */
+    process.env.SB_REGISTRY_URL = 'http://127.0.0.1:9';
   });
 
   after(() => {
     if (storeEnv === undefined) delete process.env.SB_SPM_STORE_DIR;
     else process.env.SB_SPM_STORE_DIR = storeEnv;
+    if (registryEnv === undefined) delete process.env.SB_REGISTRY_URL;
+    else process.env.SB_REGISTRY_URL = registryEnv;
     fs.rmSync(store, { recursive: true, force: true });
   });
 
@@ -209,6 +214,25 @@ describe('spm verify', function () {
       permissionModel: false,
       timeout: 10000,
     });
+
+  it('should refuse a package whose peers SyncBridge does not provide, as a server would, before packing it', async () => {
+    writePackage(pkgDir);
+    const pkgFile = path.join(pkgDir, 'package.json');
+    const pkgJson = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
+    pkgJson.peerDependencies = { ...pkgJson.peerDependencies, mysql2: '^3' };
+    fs.writeFileSync(pkgFile, JSON.stringify(pkgJson));
+    await expect(
+      verifyPackage({
+        packageDir: pkgDir,
+        hostProvides: {
+          engine: '1.13.0',
+          packages: { '@syncbridge/common': '2.13.1' },
+        },
+      }),
+    ).rejects.toThrow(
+      /cannot be installed\.\n {2}The host does not provide "mysql2"/,
+    );
+  });
 
   it('should load the package and create its app as SyncBridge would', async () => {
     writePackage(pkgDir);
