@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to d5bd3cc3d819a178b2be0f56d71910f807b30981 -->
+<!-- rman:documented-up-to f813a9862f12ca77eb5067c7eb414f3046e2f0f1 -->
+
+## @syncbridge/testing@2.3.0 (2026-10-31)
+
+### ✨ Features
+
+- **testing:** a test env reads an app's dashboards - env.dashboard(app, path) a widget's data as SyncBridge holds it, each write counting at once under the same bounds (a chart's window, a table's rows); env.definedWidgets(app, dashboard) those the app defined as it ran; env.dashboardIssues(app) what is wrong with its widgets' definitions against the core types, also warned in its log (5cf1b0f)
+
+---
 
 ## @syncbridge/testing@2.1.0 (2026-10-27)
 
