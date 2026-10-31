@@ -240,6 +240,30 @@ test every channel writes, unless the app is created with
 - `env.channelLogs(app, 'device/communication')`: the records written
   to a log channel, by its full name
 
+## Dashboards
+
+What an app's dashboards show (`@UseDashboard`, `@Widget`), as SyncBridge
+holds it: each write counts at once, under the same bounds (a chart's
+window, a table's rows).
+
+```ts
+const app = await env.start(MeterApp);
+app.read('bed-3', 72);
+expect(env.dashboard(app, 'meter/count')).toMatchObject({ value: 1 });
+expect(env.dashboardIssues(app)).toEqual({});
+```
+
+- `env.dashboard(app, 'meter/rate')`: a widget's data by its path - a
+  component's `io/device/errors` - as `{ kind: 'value', value }`,
+  `{ kind: 'series', series: { in: [[at, value], ...] } }`,
+  `{ kind: 'table', rows: [{ key, row }] }` or
+  `{ kind: 'feed', rows: [{ at, row }] }`
+- `env.definedWidgets(app, 'meter')`: the widgets the app defined as it
+  ran (`this.meter.define(...)`)
+- `env.dashboardIssues(app)`: what is wrong with its widgets'
+  definitions, by path - SyncBridge would draw none of them; also written
+  to `env.logs(app)` as warnings
+
 ## migrateProfileTo(profile)
 
 A profile written for an earlier version of the classes - its

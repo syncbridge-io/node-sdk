@@ -1,4 +1,5 @@
 export * from './connection.js';
+export * from './dashboards.js';
 export * from './fixture-reader.js';
 export * from './memory-logger.js';
 export * from './migrate-profile.js';

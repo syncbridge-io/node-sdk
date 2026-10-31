@@ -9,10 +9,12 @@ import {
   ExtensionRegistry,
   type LogChannel,
   ServiceStatus,
+  type WidgetMetadata,
 } from '@syncbridge/common';
 import type { Type } from 'ts-gems';
 import { callerFile } from './caller.js';
 import { type Framing, TestConnection } from './connection.js';
+import { type DashboardData, TestDashboards } from './dashboards.js';
 import { collectExtensionEntries, findPackageDir } from './discovery.js';
 import { LogRecord, MemoryLogger } from './memory-logger.js';
 import {
@@ -76,6 +78,8 @@ export class TestEnv {
   protected _logs = new WeakMap<AppBase, MemoryLogger>();
   /** The records of each app's log channels, by channel */
   protected _channels = new WeakMap<AppBase, Map<string, LogChannel.Entry[]>>();
+  /** Each app's dashboards, as SyncBridge would hold them */
+  protected _dashboards = new WeakMap<AppBase, TestDashboards>();
   protected _mocks: MockComponent<any>[] = [];
   /** Ends each use of this env's registry as the current one */
   protected _releases: (() => void)[] = [];
@@ -117,11 +121,18 @@ export class TestEnv {
       if (!entries) channels.set(channel, (entries = []));
       entries.push(entry);
     };
+    const dashboards = new TestDashboards(message => logger.warn(message));
     const app = await this._inNetwork(() =>
-      AppFactory.createApp<T>(profile, { logger, logSink }),
+      AppFactory.createApp<T>(profile, {
+        logger,
+        logSink,
+        dashboardSink: op => dashboards.apply(op),
+      }),
     ).catch(e => {
       throw this._explainSerial(e);
     });
+    dashboards.metadata = app[AppFactory.METADATA_KEY];
+    this._dashboards.set(app, dashboards);
     /* Whoever starts it, its components listen and connect in the network */
     if (this._network)
       for (const method of ['init', 'start', 'stop'] as const) {
@@ -266,6 +277,34 @@ export class TestEnv {
     const channels = this._channels.get(app);
     if (!channels) throw new Error('This app was not created by this env');
     return channels.get(channel) || [];
+  }
+
+  /**
+   * A widget's data as the app's dashboards show it, by its path:
+   * `ops/queue`, a component's `io/device/errors`. Writes count at once
+   */
+  dashboard(app: AppBase, widget: string): DashboardData | undefined {
+    return this._dashboardsOf(app).get(widget);
+  }
+
+  /** The widgets the app defined as it ran into a dashboard: `ops` */
+  definedWidgets(app: AppBase, dashboard: string): WidgetMetadata[] {
+    return this._dashboardsOf(app).defined(dashboard);
+  }
+
+  /**
+   * What is wrong with the definitions of the app's widgets - its
+   * classes' and those defined as it ran - by path: SyncBridge would draw
+   * none of them. Empty when all are right
+   */
+  dashboardIssues(app: AppBase): Record<string, string[]> {
+    return this._dashboardsOf(app).issues();
+  }
+
+  protected _dashboardsOf(app: AppBase): TestDashboards {
+    const dashboards = this._dashboards.get(app);
+    if (!dashboards) throw new Error('This app was not created by this env');
+    return dashboards;
   }
 
   /** What the app and its components logged */
