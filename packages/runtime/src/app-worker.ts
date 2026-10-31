@@ -3,6 +3,8 @@ import {
   type AppBase,
   AppFactory,
   type ComponentBase,
+  type DashboardOp,
+  type DashboardSink,
   type ILogger,
   type LogChannel,
   type Profile,
@@ -10,6 +12,7 @@ import {
   type ServiceStatus,
   type StackExecutor,
 } from '@syncbridge/common';
+import { DashboardCoalescer } from './dashboard-coalescer.js';
 
 export interface ComponentStatusInfo {
   componentName: string;
@@ -29,9 +32,22 @@ export interface ComponentStatusInfo {
  */
 export class AppWorker extends EventEmitter<AppWorker.Events> {
   app?: AppBase;
+  /** The dashboards' writes gathered for `options.dashboardSink` */
+  protected _dashboard?: DashboardCoalescer;
 
   constructor(readonly options: AppWorker.Options) {
     super();
+    if (options.dashboardSink)
+      this._dashboard = new DashboardCoalescer(
+        options.dashboardSink,
+        options.dashboardInterval,
+      );
+  }
+
+  /** Where the app's dashboards hand each write: gathered */
+  protected get _dashboardSink(): DashboardSink | undefined {
+    const coalescer = this._dashboard;
+    return coalescer && (op => coalescer.push(op));
   }
 
   get profile(): Profile | undefined {
@@ -62,12 +78,14 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
       return AppFactory.updateAppSilent(this.app, profile, {
         logger,
         logSink: this.options.logSink,
+        dashboardSink: this._dashboardSink,
       });
     }
     const r = await AppFactory.createAppSilent(profile, {
       logger,
       dataDirectory: this.options.dataDirectory,
       logSink: this.options.logSink,
+      dashboardSink: this._dashboardSink,
     });
     if (r.result) this._attach(r.app);
     return r;
@@ -81,6 +99,8 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
 
   async stop(): Promise<void> {
     await this.app?.stop();
+    /* What the app wrote as it stopped goes too */
+    this._dashboard?.stop();
   }
 
   protected _attach(app: AppBase) {
@@ -108,6 +128,13 @@ export namespace AppWorker {
     dataDirectory: string;
     /** Where the app's log channels hand their records */
     logSink?: LogChannel.Sink;
+    /**
+     * Where the app's dashboards' writes go, gathered: at most once an
+     * interval. Without it they are dropped
+     */
+    dashboardSink?: (ops: DashboardOp[]) => void;
+    /** The interval, in milliseconds: default 1000, at least 250 */
+    dashboardInterval?: number;
   }
 
   export interface Events {
