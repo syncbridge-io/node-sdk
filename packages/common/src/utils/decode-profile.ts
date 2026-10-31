@@ -39,6 +39,12 @@ export interface CodecOptions {
    * edited or stored; never one a worker runs with.
    */
   unresolved?: boolean;
+  /**
+   * The version of a component the worker loads, by its uri - its
+   * package's in the worker's plan: its values coded by that version's
+   * settings (see materializeMetadata)
+   */
+  componentVersion?: (uri: string) => string | undefined;
 }
 
 /**
@@ -81,7 +87,9 @@ export function decodeProfileSilent(
       issues: StackExecutor.Issue[];
     } {
   const modelsDocument = getModelsDocument();
-  const r1 = materializeMetadataSilent(profile);
+  const r1 = materializeMetadataSilent(profile, {
+    componentVersion: options?.componentVersion,
+  });
   if (!r1.result) {
     return { result: false, issues: r1.issues };
   }
@@ -147,7 +155,9 @@ export function encodeProfileSilent(
       issues: StackExecutor.Issue[];
     } {
   const modelsDocument = getModelsDocument();
-  const r1 = materializeMetadataSilent(profile);
+  const r1 = materializeMetadataSilent(profile, {
+    componentVersion: options?.componentVersion,
+  });
   if (!r1.result) {
     return { result: false, issues: r1.issues };
   }
@@ -346,11 +356,9 @@ function _codecValues(
           return;
         }
         let valueFn: Validator = isAny;
-        /* If variable is ignored and no default value is set, field should be undefined  */
-        if (defVariable.ignored && defVariable.default === undefined) {
-          target[k] = vg.isUndefined({ coerce: true });
-          return;
-        }
+        /* If variable is ignored and no default value is set, field should be
+         * undefined: left out - not the validator itself, as it was */
+        if (defVariable.ignored && defVariable.default === undefined) return;
         /* If variable is ignored and a default value is set, field should be set to default value  */
         if (defVariable.ignored && defVariable.default !== undefined) {
           if (defVariable.default === null) {
