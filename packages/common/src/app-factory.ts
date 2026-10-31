@@ -8,6 +8,7 @@ import { SbError, SbValidationError } from './classes/sb-error.js';
 import { StackExecutor } from './classes/stack-executor.js';
 import { DASHBOARD_CLASSES } from './constants.js';
 import type { DashboardCounters } from './dashboard/counters.js';
+import { DashboardVisibility } from './dashboard/includes.js';
 import { dashboardPath } from './dashboard/limits.js';
 import {
   DashboardRuntime,
@@ -57,6 +58,8 @@ export namespace AppFactory {
     profile: Profile;
     options?: AppOptions;
     valueUpdates?: Map<AppBase | ComponentBase, Record<string, any>>;
+    /** Which of its components' widgets the app shows */
+    dashboardVisibility?: DashboardVisibility;
   }
 
   interface ConfigureComponentsContext extends ConfigureAppContext {
@@ -246,6 +249,7 @@ export namespace AppFactory {
       }
     }
 
+    ctx.dashboardVisibility = new DashboardVisibility(r1.metadata);
     const cmpCtx: ConfigureComponentsContext = {
       ...ctx,
       owner: ctx.app,
@@ -273,7 +277,10 @@ export namespace AppFactory {
       '',
       ctx.options?.dashboardSink,
       ctx.options?.dashboardCounters,
+      ctx.dashboardVisibility,
     );
+    for (const issue of ctx.dashboardVisibility.issues)
+      ctx.app.logger?.warn(issue);
     ctx.app[METADATA_KEY] = r1.metadata;
     ctx.app[PROFILE_KEY] = r1.profile;
     return true;
@@ -412,6 +419,7 @@ export namespace AppFactory {
               componentPath,
               ctx.options?.dashboardSink,
               ctx.options?.dashboardCounters,
+              ctx.dashboardVisibility,
             );
 
             /** Initialize sub-components */
@@ -518,6 +526,7 @@ export namespace AppFactory {
     source: string,
     sink: DashboardSink | undefined,
     counters?: DashboardCounters,
+    visibility?: DashboardVisibility,
   ) {
     if (!definitions) return;
     const classes = Reflect.getMetadata(DASHBOARD_CLASSES, element.constructor);
@@ -533,6 +542,8 @@ export namespace AppFactory {
         element[key] = dashboard;
       }
       const widgets = definition.widgets || [];
+      const shows = (id: string) =>
+        !visibility || visibility.shows(source, path, id);
       let runtime: DashboardRuntime | undefined = dashboard[DASHBOARD_CONTEXT];
       if (!runtime) {
         runtime = new DashboardRuntime(
@@ -542,17 +553,19 @@ export namespace AppFactory {
           sink,
           warn,
           counters,
+          shows,
         );
         dashboard[DASHBOARD_CONTEXT] = runtime;
-      } else runtime.configure(path, sink, warn, counters);
+      } else runtime.configure(path, sink, warn, counters, shows);
       for (const widget of widgets) {
         let writer = dashboard[widget.id] as WidgetWriter | undefined;
+        const silent = !shows(widget.id);
         if (!(writer instanceof WidgetWriter)) {
-          writer = new WidgetWriter(widget, path, sink, warn, counters);
+          writer = new WidgetWriter(widget, path, sink, warn, counters, silent);
           dashboard[widget.id] = writer;
         } else {
           (writer as { dashboard: string }).dashboard = path;
-          writer.configure(sink, warn, counters);
+          writer.configure(sink, warn, counters, silent);
         }
       }
     }
