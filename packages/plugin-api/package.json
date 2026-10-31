@@ -20,7 +20,7 @@
     "ts-gems": "^4.0.4"
   },
   "peerDependencies": {
-    "@syncbridge/common": "^2.15.0"
+    "@syncbridge/common": "^2.14.0"
   },
   "devDependencies": {
     "expect": "^30.5.2"
