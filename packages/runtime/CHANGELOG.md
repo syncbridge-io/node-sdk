@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to f813a9862f12ca77eb5067c7eb414f3046e2f0f1 -->
+<!-- rman:documented-up-to d538e84ec2754227729aa97ea56d63442277efb1 -->
+
+## @syncbridge/runtime@2.5.0 (2026-10-31)
+
+### ✨ Features
+
+- **runtime:** AppWorker ticks its app's chart counts - one timer a worker, each second writing the counts whose interval ended as points, started with the app and stopped with it, what is left counted written as it stops; components carry no timer (d350a87)
+
+---
 
 ## @syncbridge/runtime@2.4.0 (2026-10-31)
 

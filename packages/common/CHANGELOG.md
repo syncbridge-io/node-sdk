@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to f813a9862f12ca77eb5067c7eb414f3046e2f0f1 -->
+<!-- rman:documented-up-to d538e84ec2754227729aa97ea56d63442277efb1 -->
+
+## @syncbridge/common@2.16.0 (2026-10-31)
+
+### ✨ Features
+
+- **common:** a chart counts - Widget.Chart's count(series, amount) adds to a sum kept in the worker (DashboardCounters), written as one point each interval (the chart's interval, '1s' unless told, 1 s to 1 h): 0 for an interval with none once the series was counted, intervals missed as the first one and a 0 at the last, what is left written and forgotten at a stop; a clear or an undefine drops its counts. A busy source counts each event and sends a point a second. AppOptions.dashboardCounters; widgetIssues checks an interval (1af8e13)
+
+---
 
 ## @syncbridge/common@2.15.0 (2026-10-31)
 
