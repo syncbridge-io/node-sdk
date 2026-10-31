@@ -3,6 +3,7 @@ import {
   AppExtension,
   CLASS_METADATA,
   ComponentExtension,
+  decodeProfileSilent,
   ExtensionPackage,
   ExtensionRegistry,
   materializeMetadata,
@@ -268,6 +269,11 @@ describe('materializeMetadata', () => {
               className: 'Link',
               displayName: `Link v${version}`,
               interfaces: [Cmp1Component.uri],
+              /* A setting its 2.0.0 adds */
+              variables:
+                version === '2.0.0'
+                  ? { ...cmp.variables, extra: { type: 'string' } as any }
+                  : cmp.variables,
             }),
           );
           if (name === '@test/bundle')
@@ -305,6 +311,28 @@ describe('materializeMetadata', () => {
             uri.startsWith('@test/other:') ? '2.0.0' : undefined,
         }).components!.cmp1.version,
       ).toBe('2.0.0');
+    });
+
+    it("should code a component's values by the version it is told", () => {
+      const p = {
+        ...profile('@test/other:Link'),
+        values: { var1: 'x' },
+      };
+      p.components.cmp1.values = { var1: 'a', extra: 'kept' };
+      /* By 1.0.0's settings: its 2.0.0's setting dropped */
+      const first = decodeProfileSilent(p);
+      /* An ignored setting with no default left out */
+      expect(first.result && first.profile.components!.cmp1.values).toEqual({
+        var1: 'a',
+        var2: 'xyz',
+      });
+      const told = decodeProfileSilent(p, {
+        componentVersion: uri =>
+          uri.startsWith('@test/other:') ? '2.0.0' : undefined,
+      });
+      expect(told.result && told.profile.components!.cmp1.values).toMatchObject(
+        { var1: 'a', extra: 'kept' },
+      );
     });
   });
 });
