@@ -52,7 +52,7 @@ class WriterComponent extends ComponentBase {
 
 @App({ displayName: 'Writer app' })
 class WriterApp extends AppBase {
-  @UseDashboard({ title: 'Operations' })
+  @UseDashboard({ title: 'Operations', include: [{ component: 'io' }] })
   declare readonly ops: OpsDashboard;
 
   @App.UseComponent({ required: true })

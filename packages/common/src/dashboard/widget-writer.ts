@@ -52,7 +52,9 @@ export type DashboardWarn = (message: string) => void;
 /**
  * What a widget property holds: its writes checked against its data's
  * kind and the bounds where they are made, then handed to the sink. A
- * write refused is told in the element's log and sends nothing
+ * write refused is told in the element's log and sends nothing. A
+ * component's widget no owner shows (`include`) is silent: its writes
+ * return at once
  */
 export class WidgetWriter
   implements
@@ -71,7 +73,13 @@ export class WidgetWriter
     protected _warn?: DashboardWarn,
     /** The worker's counts: without them, count() drops what it is given */
     protected _counters?: DashboardCounters,
+    protected _silent = false,
   ) {}
+
+  /** Whether no owner shows it: its writes return at once */
+  get silent(): boolean {
+    return this._silent;
+  }
 
   get path(): string {
     return dashboardPath(this.dashboard, this.metadata.id);
@@ -81,10 +89,12 @@ export class WidgetWriter
     sink?: DashboardSink,
     warn?: DashboardWarn,
     counters?: DashboardCounters,
+    silent = false,
   ) {
     this._sink = sink;
     if (warn) this._warn = warn;
     this._counters = counters;
+    this._silent = silent;
   }
 
   /**
@@ -92,6 +102,7 @@ export class WidgetWriter
    * widget's `set('ok', 'Connected')`
    */
   set(value: any, text?: string): void {
+    if (this._silent) return;
     if (!this._is('value', 'set')) return;
     let out: Widget.Scalar | DashboardStatus;
     if (this.metadata.type === 'core.status@1' || text !== undefined) {
@@ -122,6 +133,7 @@ export class WidgetWriter
   }
 
   point(series: string, value: number, at?: Date): void {
+    if (this._silent) return;
     if (!this._is('series', 'point') || !this._series(series)) return;
     if (typeof value !== 'number' || !Number.isFinite(value))
       return this._refuse('a point is a finite number');
@@ -135,6 +147,7 @@ export class WidgetWriter
   }
 
   count(series: string, amount = 1): void {
+    if (this._silent) return;
     if (!this._is('series', 'count') || !this._series(series)) return;
     if (typeof amount !== 'number' || !Number.isFinite(amount))
       return this._refuse('a count is a finite number');
@@ -147,12 +160,14 @@ export class WidgetWriter
   }
 
   upsert(key: string, row: Widget.Row): void {
+    if (this._silent) return;
     if (!this._is('table', 'upsert') || !this._key(key)) return;
     const out = this._row(row);
     if (out) this._sink?.({ op: 'upsert', widget: this.path, key, row: out });
   }
 
   remove(key: string): void {
+    if (this._silent) return;
     if (!this._is('table', 'remove') || !this._key(key)) return;
     this._sink?.({ op: 'remove', widget: this.path, key });
   }
@@ -160,6 +175,7 @@ export class WidgetWriter
   replace(
     rows: Record<string, Widget.Row> | { key: string; row: Widget.Row }[],
   ): void {
+    if (this._silent) return;
     if (!this._is('table', 'replace')) return;
     const list = Array.isArray(rows)
       ? rows
@@ -174,6 +190,7 @@ export class WidgetWriter
   }
 
   append(row: Widget.Row): void {
+    if (this._silent) return;
     if (!this._is('feed', 'append')) return;
     const out = this._row(row);
     if (out)
@@ -186,6 +203,7 @@ export class WidgetWriter
   }
 
   clear(series?: string): void {
+    if (this._silent) return;
     if (this.metadata.data.kind === 'value')
       return this._refuse(`"${this.path}" holds a value: set it`);
     if (this.metadata.data.kind === 'series')
@@ -291,6 +309,8 @@ export class DashboardRuntime implements DashboardBase.Context {
     protected _sink?: DashboardSink,
     protected _warn?: DashboardWarn,
     protected _counters?: DashboardCounters,
+    /** Whether a widget of this id is shown: a component's, if taken */
+    protected _shows: (id: string) => boolean = () => true,
   ) {}
 
   configure(
@@ -298,14 +318,16 @@ export class DashboardRuntime implements DashboardBase.Context {
     sink?: DashboardSink,
     warn?: DashboardWarn,
     counters?: DashboardCounters,
+    shows: (id: string) => boolean = () => true,
   ) {
     this.path = path;
     this._sink = sink;
     if (warn) this._warn = warn;
     this._counters = counters;
-    for (const writer of this._defined.values()) {
+    this._shows = shows;
+    for (const [id, writer] of this._defined) {
       (writer as { dashboard: string }).dashboard = path;
-      writer.configure(sink, warn, counters);
+      writer.configure(sink, warn, counters, !shows(id));
     }
   }
 
@@ -314,6 +336,10 @@ export class DashboardRuntime implements DashboardBase.Context {
     return [...this._defined.keys()];
   }
 
+  /**
+   * A widget no owner shows is checked all the same, and returned silent:
+   * the engine is not told of it
+   */
   define<H>(id: string, definition: Widget.Definition<H>): H {
     const issues = this._issues(id, definition);
     if (
@@ -328,23 +354,29 @@ export class DashboardRuntime implements DashboardBase.Context {
       throw new TypeError(why);
     }
     const metadata = widgetMetadataOf(id, definition);
+    const silent = !this._shows(id);
     const writer = new WidgetWriter(
       metadata,
       this.path,
       this._sink,
       this._warn,
       this._counters,
+      silent,
     );
     /* Defined anew: what its earlier one counted goes with it */
     if (this._defined.has(id))
       this._counters?.drop(dashboardPath(this.path, id));
     this._defined.set(id, writer);
-    this._sink?.({ op: 'define', dashboard: this.path, widget: metadata });
+    if (!silent)
+      this._sink?.({ op: 'define', dashboard: this.path, widget: metadata });
     return writer as unknown as H;
   }
 
   undefine(id: string): void {
-    if (!this._defined.delete(id)) return;
+    const writer = this._defined.get(id);
+    if (!writer) return;
+    this._defined.delete(id);
+    if (writer.silent) return;
     this._counters?.drop(dashboardPath(this.path, id));
     this._sink?.({ op: 'undefine', dashboard: this.path, id });
   }

@@ -140,6 +140,42 @@ export class DashboardSectionMetadata {
 }
 
 /**
+ * Widgets of a component's dashboard an element shows in one of its own,
+ * given in `@UseDashboard({ include })`: a component's widgets are shown
+ * only where its owner takes them
+ */
+@ComplexType({
+  description: "Widgets of a component's dashboard shown in this one",
+})
+export class DashboardIncludeMetadata {
+  constructor(init?: Partial<DashboardIncludeMetadata>) {
+    if (init) Object.assign(this, init);
+  }
+
+  @ApiField({
+    description: 'The component, by the name its owner gives it',
+    required: true,
+  })
+  declare component: string;
+
+  @ApiField({ description: 'Its dashboard; default: every one of them' })
+  declare dashboard?: string;
+
+  @ApiField({
+    type: ArrayType(String),
+    description:
+      'The widgets, by id; * matches any characters. Default: every one',
+  })
+  declare widgets?: string[];
+
+  @ApiField({
+    description:
+      "The section of this dashboard they go into; default: the component's own",
+  })
+  declare section?: string;
+}
+
+/**
  * A dashboard of an element, defined with `@UseDashboard` on a property
  * whose class (a DashboardBase) defines its sections and widgets: a tab of
  * its own in the worker's page
@@ -173,4 +209,10 @@ export class DashboardMetadata {
 
   @ApiField({ type: ArrayType(WidgetMetadata) })
   declare widgets?: WidgetMetadata[];
+
+  @ApiField({
+    type: ArrayType(DashboardIncludeMetadata),
+    description: "Widgets of its components' dashboards shown in it",
+  })
+  declare include?: DashboardIncludeMetadata[];
 }

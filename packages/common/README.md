@@ -253,8 +253,8 @@ this.ioLog.info('Sent', { bytes: 42 });
 A dashboard is a screen of the worker's page, filled live as it runs: its
 numbers, charts and lists, apart from its logs. It is a class extending
 `DashboardBase`, its widgets properties decorated with `@Widget.*`; an
-app or a component gives itself one with `@UseDashboard`, each such
-property a tab of its own:
+app gives itself one with `@UseDashboard`, each such property a tab of
+its own:
 
 ```ts
 import {
@@ -339,6 +339,43 @@ this.operations.undefine('bed-3');
 
 Define it with the same id each time the worker starts, and a user's
 hiding it is kept across restarts.
+
+### Components' widgets
+
+A component declares dashboards the same way, but they are never tabs of
+their own: the app decides how many tabs there are and what is on them.
+It takes a component's widgets into one of its dashboards with
+`include` - all of a dashboard's, or those its ids match (`*` any
+characters) - into one of its sections or in the component's own:
+
+```ts
+@App({ displayName: 'Lab' })
+export class LabApp extends AppBase {
+  @App.UseComponent({ required: true })
+  declare readonly io: DeviceIoComponent;
+
+  @UseDashboard({
+    title: 'Operations',
+    include: [{ component: 'io', dashboard: 'device',
+      widgets: ['errors', 'rx*'], section: 'device' }],
+  })
+  declare readonly operations: OperationsDashboard;
+
+  // A tab of a component's widgets alone
+  @UseDashboard({ title: 'Device', include: [{ component: 'io' }] })
+  declare readonly device: DashboardBase;
+}
+```
+
+- A widget no app takes is not written at all: its writes, counts and
+  definitions return at once, and nothing of it leaves the worker. A
+  component may declare widgets freely; it costs only where they are
+  shown.
+- A component takes its own components' widgets into its dashboards the
+  same way, and the app takes them from there: a widget is shown when
+  each owner up to the app takes it.
+- An include naming a component or dashboard that is not there is told
+  in the app's log.
 
 A plugin may bring widget types of its own; a widget names one by its id,
 and is drawn plainer where the plugin is not installed:
