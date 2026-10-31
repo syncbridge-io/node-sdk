@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to d538e84ec2754227729aa97ea56d63442277efb1 -->
+<!-- rman:documented-up-to 59b7b6ed4e60de2898063790e9fdbb78f47a0939 -->
+
+## @syncbridge/common@2.17.0 (2026-10-31)
+
+### ✨ Features
+
+- **common:** components' dashboard widgets shown where their app takes them (c256717)
+
+---
 
 ## @syncbridge/common@2.16.0 (2026-10-31)
 
