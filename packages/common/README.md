@@ -302,7 +302,7 @@ A widget holds its data, of one of four kinds whatever it looks like:
 | --- | --- | --- |
 | value | `set(value)` | `Stat`, `Status` (`set('warning', 'Slow')`), `Gauge`, `Progress` |
 | series | `point(series, value, at?)`, `count(series, amount?)`, `clear(series?)` | `Chart`: `style` line, area, bar or stacked |
-| table | `upsert(key, row)`, `remove(key)`, `replace(rows)`, `clear()` | `Table`, `Cards` (a `template` per row), `Bars`, `Pie` |
+| table | `upsert(key, row)`, `remove(key)`, `replace(rows)`, `clear()` | `Table`, `Cards` (a `template` per row, `cardWidth` s, m or l), `Bars`, `Pie` |
 | feed | `append(row)`, `clear()` | `Feed`: its newest rows |
 
 - A chart keeps its last 200 points per series unless told (`points`,

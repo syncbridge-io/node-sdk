@@ -55,6 +55,19 @@ describe('The core widget types', () => {
     );
   });
 
+  it("should take a card's least width, s, m or l", () => {
+    const template = { type: 'text' as const, value: 'row.name' };
+    const cards = Widget.cards({ template, cardWidth: 'l' });
+    expect(cards.properties).toEqual({ template, cardWidth: 'l' });
+    expect(
+      widgetIssues(widgetMetadataOf('c', cards), coreWidgetType(cards.type)),
+    ).toEqual([]);
+    const wide = Widget.cards({ template, cardWidth: 'xl' as any });
+    expect(
+      widgetIssues(widgetMetadataOf('c', wide), coreWidgetType(wide.type)),
+    ).toEqual(['"cardWidth" is one of s, m, l']);
+  });
+
   it("should take its texts by language - a title, a unit, a series' label - and refuse one not text", () => {
     const issues = (id: string, d: Widget.Definition<any>) =>
       widgetIssues(widgetMetadataOf(id, d), coreWidgetType(d.type));

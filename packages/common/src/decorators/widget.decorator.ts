@@ -333,6 +333,12 @@ export namespace Widget {
   export interface CardsOptions extends Options {
     /** One card's look; its `row.<field>`s are the row's */
     template: TemplateNode;
+    /**
+     * A card's least width: s (default), m or l - a card of several values
+     * side by side needs room. As many as fit go on a row, each widened
+     * to fill it
+     */
+    cardWidth?: 's' | 'm' | 'l';
     /** At most this many cards */
     max?: number;
   }
@@ -431,7 +437,10 @@ export namespace Widget {
     return {
       ...base(o),
       type: 'core.card@1',
-      properties: { template: o.template },
+      properties: omitUndefined({
+        template: o.template,
+        cardWidth: o.cardWidth,
+      }),
       data: omitUndefined({ kind: 'table' as const, max: o.max }),
     };
   }

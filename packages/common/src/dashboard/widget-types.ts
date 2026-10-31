@@ -157,7 +157,10 @@ export const CORE_WIDGET_TYPES: readonly WidgetTypeSpec[] = [
     description: 'A card per row, of the template given in the widget',
     renderer: 'template',
     data: ['table'],
-    properties: { template: { type: 'template', required: true } },
+    properties: {
+      template: { type: 'template', required: true },
+      cardWidth: { type: 'string', values: ['s', 'm', 'l'] },
+    },
   },
   {
     name: 'core.gauge',
