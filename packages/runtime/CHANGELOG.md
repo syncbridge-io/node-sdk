@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 6d6b711cce938af454e6d085528bb28af6fea939 -->
+<!-- rman:documented-up-to f813a9862f12ca77eb5067c7eb414f3046e2f0f1 -->
+
+## @syncbridge/runtime@2.4.0 (2026-10-31)
+
+### ✨ Features
+
+- **runtime:** AppWorker's dashboardSink takes a worker's dashboard writes gathered by a DashboardCoalescer - a value set many times as its last, a series' points and a feed's rows together under their bounds, a table's rows as each one's last change, a clear or a replace dropping what came before, widgets defined first - sent at most once an interval (dashboardInterval, default 1 s, at least 250 ms) and at the stop (547624f)
+
+---
 
 ## @syncbridge/runtime@2.3.2 (2026-10-30)
 
