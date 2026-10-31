@@ -43,6 +43,12 @@ export class WidgetDataMetadata {
   declare window?: number;
 
   @ApiField({
+    description:
+      "A series' interval, in seconds: what count() sums is written as a point each one",
+  })
+  declare interval?: number;
+
+  @ApiField({
     type: ArrayType(String),
     description: "A series widget's series, by name: a chart's lines",
   })

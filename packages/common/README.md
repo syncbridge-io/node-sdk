@@ -301,7 +301,7 @@ A widget holds its data, of one of four kinds whatever it looks like:
 | Kind | Written with | Widgets |
 | --- | --- | --- |
 | value | `set(value)` | `Stat`, `Status` (`set('warning', 'Slow')`), `Gauge`, `Progress` |
-| series | `point(series, value, at?)`, `clear(series?)` | `Chart`: `style` line, area, bar or stacked |
+| series | `point(series, value, at?)`, `count(series, amount?)`, `clear(series?)` | `Chart`: `style` line, area, bar or stacked |
 | table | `upsert(key, row)`, `remove(key)`, `replace(rows)`, `clear()` | `Table`, `Cards` (a `template` per row), `Bars`, `Pie` |
 | feed | `append(row)`, `clear()` | `Feed`: its newest rows |
 
@@ -309,6 +309,15 @@ A widget holds its data, of one of four kinds whatever it looks like:
   at most 1000) and, with `window` (`'15m'`, `'1h'`, seconds), only
   those inside it. A table keeps 500 rows, a feed 200, unless `max` is
   smaller.
+- A rate - bytes or messages a second - is counted, not pointed:
+  `count('rx', chunk.length)` adds to a sum kept in the worker, and
+  SyncBridge writes it as one point each `interval` (default `'1s'`, from
+  1 s to 1 h), however many events came. Nothing leaves the worker as it
+  counts, and the component needs no timer. An interval with no count is
+  written as 0 once the series was counted; what is counted when the
+  worker stops is written then. The chart shows `points` x `interval`:
+  200 points of 1 s, the last 200 seconds. Use `point` or `count` for a
+  series, not both.
 - `size`: `width` 1 to 4 columns, `height` `s`, `m` or `l`.
 - A write is checked where it is made: one of the wrong kind or over a
   bound is refused in the element's log, once, and never thrown.

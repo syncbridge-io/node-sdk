@@ -6,6 +6,7 @@ import {
   Component,
   ComponentBase,
   DashboardBase,
+  DashboardCounters,
   type DashboardOp,
   DashboardSections,
   ExtensionRegistry,
@@ -27,6 +28,9 @@ class OpsDashboard extends DashboardBase {
 
   @Widget.Chart({ title: 'Rate', series: ['in', 'out'] })
   declare readonly rate: Widget.Chart;
+
+  @Widget.Chart({ title: 'Traffic', series: ['rx'], interval: '5s' })
+  declare readonly traffic: Widget.Chart;
 
   @Widget.Table({ title: 'Devices', columns: [{ field: 'name' }] })
   declare readonly devices: Widget.Table<{ name: string; seen?: Date }>;
@@ -58,6 +62,7 @@ class WriterApp extends AppBase {
 describe('Dashboard widgets as the worker runs', () => {
   const sent: DashboardOp[] = [];
   const warned: string[] = [];
+  const counters = new DashboardCounters(op => sent.push(op));
   let app: WriterApp;
 
   before(async () => {
@@ -71,6 +76,7 @@ describe('Dashboard widgets as the worker runs', () => {
     } as unknown as Profile;
     app = (await AppFactory.createApp(profile, {
       dashboardSink: op => sent.push(op),
+      dashboardCounters: counters,
     })) as WriterApp;
     const warn = (m: string) => warned.push(m);
     app.logger = { warn, child: () => ({ warn }) } as any;
@@ -78,6 +84,7 @@ describe('Dashboard widgets as the worker runs', () => {
     await AppFactory.updateApp(app, profile, {
       logger: app.logger,
       dashboardSink: op => sent.push(op),
+      dashboardCounters: counters,
     });
   });
 
@@ -183,5 +190,37 @@ describe('Dashboard widgets as the worker runs', () => {
     ).toThrow(/"nope" is not a type and version/);
     expect(sent).toEqual([]);
     expect(warned).toHaveLength(3);
+  });
+
+  it("should sum a chart's counts in the worker and write them as one point an interval, its own", () => {
+    const start = Date.now();
+    for (let i = 0; i < 300; i++) app.ops.traffic.count('rx', 10);
+    app.ops.traffic.count('rx');
+    /* Nothing leaves as it counts */
+    expect(sent).toEqual([]);
+    counters.tick(start + 1000);
+    expect(sent).toEqual([]);
+    counters.tick(start + 5000);
+    expect(sent).toEqual([
+      {
+        op: 'point',
+        widget: 'ops/traffic',
+        series: 'rx',
+        value: 3001,
+        at: start + 5000,
+      },
+    ]);
+    /* Wrong series or kind refused as point() is; a clear drops the count */
+    app.ops.traffic.count('tx', 1);
+    (app.ops.queue as any).count('in', 1);
+    expect(warned).toEqual([
+      'Dashboard widget "ops/traffic" refused a write: its series are rx',
+      'Dashboard widget "ops/queue" refused a write: "ops/queue" holds a value: it has no count()',
+    ]);
+    app.ops.traffic.count('rx', 7);
+    app.ops.traffic.clear('rx');
+    sent.length = 0;
+    counters.flush(start + 20000);
+    expect(sent).toEqual([]);
   });
 });

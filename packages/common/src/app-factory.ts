@@ -7,6 +7,7 @@ import { LogChannelWriter } from './classes/log-channel-writer.js';
 import { SbError, SbValidationError } from './classes/sb-error.js';
 import { StackExecutor } from './classes/stack-executor.js';
 import { DASHBOARD_CLASSES } from './constants.js';
+import type { DashboardCounters } from './dashboard/counters.js';
 import { dashboardPath } from './dashboard/limits.js';
 import {
   DashboardRuntime,
@@ -43,6 +44,11 @@ export namespace AppFactory {
      * defined as the worker runs; without it they drop them
      */
     dashboardSink?: DashboardSink;
+    /**
+     * The worker's chart counts, ticked by its runtime; without them,
+     * count() drops what it is given
+     */
+    dashboardCounters?: DashboardCounters;
   }
 
   interface ConfigureAppContext {
@@ -266,6 +272,7 @@ export namespace AppFactory {
       r1.metadata.dashboards,
       '',
       ctx.options?.dashboardSink,
+      ctx.options?.dashboardCounters,
     );
     ctx.app[METADATA_KEY] = r1.metadata;
     ctx.app[PROFILE_KEY] = r1.profile;
@@ -404,6 +411,7 @@ export namespace AppFactory {
               newChildMetadata.dashboards,
               componentPath,
               ctx.options?.dashboardSink,
+              ctx.options?.dashboardCounters,
             );
 
             /** Initialize sub-components */
@@ -509,6 +517,7 @@ export namespace AppFactory {
     definitions: DashboardMetadataRecord | undefined,
     source: string,
     sink: DashboardSink | undefined,
+    counters?: DashboardCounters,
   ) {
     if (!definitions) return;
     const classes = Reflect.getMetadata(DASHBOARD_CLASSES, element.constructor);
@@ -532,17 +541,18 @@ export namespace AppFactory {
           new Set(widgets.map(w => w.id)),
           sink,
           warn,
+          counters,
         );
         dashboard[DASHBOARD_CONTEXT] = runtime;
-      } else runtime.configure(path, sink, warn);
+      } else runtime.configure(path, sink, warn, counters);
       for (const widget of widgets) {
         let writer = dashboard[widget.id] as WidgetWriter | undefined;
         if (!(writer instanceof WidgetWriter)) {
-          writer = new WidgetWriter(widget, path, sink, warn);
+          writer = new WidgetWriter(widget, path, sink, warn, counters);
           dashboard[widget.id] = writer;
         } else {
           (writer as { dashboard: string }).dashboard = path;
-          writer.configure(sink, warn);
+          writer.configure(sink, warn, counters);
         }
       }
     }

@@ -17,6 +17,10 @@ export const DASHBOARD_LIMITS = {
   seriesMax: 1000,
   seriesWindow: 86400,
   seriesCount: 8,
+  /** count()'s interval, in seconds: default, least, most */
+  countInterval: 1,
+  countIntervalMin: 1,
+  countIntervalMax: 3600,
   /** A table's rows, a feed's rows */
   tableMax: 500,
   feedMax: 200,
@@ -54,6 +58,18 @@ export function dataWindow(asked?: number): number {
   return asked && asked > 0
     ? Math.min(asked, DASHBOARD_LIMITS.seriesWindow)
     : DASHBOARD_LIMITS.seriesWindow;
+}
+
+/** count()'s interval in milliseconds: what it asked, within the bounds */
+export function countIntervalMs(asked?: number): number {
+  const seconds =
+    asked && asked > 0
+      ? Math.min(
+          Math.max(asked, DASHBOARD_LIMITS.countIntervalMin),
+          DASHBOARD_LIMITS.countIntervalMax,
+        )
+      : DASHBOARD_LIMITS.countInterval;
+  return Math.round(seconds * 1000);
 }
 
 /** A dashboard's or a widget's path under its element's: `io/device/db` */
