@@ -1,4 +1,5 @@
 import { ApiField, ComplexType } from '@opra/common';
+import { ProfileDashboardOptions } from './dashboard-options.js';
 import { ProfileLogOptions } from './log-options.js';
 import { ProfileComponentRecord } from './profile-component.js';
 
@@ -22,6 +23,12 @@ export class ProfileSettings {
     description: 'Log settings of the app',
   })
   logs?: ProfileLogOptions;
+
+  @ApiField({
+    label: 'Dashboard',
+    description: "The worker's dashboard as its users set it",
+  })
+  dashboard?: ProfileDashboardOptions;
 }
 
 /**

@@ -188,6 +188,56 @@ this.host.ui.contribute('worker.header.menu', {
 
 `registerAction` stays, as a button on its own card.
 
+## Dashboard widget types (2.4)
+
+Workers' dashboards (`@UseDashboard` in `@syncbridge/common`) draw
+widgets of types. A plugin adds one as a template: a tree of the UI's
+primitives - `text`, `number`, `badge`, `light`, `progress`, `sparkline`,
+`chart`, `table`, `stack`, `grid`, `divider` - each node's `value` bound
+to the widget's properties or data. Like contributions, nothing of the
+plugin's code reaches the browser.
+
+```ts
+// A plugin named "acme": its id acme.battery@1
+this.host.ui.registerWidgetType({
+  name: 'battery',
+  title: 'Battery',
+  data: ['value'],
+  properties: { device: { type: 'string', required: true } },
+  template: {
+    type: 'stack',
+    children: [
+      { type: 'text', value: 'prop.device' },
+      { type: 'progress', value: 'data.value' },
+    ],
+  },
+});
+```
+
+An app uses it by its id:
+
+```ts
+@Widget('acme.battery@1', { data: { kind: 'value' }, properties: { device: 'Bed 3' } })
+declare readonly battery: Widget.Value<number>;
+```
+
+- `data`: the kinds its data may be. A value or a series is drawn once,
+  bound as `data.value` or `data.<series>` (a series' points, for
+  `sparkline` and `chart`); a table or a feed for each row, as
+  `row.<field>`, a feed's newest first.
+- `properties`: what a widget of it is given (`string`, `number`,
+  `boolean`, `object`, `array`; a string's `values`), bound as
+  `prop.<name>`, and checked in each widget using it.
+- `version`: 1 unless given. Raise it when a change would break the
+  widgets using it; both versions may be registered side by side.
+
+A wrong type - a binding its data cannot have, a primitive not known,
+more than 50 nodes or 6 levels - throws as it is registered. One given
+again replaces it; it returns what removes it, and goes when the plugin is
+deactivated. A widget whose type is not registered is drawn as a
+placeholder with its data as it is, so an app keeps working without the
+plugin.
+
 ## License
 
 MIT

@@ -2,6 +2,7 @@ import { ApiField, ArrayType, ComplexType } from '@opra/common';
 import type { LocalizedText } from '../../registry/localized-text.js';
 import type { ModuleSummary } from '../../registry/module-catalog.js';
 import { WorkerPermission } from '../enums/worker-permission.enum.js';
+import { DashboardMetadataRecord } from './dashboard-metadata.js';
 import type { ElementComponentMetadataRecord } from './element-component-metadata.js';
 import { LogChannelMetadataRecord } from './log-channel-metadata.js';
 import { VariableMetadataRecord } from './variable-metadata.js';
@@ -96,6 +97,13 @@ export class ElementMetadata {
     description: 'Log channels the element writes to, besides its console',
   })
   declare logChannels?: LogChannelMetadataRecord;
+
+  @ApiField({
+    label: 'Dashboards',
+    description:
+      "The element's dashboards, each a tab: their sections and widgets",
+  })
+  declare dashboards?: DashboardMetadataRecord;
 
   @ApiField({
     label: 'Summary',

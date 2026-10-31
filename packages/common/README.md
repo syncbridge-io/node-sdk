@@ -248,6 +248,100 @@ declare readonly ioLog: LogChannel;
 this.ioLog.info('Sent', { bytes: 42 });
 ```
 
+## Dashboards
+
+A dashboard is a screen of the worker's page, filled live as it runs: its
+numbers, charts and lists, apart from its logs. It is a class extending
+`DashboardBase`, its widgets properties decorated with `@Widget.*`; an
+app or a component gives itself one with `@UseDashboard`, each such
+property a tab of its own:
+
+```ts
+import {
+  App,
+  AppBase,
+  DashboardBase,
+  DashboardSections,
+  UseDashboard,
+  Widget,
+} from '@syncbridge/common';
+
+@DashboardSections([
+  { id: 'queue', title: 'Queue' },
+  { id: 'devices', title: 'Devices', dynamic: true },
+])
+export class OperationsDashboard extends DashboardBase {
+  @Widget.Stat({ title: 'Waiting', section: 'queue', unit: 'msg',
+    thresholds: { warning: 100, error: 500 } })
+  declare readonly queue: Widget.Stat;
+
+  @Widget.Chart({ title: 'Throughput', section: 'queue',
+    series: ['received', 'sent'], size: { width: 2 } })
+  declare readonly throughput: Widget.Chart;
+
+  @Widget.Table({ title: 'Devices', section: 'devices',
+    columns: [{ field: 'name' }, { field: 'seen', format: 'time' }] })
+  declare readonly devices: Widget.Table<{ name: string; seen: Date }>;
+}
+
+@App({ displayName: 'Gateway' })
+export class GatewayApp extends AppBase {
+  @UseDashboard({ title: 'Operations' })
+  declare readonly operations: OperationsDashboard;
+
+  onMessage(device: string) {
+    this.operations.throughput.point('received', 1);
+    this.operations.devices.upsert(device, { name: device, seen: new Date() });
+  }
+}
+```
+
+A widget holds its data, of one of four kinds whatever it looks like:
+
+| Kind | Written with | Widgets |
+| --- | --- | --- |
+| value | `set(value)` | `Stat`, `Status` (`set('warning', 'Slow')`), `Gauge`, `Progress` |
+| series | `point(series, value, at?)`, `clear(series?)` | `Chart`: `style` line, area, bar or stacked |
+| table | `upsert(key, row)`, `remove(key)`, `replace(rows)`, `clear()` | `Table`, `Cards` (a `template` per row), `Bars`, `Pie` |
+| feed | `append(row)`, `clear()` | `Feed`: its newest rows |
+
+- A chart keeps its last 200 points per series unless told (`points`,
+  at most 1000) and, with `window` (`'15m'`, `'1h'`, seconds), only
+  those inside it. A table keeps 500 rows, a feed 200, unless `max` is
+  smaller.
+- `size`: `width` 1 to 4 columns, `height` `s`, `m` or `l`.
+- A write is checked where it is made: one of the wrong kind or over a
+  bound is refused in the element's log, once, and never thrown.
+  SyncBridge gathers the writes and sends them at most once a second.
+- Everything is held in memory by SyncBridge, never kept: a worker
+  started again begins empty. What must survive is the app's to keep.
+- A user may hide a dashboard or a widget, for everyone.
+
+A widget the class cannot foresee - a device's own - is defined as the
+worker runs, into a section marked `dynamic`; `define` returns its writer,
+and defining an id again replaces it:
+
+```ts
+this.operations
+  .define('bed-3', Widget.gauge({ title: 'Bed 3', max: 100, section: 'devices' }))
+  .set(72);
+this.operations.undefine('bed-3');
+```
+
+Define it with the same id each time the worker starts, and a user's
+hiding it is kept across restarts.
+
+A plugin may bring widget types of its own; a widget names one by its id,
+and is drawn plainer where the plugin is not installed:
+
+```ts
+@Widget('acme.battery@1', { data: { kind: 'value' }, properties: { device: 'Bed 3' } })
+declare readonly battery: Widget.Value<number>;
+```
+
+`@syncbridge/testing` reads what a test's app wrote to its dashboards
+(`env.dashboard(app, 'operations/queue')`).
+
 ## Permissions
 
 SyncBridge runs each worker as a Linux user of its own, under Node's

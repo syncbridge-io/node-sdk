@@ -3,10 +3,56 @@ import {
   AppBase,
   Component,
   ComponentBase,
+  DashboardBase,
+  DashboardSections,
   DefineVariable,
   Profile,
+  UseDashboard,
   VariableType,
+  Widget,
 } from '@syncbridge/common';
+
+/** A dashboard: a number, a chart of three points, a table, a dynamic section */
+@DashboardSections([{ id: 'live', title: 'Live', dynamic: true }])
+export class MeterDashboard extends DashboardBase {
+  @Widget.Stat({ title: 'Count' })
+  declare readonly count: Widget.Stat;
+
+  @Widget.Chart({ title: 'Rate', series: ['in'], points: 3 })
+  declare readonly rate: Widget.Chart;
+
+  @Widget.Table({ title: 'Devices', columns: [{ field: 'name' }], max: 2 })
+  declare readonly devices: Widget.Table<{ name: string }>;
+}
+
+/** An app of a dashboard, written as it is told */
+@App({ className: 'Meter' })
+export class MeterApp extends AppBase {
+  @UseDashboard({ title: 'Meter' })
+  declare readonly meter: MeterDashboard;
+
+  /** A reading: counted, charted, its device kept */
+  read(device: string, value: number) {
+    const count = Number(this.env.count ?? 0) + 1;
+    this.env.count = count;
+    this.meter.count.set(count);
+    this.meter.rate.point('in', value);
+    this.meter.devices.upsert(device, { name: device });
+  }
+
+  /** A device's own widget, and one wrong: a gauge with no max */
+  defineDevice(device: string) {
+    this.meter
+      .define(device, Widget.stat({ title: device, section: 'live' }))
+      .set(1);
+    this.meter.define(
+      'broken',
+      Widget.custom('core.gauge@1', { data: { kind: 'value' } }),
+    );
+  }
+
+  protected env: Record<string, unknown> = {};
+}
 
 /** How a source retries a read: values nested in its own */
 export class SourceRetryVariables {
