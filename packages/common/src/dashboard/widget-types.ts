@@ -65,7 +65,19 @@ export const TEMPLATE_PRIMITIVES: readonly Widget.TemplateNode['type'][] = [
 ];
 
 const FORMATS = ['number', 'percent', 'bytes', 'duration', 'time', 'text'];
-const BINDING = /^(row|prop)\.[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/;
+const BINDING = /^(row|prop|data)\.[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/;
+
+/**
+ * What a template's node binds: the row it is drawn for, the widget's
+ * properties, the widget's data
+ */
+export type TemplateScope = 'row' | 'prop' | 'data';
+
+const SCOPE_WORDS: Record<TemplateScope, string> = {
+  row: 'row.<field>',
+  prop: 'prop.<name>',
+  data: 'data.<name>',
+};
 /** A template's nodes and depth at most */
 const TEMPLATE_NODES = 50;
 const TEMPLATE_DEPTH = 6;
@@ -276,10 +288,13 @@ function propertyIssue(value: any, p: WidgetPropertySpec): string | undefined {
 }
 
 /**
- * What is wrong with a template: its nodes' types and bindings, their
- * number and depth
+ * What is wrong with a template: its nodes' types and bindings - to the
+ * scopes it is drawn with - their number and depth
  */
-export function templateIssues(root: Widget.TemplateNode): string[] {
+export function templateIssues(
+  root: Widget.TemplateNode,
+  scopes: readonly TemplateScope[] = ['row', 'prop'],
+): string[] {
   const issues: string[] = [];
   let count = 0;
   const walk = (node: any, depth: number, at: string) => {
@@ -292,10 +307,12 @@ export function templateIssues(root: Widget.TemplateNode): string[] {
       issues.push(`template ${at}: "${node.type}" is not a primitive`);
     if (
       node.value != null &&
-      (typeof node.value !== 'string' || !BINDING.test(node.value))
+      (typeof node.value !== 'string' ||
+        !BINDING.test(node.value) ||
+        !scopes.includes(node.value.split('.')[0] as TemplateScope))
     )
       issues.push(
-        `template ${at}: "${node.value}" binds row.<field> or prop.<name>`,
+        `template ${at}: "${node.value}" binds ${scopes.map(s => SCOPE_WORDS[s]).join(' or ')}`,
       );
     if (node.format != null && !FORMATS.includes(node.format))
       issues.push(`template ${at}: "${node.format}" is not a format`);
@@ -313,5 +330,75 @@ export function templateIssues(root: Widget.TemplateNode): string[] {
   walk(root, 1, 'root');
   if (count > TEMPLATE_NODES)
     issues.push(`template: more than ${TEMPLATE_NODES} nodes`);
+  return issues;
+}
+
+/**
+ * The scopes a template type's tree is drawn with, by its data's kinds: a
+ * value or a series once, its data as `data.value` or `data.<series>`; a
+ * table or a feed for each row, as `row.<field>`; its properties always,
+ * as `prop.<name>`
+ */
+export function templateScopes(kinds: readonly DataKind[]): TemplateScope[] {
+  const scopes = new Set<TemplateScope>(['prop']);
+  for (const kind of kinds)
+    scopes.add(kind === 'value' || kind === 'series' ? 'data' : 'row');
+  return [...scopes];
+}
+
+const TYPE_NAME = /^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+$/;
+const PROPERTY_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+const PROPERTY_TYPES: readonly string[] = [
+  'string',
+  'number',
+  'boolean',
+  'object',
+  'array',
+  'template',
+];
+
+/**
+ * What is wrong with a widget type: its name and version, its data's
+ * kinds, its properties' schemas and - a template type's - its tree
+ */
+export function widgetTypeIssues(spec: WidgetTypeSpec): string[] {
+  const issues: string[] = [];
+  if (typeof spec?.name !== 'string' || !TYPE_NAME.test(spec.name))
+    issues.push(`"${spec?.name}" is not a type's name (vendor.name)`);
+  if (
+    !Number.isInteger(spec?.version) ||
+    spec.version < 1 ||
+    spec.version > 9999
+  )
+    issues.push('its version is a whole number from 1');
+  if (!spec?.title || typeof spec.title !== 'string')
+    issues.push('it needs a title');
+  if (
+    !Array.isArray(spec?.data) ||
+    !spec.data.length ||
+    spec.data.some(k => !KINDS.includes(k))
+  ) {
+    issues.push(`its data is of ${KINDS.join(', ')}`);
+    return issues;
+  }
+  for (const [name, p] of Object.entries(spec.properties || {})) {
+    if (!PROPERTY_NAME.test(name))
+      issues.push(`"${name}" is not a property's name`);
+    if (!p || !PROPERTY_TYPES.includes(p.type))
+      issues.push(`property "${name}" is of ${PROPERTY_TYPES.join(', ')}`);
+    else if (
+      p.values != null &&
+      (p.type !== 'string' ||
+        !Array.isArray(p.values) ||
+        p.values.some(v => typeof v !== 'string'))
+    )
+      issues.push(`property "${name}": only a string has values, a list`);
+  }
+  if (spec.renderer === 'template') {
+    if (!spec.template || typeof spec.template !== 'object')
+      issues.push('a template type needs its template');
+    else
+      issues.push(...templateIssues(spec.template, templateScopes(spec.data)));
+  }
   return issues;
 }

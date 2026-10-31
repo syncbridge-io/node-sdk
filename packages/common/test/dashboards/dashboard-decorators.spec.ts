@@ -8,10 +8,13 @@ import {
   DashboardBase,
   DashboardSections,
   ExtensionRegistry,
+  templateIssues,
+  templateScopes,
   UseDashboard,
   Widget,
   widgetIssues,
   widgetMetadataOf,
+  widgetTypeIssues,
 } from '../../src/index.js';
 
 describe('The core widget types', () => {
@@ -50,6 +53,67 @@ describe('The core widget types', () => {
     expect(issues('p', { type: 'core.pie@1', data: { kind: 'feed' } })).toEqual(
       ["a core.pie@1's data is a table, not a feed"],
     );
+  });
+
+  it("should check a plugin's template type: its tree bound to what it is drawn with", () => {
+    const battery = {
+      name: 'acme.battery',
+      version: 1,
+      title: 'Battery',
+      renderer: 'template' as const,
+      data: ['value' as const],
+      properties: { device: { type: 'string' as const, required: true } },
+      template: {
+        type: 'stack' as const,
+        children: [
+          { type: 'text' as const, value: 'prop.device' },
+          { type: 'progress' as const, value: 'data.value' },
+        ],
+      },
+    };
+    expect(widgetTypeIssues(battery)).toEqual([]);
+    /* A value is drawn once: no row to bind */
+    expect(
+      widgetTypeIssues({
+        ...battery,
+        template: { type: 'text', value: 'row.name' },
+      }),
+    ).toEqual(['template root: "row.name" binds prop.<name> or data.<name>']);
+    /* A table for each row: its data is the row */
+    expect(
+      widgetTypeIssues({
+        ...battery,
+        data: ['table'],
+        template: { type: 'text', value: 'data.value' },
+      }),
+    ).toEqual(['template root: "data.value" binds prop.<name> or row.<field>']);
+    expect(
+      widgetTypeIssues({
+        ...battery,
+        name: 'battery',
+        version: 0,
+        data: ['blob' as any],
+      }),
+    ).toEqual([
+      '"battery" is not a type\'s name (vendor.name)',
+      'its version is a whole number from 1',
+      'its data is of value, series, table, feed',
+    ]);
+    expect(
+      widgetTypeIssues({
+        ...battery,
+        properties: { level: { type: 'number', values: ['a'] } },
+        template: undefined,
+      }),
+    ).toEqual([
+      'property "level": only a string has values, a list',
+      'a template type needs its template',
+    ]);
+    expect(templateScopes(['series', 'feed'])).toEqual(['prop', 'data', 'row']);
+    /* An app's cards bind their row and properties alone */
+    expect(templateIssues({ type: 'text', value: 'data.value' })).toEqual([
+      'template root: "data.value" binds row.<field> or prop.<name>',
+    ]);
   });
 });
 
