@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to 3be99597e3eb3ae29271ec51805230d5485b0f44 -->
+<!-- rman:documented-up-to aa78870f547b8e152ab3db6198521d78d4aecb30 -->
+
+## @syncbridge/common@2.19.0 (2026-10-31)
+
+### ✨ Features
+
+- **common:** a card's least width - Widget.Cards' cardWidth s, m or l - for a card of several values side by side (53e9408)
+
+### 🐛 Bug Fixes
+
+- **common:** a profile's values coded by its components' versions the worker loads (componentVersion, the worker's plan's) - a setting only a newer version has was dropped; an ignored setting with no default left out, not set to its validator (a81bd7f)
+
+---
 
 ## @syncbridge/common@2.18.1 (2026-10-31)
 
