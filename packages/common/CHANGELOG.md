@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 59b7b6ed4e60de2898063790e9fdbb78f47a0939 -->
+<!-- rman:documented-up-to 7248d2c0f0b1c15f325902cef6a057480bf9671f -->
+
+## @syncbridge/common@2.18.0 (2026-10-31)
+
+### ✨ Features
+
+- **common:** dashboard texts by language (ceeb105)
+
+---
 
 ## @syncbridge/common@2.17.0 (2026-10-31)
 
