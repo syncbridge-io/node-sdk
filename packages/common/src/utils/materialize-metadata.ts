@@ -14,15 +14,23 @@ import {
 import { ExtensionRegistry } from '../registry/extension-registry.js';
 import { slotInterfaces, slotTakes } from './slot-interfaces.js';
 
+export interface MaterializeOptions {
+  returnUndefinedComponentsAsAbstract?: boolean;
+  removeIgnoredVariables?: boolean;
+  /**
+   * The version of a component the worker loads, by its uri - its
+   * package's in the worker's plan. None told: a component of the app's
+   * package is of the app's version, another the first registered
+   */
+  componentVersion?: (uri: string) => string | undefined;
+}
+
 /**
  * Materializes metadata from profile.
  */
 export function materializeMetadata(
   profile: Profile,
-  options?: {
-    returnUndefinedComponentsAsAbstract?: boolean;
-    removeIgnoredVariables?: boolean;
-  },
+  options?: MaterializeOptions,
 ): AppMetadata {
   const r = materializeMetadataSilent(profile, options);
   if (!r.result) {
@@ -47,10 +55,7 @@ export function materializeMetadata(
  */
 export function materializeMetadataSilent(
   profile: Profile,
-  options?: {
-    returnUndefinedComponentsAsAbstract?: boolean;
-    removeIgnoredVariables?: boolean;
-  },
+  options?: MaterializeOptions,
 ):
   | {
       result: true;
@@ -63,6 +68,16 @@ export function materializeMetadataSilent(
     } {
   const stackExecutor = new StackExecutor();
   const appRec = ExtensionRegistry.getApp(profile.appUri, profile.appVersion);
+  /* A component's version: as told, else its app's for one of its package */
+  const told = options?.componentVersion;
+  options = {
+    ...options,
+    componentVersion: uri =>
+      told?.(uri) ??
+      (uri.slice(0, uri.lastIndexOf(':')) === appRec.pkg.name
+        ? appRec.version
+        : undefined),
+  };
   const metadata = omitUndefined<AppMetadata>(
     clone(
       {
@@ -113,10 +128,7 @@ function _materializeComponents(
   stackExecutor: StackExecutor,
   srcMetadata: ElementComponentMetadataRecord,
   profile?: Profile | ProfileComponent,
-  options?: {
-    returnUndefinedComponentsAsAbstract?: boolean;
-    removeIgnoredVariables?: boolean;
-  },
+  options?: MaterializeOptions,
 ): ElementComponentMetadataRecord {
   const out: ElementComponentMetadataRecord = {};
   for (const [
@@ -149,7 +161,11 @@ function _materializeComponents(
         /** istanbul ignore next */
         if (!profileComponent.uri)
           throw new SbValidationError(`"uri" property required`);
-        const reg = ExtensionRegistry.getComponent(profileComponent.uri);
+        const version = options?.componentVersion?.(profileComponent.uri);
+        const reg =
+          (version &&
+            ExtensionRegistry.findComponent(profileComponent.uri, version)) ||
+          ExtensionRegistry.getComponent(profileComponent.uri);
         if (
           !slotTakes(
             metadataComponent,

@@ -2,11 +2,13 @@ import { expect } from 'expect';
 import {
   AppExtension,
   CLASS_METADATA,
+  ComponentExtension,
   ExtensionPackage,
   ExtensionRegistry,
   materializeMetadata,
   materializeMetadataSilent,
   normalizeAppMetadata,
+  normalizeComponentMetadata,
   SbValidationError,
 } from '../../src/index.js';
 import { Cmp1Component } from '../_support/cmp1.component.js';
@@ -240,5 +242,69 @@ describe('materializeMetadata', () => {
         .displayName,
     ).toBe('App v1.0.0');
     expect(materializeMetadata(profile as any).displayName).toBe('App v2.0.0');
+  });
+
+  describe('a component of several versions registered', () => {
+    let end: () => void;
+
+    /** Packages of an app and a component each, at 1.0.0 then 2.0.0 */
+    before(async () => {
+      end = ExtensionRegistry.use(new ExtensionRegistry());
+      await ExtensionRegistry.registerClass(Cmp1Component);
+      const app = await normalizeAppMetadata(
+        Reflect.getMetadata(CLASS_METADATA, Prc1App),
+      );
+      const cmp = await normalizeComponentMetadata(
+        Reflect.getMetadata(CLASS_METADATA, Cmp1Component),
+      );
+      for (const version of ['1.0.0', '2.0.0']) {
+        for (const name of ['@test/bundle', '@test/other']) {
+          const pkg = new ExtensionPackage();
+          pkg.name = name;
+          pkg.version = version;
+          pkg.components.push(
+            new ComponentExtension(pkg, 'Link', {
+              ...cmp,
+              className: 'Link',
+              displayName: `Link v${version}`,
+              interfaces: [Cmp1Component.uri],
+            }),
+          );
+          if (name === '@test/bundle')
+            pkg.apps.push(new AppExtension(pkg, 'Bridge', app, Prc1App));
+          ExtensionRegistry.storePackage(pkg);
+        }
+      }
+    });
+
+    after(() => end());
+
+    const profile = (uri: string) =>
+      ({
+        id: 'worker-1',
+        displayName: 'Worker 1',
+        appUri: '@test/bundle:' + Prc1App.className,
+        appVersion: '2.0.0',
+        components: { cmp1: { uri } },
+      }) as any;
+
+    it("should take a component of the app's package at the app's version", () => {
+      const metadata = materializeMetadata(profile('@test/bundle:Link'));
+      expect(metadata.components!.cmp1).toMatchObject({
+        classUri: '@test/bundle:Link',
+        version: '2.0.0',
+      });
+    });
+
+    it("should take another package's component at the version it is told - the worker's plan's", () => {
+      const p = profile('@test/other:Link');
+      expect(materializeMetadata(p).components!.cmp1.version).toBe('1.0.0');
+      expect(
+        materializeMetadata(p, {
+          componentVersion: uri =>
+            uri.startsWith('@test/other:') ? '2.0.0' : undefined,
+        }).components!.cmp1.version,
+      ).toBe('2.0.0');
+    });
   });
 });
