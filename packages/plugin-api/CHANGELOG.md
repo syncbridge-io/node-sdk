@@ -1,6 +1,22 @@
 # Changelog
 
-<!-- rman:documented-up-to a25534462d4dfc98885316e7426dd3f0f99d2015 -->
+<!-- rman:documented-up-to f813a9862f12ca77eb5067c7eb414f3046e2f0f1 -->
+
+## @syncbridge/plugin-api@2.4.0 (2026-10-31)
+
+### ✨ Features
+
+- **plugin-api:** host.ui.registerWidgetType adds a kind of dashboard widget, a template of the web UI's primitives bound to the widget's properties and data - nothing of the plugin's code in the browser - its id <plugin>.<name>@<version>, one given again replacing it, what removes it returned and undone as the plugin is deactivated; common ^2.15.0, of the dashboards (423cc05)
+
+### 🐛 Bug Fixes
+
+- **plugin-api:** common ^2.14.0 as its peer for now - the workspace's version, the releases keeping the ranges they find; moved to ^2.15.0 once common's dashboards are published (d8c21e5)
+
+### 📚 Documentation
+
+- dashboards for module and plugin authors - common's README a DashboardBase of sections and widgets given with @UseDashboard, the four kinds of data and their writers, the bounds, writes checked where made and gathered, all in memory, widgets defined as the worker runs, a plugin's type by id; plugin-api's README registerWidgetType, its template's bindings by the data's kind, versions, what is refused (401655a)
+
+---
 
 ## @syncbridge/plugin-api@2.3.0 (2026-10-28)
 
