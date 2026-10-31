@@ -1,6 +1,7 @@
 import type { Type } from 'ts-gems';
 import type { Contribution, ContributionPoint } from './contributions.js';
 import type { LogTarget } from './log-target.js';
+import type { WidgetTypeDefinition } from './widget-type.js';
 
 /**
  * A plugin's bridge to SyncBridge: everything of the engine a plugin uses is
@@ -181,6 +182,13 @@ export namespace PluginHost {
      * drawn for one item alone (a worker's id), or everywhere - since 2.3
      */
     refresh(point: ContributionPoint, id: string, key?: string): void;
+    /**
+     * Adds a kind of dashboard widget (widget-type.ts), since 2.4: its id
+     * `<plugin>.<name>@<version>`, one given again replacing it. Checked
+     * here: what is wrong throws. Returns what removes it; undone too when
+     * the plugin is deactivated - the widgets using it then drawn plainer.
+     */
+    registerWidgetType(definition: WidgetTypeDefinition): () => void;
   }
 
   /** A worker as a plugin sees it: a copy, taken when asked */
