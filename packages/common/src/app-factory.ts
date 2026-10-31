@@ -2,13 +2,22 @@ import { clone } from '@jsopen/objects';
 import equal from 'fast-deep-equal';
 import { AppBase } from './classes/app-base.js';
 import { ComponentBase } from './classes/component-base.js';
+import { DASHBOARD_CONTEXT } from './classes/dashboard-base.js';
 import { LogChannelWriter } from './classes/log-channel-writer.js';
 import { SbError, SbValidationError } from './classes/sb-error.js';
 import { StackExecutor } from './classes/stack-executor.js';
+import { DASHBOARD_CLASSES } from './constants.js';
+import { dashboardPath } from './dashboard/limits.js';
+import {
+  DashboardRuntime,
+  type DashboardSink,
+  WidgetWriter,
+} from './dashboard/widget-writer.js';
 import type { LogChannel } from './decorators/log-channel.decorator.js';
 import type { ILogger } from './interfaces/index.js';
 import {
   AppMetadata,
+  type DashboardMetadataRecord,
   ElementComponentMetadataRecord,
   type LogChannelMetadataRecord,
   type LogChannelSettingsRecord,
@@ -29,6 +38,11 @@ export namespace AppFactory {
     dataDirectory?: string;
     /** Where the log channels hand their records; without it they drop them */
     logSink?: LogChannel.Sink;
+    /**
+     * Where the dashboards hand their widgets' writes and the widgets
+     * defined as the worker runs; without it they drop them
+     */
+    dashboardSink?: DashboardSink;
   }
 
   interface ConfigureAppContext {
@@ -247,6 +261,12 @@ export namespace AppFactory {
       '',
       ctx.options?.logSink,
     );
+    _configureDashboards(
+      ctx.app,
+      r1.metadata.dashboards,
+      '',
+      ctx.options?.dashboardSink,
+    );
     ctx.app[METADATA_KEY] = r1.metadata;
     ctx.app[PROFILE_KEY] = r1.profile;
     return true;
@@ -379,6 +399,13 @@ export namespace AppFactory {
                 newChildProfile.settings?.logs?.level;
             }
 
+            _configureDashboards(
+              componentInstance,
+              newChildMetadata.dashboards,
+              componentPath,
+              ctx.options?.dashboardSink,
+            );
+
             /** Initialize sub-components */
             if (newChildMetadata.components) {
               await _configureComponents({
@@ -468,6 +495,56 @@ export namespace AppFactory {
         if (definition.propertyKey) element[definition.propertyKey] = channel;
       }
       channel.configure(settings?.[name], sink);
+    }
+  }
+
+  /**
+   * Makes an element's dashboards on first configuration - each an
+   * instance of its class, assigned to its property, its widget properties
+   * holding their writers - and points them at the sink on every one. What
+   * they refuse is told in the element's log
+   */
+  function _configureDashboards(
+    element: AppBase | ComponentBase,
+    definitions: DashboardMetadataRecord | undefined,
+    source: string,
+    sink: DashboardSink | undefined,
+  ) {
+    if (!definitions) return;
+    const classes = Reflect.getMetadata(DASHBOARD_CLASSES, element.constructor);
+    const warn = (message: string) => element.logger?.warn(message);
+    for (const [name, definition] of Object.entries(definitions)) {
+      const key = definition.propertyKey || name;
+      const path = dashboardPath(source, name);
+      let dashboard = element[key];
+      if (!dashboard) {
+        const dashboardClass = classes?.[key];
+        if (!dashboardClass) continue;
+        dashboard = new dashboardClass();
+        element[key] = dashboard;
+      }
+      const widgets = definition.widgets || [];
+      let runtime: DashboardRuntime | undefined = dashboard[DASHBOARD_CONTEXT];
+      if (!runtime) {
+        runtime = new DashboardRuntime(
+          path,
+          definition.sections || [],
+          new Set(widgets.map(w => w.id)),
+          sink,
+          warn,
+        );
+        dashboard[DASHBOARD_CONTEXT] = runtime;
+      } else runtime.configure(path, sink, warn);
+      for (const widget of widgets) {
+        let writer = dashboard[widget.id] as WidgetWriter | undefined;
+        if (!(writer instanceof WidgetWriter)) {
+          writer = new WidgetWriter(widget, path, sink, warn);
+          dashboard[widget.id] = writer;
+        } else {
+          (writer as { dashboard: string }).dashboard = path;
+          writer.configure(sink, warn);
+        }
+      }
     }
   }
 }

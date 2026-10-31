@@ -1,5 +1,6 @@
 import { ApiField, ArrayType, ComplexType } from '@opra/common';
 import type { LocalizedText } from '../../registry/localized-text.js';
+import { DashboardMetadataRecord } from './dashboard-metadata.js';
 import { LogChannelMetadataRecord } from './log-channel-metadata.js';
 import { VariableMetadataRecord } from './variable-metadata.js';
 
@@ -92,4 +93,10 @@ export class ElementComponentMetadata {
     description: 'Log channels of the assigned class, besides its console',
   })
   declare logChannels?: LogChannelMetadataRecord;
+
+  @ApiField({
+    label: 'Dashboards',
+    description: 'The dashboards of the assigned class',
+  })
+  declare dashboards?: DashboardMetadataRecord;
 }

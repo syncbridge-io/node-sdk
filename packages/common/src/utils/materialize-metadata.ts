@@ -182,6 +182,10 @@ function _materializeComponents(
           materializedComponent.logChannels = clone(reg.metadata.logChannels, {
             deep: 'full',
           });
+        if (reg.metadata.dashboards)
+          materializedComponent.dashboards = clone(reg.metadata.dashboards, {
+            deep: 'full',
+          });
         out[componentName] = materializedComponent;
         /** Remove ignored variables */
         for (const [k, variable] of Object.entries<VariableMetadata>(
