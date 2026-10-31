@@ -1,6 +1,19 @@
 # Changelog
 
-<!-- rman:documented-up-to 453a347ef624dab37d3cd8a18a0f68e6e25284f4 -->
+<!-- rman:documented-up-to f813a9862f12ca77eb5067c7eb414f3046e2f0f1 -->
+
+## @syncbridge/common@2.15.0 (2026-10-31)
+
+### ✨ Features
+
+- **common:** worker dashboards - a DashboardBase class holds a dashboard's sections (@DashboardSections) and widgets (@Widget), and an app or component gives itself one with @UseDashboard on a property of that class, several properties several dashboards. A widget holds its data, of one of four kinds (value, series, table, feed) whatever its type: Widget.Stat, Status, Gauge, Progress, Chart (line, area, bar, stacked; a window of 200 points unless told), Feed, Table, Cards (a template of primitives, no code), Bars, Pie, or a plugin's type by id. The writers a widget property holds check each write against its kind and the bounds where it is made, refusing it in the element's log, and hand it to the worker's dashboard sink; DashboardBase.define adds a widget as the worker runs into a dynamic section, returning its writer. The core types' schemas and widgetIssues/templateIssues check a definition; dashboards are in an element's metadata (materialized for components), the hidden paths in a profile's settings.dashboard (4a9c5bf)
+- **common:** a widget type checked whole - widgetTypeIssues tells what is wrong with its name and version, its data's kinds, its properties' schemas and a template type's tree; a template's node may bind data.<name> too, to the scopes it is drawn with (templateScopes: a value or a series once, as data.value or data.<series>; a table or a feed for each row, as row.<field>; prop.<name> always), an app's cards binding their row and properties alone (2594269)
+
+### 📚 Documentation
+
+- dashboards for module and plugin authors - common's README a DashboardBase of sections and widgets given with @UseDashboard, the four kinds of data and their writers, the bounds, writes checked where made and gathered, all in memory, widgets defined as the worker runs, a plugin's type by id; plugin-api's README registerWidgetType, its template's bindings by the data's kind, versions, what is refused (401655a)
+
+---
 
 ## @syncbridge/common@2.14.0 (2026-10-30)
 
