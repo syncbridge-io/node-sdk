@@ -66,6 +66,7 @@ export async function extractExports(context: Context) {
             kind: 'class',
             variables: definition.variables,
             components: definition.components,
+            dashboards: definition.dashboards,
           });
           continue;
         }
@@ -82,6 +83,7 @@ export async function extractExports(context: Context) {
             kind: 'class',
             variables: definition.variables,
             components: definition.components,
+            dashboards: definition.dashboards,
           });
           continue;
         }

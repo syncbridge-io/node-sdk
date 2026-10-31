@@ -316,6 +316,34 @@ told under `components`, a slot within one by its dotted path:
 }
 ```
 
+Its dashboards (`@UseDashboard`) are told under `dashboards`, by name: a
+dashboard's title and description, its sections' and widgets' by id, a
+widget's unit, its columns' titles by field and its chart's series'
+names:
+
+```json
+{
+  "GeDashApp": {
+    "dashboards": {
+      "monitor": {
+        "title": "Monitör",
+        "sections": { "beds": { "title": "Yataklar" } },
+        "widgets": {
+          "traffic": { "title": "Trafik", "unit": "B/sn", "series": { "rx": "Alınan" } },
+          "devices": { "columns": { "seen": "Son görülme" } }
+        }
+      }
+    }
+  }
+}
+```
+
+A column with no title, or a series with no `labels`, is named by its
+field or its name in the package's own language. What a widget shows as
+data - rows, statuses - is the app's to write, not translated here; a
+widget defined as the worker runs gives its texts by language in its
+code (`title: { en: 'Bed 7', tr: 'Yatak 7' }`).
+
 A plugin's name is its `title`. Building takes them into the manifest:
 each text becomes text by language (`{ "en": "HL7 Client", "tr": "HL7
 İstemcisi" }`). A file not of a language, a class or a setting the
