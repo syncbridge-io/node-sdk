@@ -319,6 +319,10 @@ A widget holds its data, of one of four kinds whatever it looks like:
   200 points of 1 s, the last 200 seconds. Use `point` or `count` for a
   series, not both.
 - `size`: `width` 1 to 4 columns, `height` `s`, `m` or `l`.
+- Texts - titles, descriptions, units, columns' titles, a chart's
+  `labels` for its series - are in the package's language, translated in
+  `locales/` as its settings' are (`@syncbridge/syncbuild`'s README), or
+  told by language in the code: `title: { en: 'Traffic', tr: 'Trafik' }`.
 - A write is checked where it is made: one of the wrong kind or over a
   bound is refused in the element's log, once, and never thrown.
   SyncBridge gathers the writes and sends them at most once a second.

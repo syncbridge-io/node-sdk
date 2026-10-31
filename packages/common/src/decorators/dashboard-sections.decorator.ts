@@ -1,3 +1,4 @@
+import type { LocalizedText } from '../registry/localized-text.js';
 import { ownContainer } from './widget.decorator.js';
 
 /**
@@ -35,8 +36,8 @@ export function DashboardSections(sections: DashboardSections.Section[]) {
 export namespace DashboardSections {
   export interface Section {
     id: string;
-    title?: string;
-    description?: string;
+    title?: LocalizedText;
+    description?: LocalizedText;
     /** Whether widgets defined as the worker runs may go here */
     dynamic?: boolean;
   }

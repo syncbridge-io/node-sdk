@@ -13,6 +13,7 @@ import {
   DashboardMetadata,
   DashboardSectionMetadata,
 } from '../models/index.js';
+import type { LocalizedText } from '../registry/localized-text.js';
 import { defineOwnMetadata } from './decorator-helpers.js';
 import type { DashboardContainer } from './widget.decorator.js';
 
@@ -143,8 +144,8 @@ class IncludedDashboard extends DashboardBase {}
 export namespace UseDashboard {
   export interface Options {
     /** The tab's title; default: the property's name */
-    title?: string;
-    description?: string;
+    title?: LocalizedText;
+    description?: LocalizedText;
     /** Its place among its element's dashboards; default: as defined */
     order?: number;
     /** The dashboard class, when the property's type does not tell it */

@@ -3,6 +3,7 @@ import type {
   DataKind,
   WidgetMetadata,
 } from '../models/metadata/dashboard-metadata.js';
+import { localizedTextProblems } from '../registry/localized-text.js';
 import { DASHBOARD_LIMITS } from './limits.js';
 
 /**
@@ -29,7 +30,9 @@ export interface WidgetTypeSpec {
 }
 
 export interface WidgetPropertySpec {
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'template';
+  /** `text`: a text shown, or text by language ({ en, tr }) */
+  type:
+    'string' | 'text' | 'number' | 'boolean' | 'object' | 'array' | 'template';
   required?: boolean;
   /** For a string: the values it may be */
   values?: string[];
@@ -86,7 +89,7 @@ const TEMPLATE_DEPTH = 6;
 const BOUNDED: Record<string, WidgetPropertySpec> = {
   min: { type: 'number' },
   max: { type: 'number', required: true },
-  unit: { type: 'string' },
+  unit: { type: 'text' },
   format: { type: 'string', values: FORMATS },
   decimals: { type: 'number' },
   thresholds: { type: 'object' },
@@ -94,7 +97,7 @@ const BOUNDED: Record<string, WidgetPropertySpec> = {
 
 /* Categories, a row each: bars', a pie's */
 const CATEGORIES: Record<string, WidgetPropertySpec> = {
-  unit: { type: 'string' },
+  unit: { type: 'text' },
   format: { type: 'string', values: FORMATS },
   decimals: { type: 'number' },
 };
@@ -109,7 +112,7 @@ export const CORE_WIDGET_TYPES: readonly WidgetTypeSpec[] = [
     renderer: 'builtin',
     data: ['value'],
     properties: {
-      unit: { type: 'string' },
+      unit: { type: 'text' },
       format: { type: 'string', values: FORMATS },
       decimals: { type: 'number' },
       thresholds: { type: 'object' },
@@ -131,10 +134,11 @@ export const CORE_WIDGET_TYPES: readonly WidgetTypeSpec[] = [
     renderer: 'builtin',
     data: ['series'],
     properties: {
-      unit: { type: 'string' },
+      unit: { type: 'text' },
       min: { type: 'number' },
       max: { type: 'number' },
       style: { type: 'string', values: ['line', 'area', 'bar', 'stacked'] },
+      labels: { type: 'object' },
     },
   },
   {
@@ -215,6 +219,9 @@ export function widgetIssues(
     issues.push('an id of letters, digits, _ and - is needed');
   if (!widget.type || !parseWidgetType(widget.type))
     issues.push(`"${widget.type}" is not a type and version (core.stat@1)`);
+  for (const key of ['title', 'description'] as const)
+    if (widget[key] != null && localizedTextProblems(widget[key], key).length)
+      issues.push(`its ${key} is a text, or text by language`);
   const size = widget.size;
   if (size?.width != null && ![1, 2, 3, 4].includes(size.width))
     issues.push('its width is 1 to 4');
@@ -281,6 +288,10 @@ function propertyIssue(value: any, p: WidgetPropertySpec): string | undefined {
       if (p.values && !p.values.includes(value))
         return `is one of ${p.values.join(', ')}`;
       return;
+    case 'text':
+      return localizedTextProblems(value, 'it').length
+        ? 'is a text, or text by language'
+        : undefined;
     case 'number':
       return typeof value === 'number' && Number.isFinite(value)
         ? undefined
@@ -360,6 +371,7 @@ const TYPE_NAME = /^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+$/;
 const PROPERTY_NAME = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const PROPERTY_TYPES: readonly string[] = [
   'string',
+  'text',
   'number',
   'boolean',
   'object',

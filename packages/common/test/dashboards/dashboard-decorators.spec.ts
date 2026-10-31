@@ -55,6 +55,28 @@ describe('The core widget types', () => {
     );
   });
 
+  it("should take its texts by language - a title, a unit, a series' label - and refuse one not text", () => {
+    const issues = (id: string, d: Widget.Definition<any>) =>
+      widgetIssues(widgetMetadataOf(id, d), coreWidgetType(d.type));
+    const chart = Widget.chart({
+      title: { en: 'Traffic', tr: 'Trafik' },
+      series: ['rx'],
+      unit: { en: 'B/s', tr: 'B/sn' },
+      labels: { rx: { en: 'Received', tr: 'Alınan' } },
+    });
+    expect(chart.properties).toEqual({
+      unit: { en: 'B/s', tr: 'B/sn' },
+      labels: { rx: { en: 'Received', tr: 'Alınan' } },
+    });
+    expect(issues('c', chart)).toEqual([]);
+    expect(
+      issues('s', Widget.stat({ title: { en: '' }, unit: 42 as any })),
+    ).toEqual([
+      'its title is a text, or text by language',
+      '"unit" is a text, or text by language',
+    ]);
+  });
+
   it("should check a plugin's template type: its tree bound to what it is drawn with", () => {
     const battery = {
       name: 'acme.battery',
