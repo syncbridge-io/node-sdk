@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 7248d2c0f0b1c15f325902cef6a057480bf9671f -->
+<!-- rman:documented-up-to 3be99597e3eb3ae29271ec51805230d5485b0f44 -->
+
+## @syncbridge/common@2.18.1 (2026-10-31)
+
+### 🐛 Bug Fixes
+
+- **common:** a worker's metadata takes its components at the version it loads - told by componentVersion (the worker's plan's), else a component of the app's package at the app's version - not the first of several registered: their dashboards, settings and channels were an older version's (4a82fcf)
+
+---
 
 ## @syncbridge/common@2.18.0 (2026-10-31)
 

@@ -2,7 +2,7 @@
   "name": "syncbridge-node-sdk",
   "description": "SyncBridge's Node.js SDK: the libraries and tools to build, test and publish SyncBridge modules",
   "private": true,
-  "version": "2026.10.31-1956",
+  "version": "2026.10.31-2131",
   "license": "MIT",
   "type": "module",
   "repository": {
