@@ -3,6 +3,7 @@ import {
   type AppBase,
   AppFactory,
   type ComponentBase,
+  DashboardCounters,
   type DashboardOp,
   type DashboardSink,
   type ILogger,
@@ -34,14 +35,19 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
   app?: AppBase;
   /** The dashboards' writes gathered for `options.dashboardSink` */
   protected _dashboard?: DashboardCoalescer;
+  /** The charts' counts, written as points by the tick while it runs */
+  protected _counters?: DashboardCounters;
+  protected _tick?: NodeJS.Timeout;
 
   constructor(readonly options: AppWorker.Options) {
     super();
-    if (options.dashboardSink)
+    if (options.dashboardSink) {
       this._dashboard = new DashboardCoalescer(
         options.dashboardSink,
         options.dashboardInterval,
       );
+      this._counters = new DashboardCounters(this._dashboardSink);
+    }
   }
 
   /** Where the app's dashboards hand each write: gathered */
@@ -79,6 +85,7 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
         logger,
         logSink: this.options.logSink,
         dashboardSink: this._dashboardSink,
+        dashboardCounters: this._counters,
       });
     }
     const r = await AppFactory.createAppSilent(profile, {
@@ -86,6 +93,7 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
       dataDirectory: this.options.dataDirectory,
       logSink: this.options.logSink,
       dashboardSink: this._dashboardSink,
+      dashboardCounters: this._counters,
     });
     if (r.result) this._attach(r.app);
     return r;
@@ -94,12 +102,21 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
   /** Starts the app; a failure shows in its status, not here */
   async start(): Promise<void> {
     if (!this.app) throw new Error('App not initialized');
+    const counters = this._counters;
+    if (counters && !this._tick) {
+      /* Each second: the counts whose interval ended, as points */
+      this._tick = setInterval(() => counters.tick(), 1000);
+      this._tick.unref();
+    }
     this.app.start().catch(() => undefined);
   }
 
   async stop(): Promise<void> {
     await this.app?.stop();
-    /* What the app wrote as it stopped goes too */
+    clearInterval(this._tick);
+    this._tick = undefined;
+    /* What the app counted and wrote as it stopped goes too */
+    this._counters?.flush();
     this._dashboard?.stop();
   }
 
