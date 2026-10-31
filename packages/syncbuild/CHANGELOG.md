@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 6d6b711cce938af454e6d085528bb28af6fea939 -->
+<!-- rman:documented-up-to 7248d2c0f0b1c15f325902cef6a057480bf9671f -->
+
+## @syncbridge/syncbuild@2.15.0 (2026-10-31)
+
+### ✨ Features
+
+- **syncbuild:** a class's dashboard texts translated in locales/ (0ceb186)
+
+---
 
 ## @syncbridge/syncbuild@2.14.1 (2026-10-30)
 
