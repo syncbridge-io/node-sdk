@@ -258,6 +258,9 @@ expect(env.dashboardIssues(app)).toEqual({});
   `{ kind: 'series', series: { in: [[at, value], ...] } }`,
   `{ kind: 'table', rows: [{ key, row }] }` or
   `{ kind: 'feed', rows: [{ at, row }] }`
+- `env.flushCounts(app)`: what its charts counted (`count()`) written
+  as points now, each series' sum as one - SyncBridge writes them each
+  interval; a test reads them after this
 - `env.definedWidgets(app, 'meter')`: the widgets the app defined as it
   ran (`this.meter.define(...)`)
 - `env.dashboardIssues(app)`: what is wrong with its widgets'

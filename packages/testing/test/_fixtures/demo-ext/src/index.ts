@@ -23,6 +23,9 @@ export class MeterDashboard extends DashboardBase {
 
   @Widget.Table({ title: 'Devices', columns: [{ field: 'name' }], max: 2 })
   declare readonly devices: Widget.Table<{ name: string }>;
+
+  @Widget.Chart({ title: 'Bytes', series: ['rx'], unit: 'B/s' })
+  declare readonly bytes: Widget.Chart;
 }
 
 /** An app of a dashboard, written as it is told */
@@ -38,6 +41,11 @@ export class MeterApp extends AppBase {
     this.meter.count.set(count);
     this.meter.rate.point('in', value);
     this.meter.devices.upsert(device, { name: device });
+  }
+
+  /** Bytes received: counted, written a point a second */
+  receive(bytes: number) {
+    this.meter.bytes.count('rx', bytes);
   }
 
   /** A device's own widget, and one wrong: a gauge with no max */

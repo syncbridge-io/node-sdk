@@ -10,6 +10,7 @@ export * from './classes/runnable.js';
 export * from './classes/sb-error.js';
 export * from './classes/stack-executor.js';
 export * from './constants.js';
+export * from './dashboard/counters.js';
 export * from './dashboard/limits.js';
 export * from './dashboard/widget-types.js';
 export * from './dashboard/widget-writer.js';

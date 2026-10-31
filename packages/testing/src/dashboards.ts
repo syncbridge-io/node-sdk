@@ -1,6 +1,7 @@
 import {
   type AppMetadata,
   coreWidgetType,
+  DashboardCounters,
   type DashboardMetadataRecord,
   type DashboardOp,
   dashboardPath,
@@ -33,6 +34,8 @@ export class TestDashboards {
   protected _defined = new Map<string, Map<string, WidgetMetadata>>();
   protected _issues = new Map<string, string[]>();
   protected _metadata?: AppMetadata;
+  /** Its charts' counts: written as points when the test flushes them */
+  readonly counters = new DashboardCounters(op => this.apply(op));
 
   constructor(protected _warn: (message: string) => void = () => undefined) {}
 

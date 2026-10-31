@@ -126,6 +126,8 @@ export namespace Widget {
       kind: DataKind;
       max?: number;
       window?: number;
+      /** A series': count()'s interval, in seconds */
+      interval?: number;
       series?: string[];
     };
     /** Only for the type: never set */
@@ -212,6 +214,13 @@ export namespace Widget {
   export interface Series {
     /** A point of a series, now unless told when */
     point(series: string, value: number, at?: Date): void;
+    /**
+     * Adds to a series' count, kept in the worker: what it sums is written
+     * as one point each interval (the widget's `interval`, default 1 s) -
+     * 0 for an interval with none, once the series was counted. A busy
+     * source counts each event and sends a point a second
+     */
+    count(series: string, amount?: number): void;
     /** A series' points, or all */
     clear(series?: string): void;
   }
@@ -261,6 +270,12 @@ export namespace Widget {
     series: string[];
     /** How far back it shows: '15m', '1h', or seconds */
     window?: number | string;
+    /**
+     * What `count()` sums is written as a point each interval: '1s',
+     * '5s', '1m', or seconds - default 1 s, at least 1 s, at most 1 h.
+     * The chart then shows its points times its interval
+     */
+    interval?: number | string;
     /**
      * At most this many points per series - the oldest goes as one comes:
      * default 200, at most 1000
@@ -320,6 +335,7 @@ export namespace Widget {
       kind: DataKind;
       max?: number;
       window?: number | string;
+      interval?: number | string;
       series?: string[];
     };
     properties?: Record<string, any>;
@@ -371,6 +387,7 @@ export namespace Widget {
         series: o.series,
         max: o.points,
         window: o.window != null ? windowSeconds(o.window) : undefined,
+        interval: o.interval != null ? windowSeconds(o.interval) : undefined,
       }),
     };
   }
@@ -477,6 +494,8 @@ export namespace Widget {
       data: omitUndefined({
         ...data,
         window: data.window != null ? windowSeconds(data.window) : undefined,
+        interval:
+          data.interval != null ? windowSeconds(data.interval) : undefined,
       }),
     };
   }

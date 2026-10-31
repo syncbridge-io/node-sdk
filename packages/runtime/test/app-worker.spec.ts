@@ -3,11 +3,15 @@ import {
   AppBase,
   Component,
   ComponentBase,
+  DashboardBase,
+  type DashboardOp,
   DefineVariable,
   ExtensionRegistry,
   type ILogger,
   ServiceStatus,
+  UseDashboard,
   VariableType,
+  Widget,
 } from '@syncbridge/common';
 import { expect } from 'expect';
 import { AppWorker, type ComponentStatusInfo } from '../src/index.js';
@@ -20,10 +24,18 @@ class PwVariables {
   declare level: number;
 }
 
+class PwDashboard extends DashboardBase {
+  @Widget.Chart({ title: 'Traffic', series: ['rx'], interval: 60 })
+  declare readonly traffic: Widget.Chart;
+}
+
 @App({ className: 'PwApp' })
 class PwApp extends AppBase {
   @App.UseVariables(PwVariables)
   declare values: PwVariables;
+
+  @UseDashboard({ title: 'PW' })
+  declare readonly dash: PwDashboard;
 
   @App.UseComponent({ required: true })
   declare readonly part: PwPart;
@@ -111,5 +123,28 @@ describe('AppWorker', () => {
     const r = await worker.updateProfile(profile({ level: 'high' }), logger);
     expect(r.issues?.[0]?.message).toBeDefined();
     expect(worker.app).toBeUndefined();
+  });
+
+  it("should keep a chart's counts in the worker, sending what was counted as it stops", async () => {
+    const sent: DashboardOp[][] = [];
+    worker = new AppWorker({
+      dataDirectory: '',
+      dashboardSink: ops => sent.push(ops),
+    });
+    await worker.updateProfile(profile(), logger);
+    await worker.start();
+    const app = worker.app as PwApp;
+    for (let i = 0; i < 500; i++) app.dash.traffic.count('rx', 2);
+    await new Promise(r => setTimeout(r, 1200));
+    /* Its interval a minute: nothing sent yet */
+    expect(sent.flat().filter(op => op.op === 'point')).toEqual([]);
+    await worker.stop();
+    expect(sent.flat().filter(op => op.op === 'point')).toEqual([
+      expect.objectContaining({
+        widget: 'dash/traffic',
+        series: 'rx',
+        value: 1000,
+      }),
+    ]);
   });
 });

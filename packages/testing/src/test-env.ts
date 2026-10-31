@@ -127,6 +127,7 @@ export class TestEnv {
         logger,
         logSink,
         dashboardSink: op => dashboards.apply(op),
+        dashboardCounters: dashboards.counters,
       }),
     ).catch(e => {
       throw this._explainSerial(e);
@@ -285,6 +286,14 @@ export class TestEnv {
    */
   dashboard(app: AppBase, widget: string): DashboardData | undefined {
     return this._dashboardsOf(app).get(widget);
+  }
+
+  /**
+   * What the app's charts counted (`count()`) written as points now, each
+   * series' sum as one - SyncBridge writes them each interval
+   */
+  flushCounts(app: AppBase): void {
+    this._dashboardsOf(app).counters.flush();
   }
 
   /** The widgets the app defined as it ran into a dashboard: `ops` */

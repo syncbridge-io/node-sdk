@@ -38,6 +38,18 @@ describe('A test env reading dashboards', () => {
     expect(env.dashboardIssues(app)).toEqual({});
   });
 
+  it("should write a chart's counts as one point when the test flushes them", async () => {
+    const app = await env.start(MeterApp);
+    app.receive(100);
+    app.receive(50);
+    expect(env.dashboard(app, 'meter/bytes')).toBeUndefined();
+    env.flushCounts(app);
+    const bytes = env.dashboard(app, 'meter/bytes');
+    expect(bytes?.kind === 'series' && bytes.series.rx.map(p => p[1])).toEqual([
+      150,
+    ]);
+  });
+
   it('should tell the widgets defined as the app runs, and what is wrong with one, as SyncBridge would', async () => {
     const app = await env.start(MeterApp);
     app.defineDevice('bed-3');

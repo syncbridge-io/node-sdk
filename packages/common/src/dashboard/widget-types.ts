@@ -230,6 +230,16 @@ export function widgetIssues(
     issues.push('its max is a whole number above 0');
   if (data.window != null && !(data.window > 0))
     issues.push('its window is above 0 seconds');
+  if (data.interval != null) {
+    if (data.kind !== 'series') issues.push('only a series has an interval');
+    else if (!(
+      data.interval >= DASHBOARD_LIMITS.countIntervalMin &&
+      data.interval <= DASHBOARD_LIMITS.countIntervalMax
+    ))
+      issues.push(
+        `its interval is ${DASHBOARD_LIMITS.countIntervalMin} to ${DASHBOARD_LIMITS.countIntervalMax} seconds`,
+      );
+  }
   if (data.series) {
     if (data.kind !== 'series') issues.push('only a series has series');
     else if (
