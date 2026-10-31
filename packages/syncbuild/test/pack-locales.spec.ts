@@ -286,3 +286,145 @@ describe("locales/ extending a registry dependency's classes", () => {
     });
   });
 });
+
+describe("locales/ of a class's dashboards", () => {
+  let root: string;
+  let pkgDir: string;
+  let depDir: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'syncbuild-dashboards-'));
+    pkgDir = path.join(root, 'device');
+    depDir = path.join(root, 'common');
+    write(path.join(depDir, 'locales', 'tr.json'), {
+      IomtBaseApp: {
+        dashboards: { monitor: { widgets: { link: { title: 'Bağlantı' } } } },
+      },
+    });
+  });
+
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  /** An app of a dashboard as its manifest has it */
+  const manifest = (): any => ({
+    dependencies: { '@acme/common': '^1.0.0' },
+    apps: [
+      {
+        className: 'MonitorApp',
+        displayName: 'Monitor',
+        dashboards: {
+          monitor: {
+            name: 'monitor',
+            title: 'Monitor',
+            sections: [{ id: 'beds', title: 'Beds', dynamic: true }],
+            widgets: [
+              { id: 'link', type: 'core.status@1', data: { kind: 'value' } },
+              {
+                id: 'traffic',
+                type: 'core.chart@1',
+                title: 'Traffic',
+                properties: { unit: 'B/s' },
+                data: { kind: 'series', series: ['rx', 'tx'] },
+              },
+              {
+                id: 'devices',
+                type: 'core.list@1',
+                title: 'Devices',
+                properties: {
+                  columns: [
+                    { field: 'name', title: 'Name' },
+                    { field: 'seen' },
+                  ],
+                },
+                data: { kind: 'table' },
+              },
+            ],
+          },
+        },
+      },
+    ],
+  });
+
+  const pack = (m: any, warnings: string[] = []) =>
+    packLocales(pkgDir, m, 'en', w => warnings.push(w), {
+      dependencyDir: name => (name === '@acme/common' ? depDir : undefined),
+    });
+
+  it("should take a dashboard's, its sections' and widgets' texts - a unit, columns by field, series by name - by language", () => {
+    write(path.join(pkgDir, 'locales', 'tr.json'), {
+      MonitorApp: {
+        '@extends': '@acme/common:IomtBaseApp',
+        dashboards: {
+          monitor: {
+            title: 'Monitör',
+            sections: { beds: { title: 'Yataklar' } },
+            widgets: {
+              traffic: {
+                title: 'Trafik',
+                unit: 'B/sn',
+                series: { rx: 'Alınan' },
+              },
+              devices: { columns: { name: 'Ad', seen: 'Son görülme' } },
+            },
+          },
+        },
+      },
+    });
+    const m = manifest();
+    const warnings: string[] = [];
+    const r = pack(m, warnings);
+    expect(r.errors).toEqual([]);
+    const d = m.apps[0].dashboards.monitor;
+    expect(d.title).toEqual({ en: 'Monitor', tr: 'Monitör' });
+    expect(d.sections[0].title).toEqual({ en: 'Beds', tr: 'Yataklar' });
+    const [link, traffic, devices] = d.widgets;
+    /* Its base's text, its code telling none: left out, told */
+    expect(link.title).toBeUndefined();
+    expect(traffic.title).toEqual({ en: 'Traffic', tr: 'Trafik' });
+    expect(traffic.properties.unit).toEqual({ en: 'B/s', tr: 'B/sn' });
+    expect(traffic.properties.labels).toEqual({
+      rx: { en: 'rx', tr: 'Alınan' },
+    });
+    expect(devices.properties.columns).toEqual([
+      { field: 'name', title: { en: 'Name', tr: 'Ad' } },
+      { field: 'seen', title: { en: 'seen', tr: 'Son görülme' } },
+    ]);
+    expect(warnings.join('\n')).toMatch(
+      /left out.*MonitorApp's dashboard monitor\.widgets\.link title/,
+    );
+    expect(warnings.join('\n')).toMatch(
+      /lacks 2 texts.*MonitorApp displayName, MonitorApp's dashboard monitor\.widgets\.devices title$/,
+    );
+    /* Packed with what it extends taken in, as the file tells it */
+    expect(r.files.tr.MonitorApp.dashboards.monitor.widgets).toMatchObject({
+      link: { title: 'Bağlantı' },
+      traffic: { title: 'Trafik', series: { rx: 'Alınan' } },
+    });
+  });
+
+  it('should refuse what the class has not: a dashboard, a widget, a text not of it, a column, a unit its code tells not', () => {
+    write(path.join(pkgDir, 'locales', 'tr.json'), {
+      MonitorApp: {
+        dashboards: {
+          nope: { title: 'Yok' },
+          monitor: {
+            heading: 'Başlık',
+            widgets: {
+              ghost: { title: 'Hayalet' },
+              link: { unit: 'adet' },
+              devices: { columns: { age: 'Yaş' } },
+            },
+          },
+        },
+      },
+    });
+    const r = pack(manifest());
+    expect(r.errors).toEqual([
+      'locales/tr.json: MonitorApp has no dashboard "nope"',
+      'locales/tr.json: MonitorApp\'s dashboard "monitor" "heading" is not a text of it: title, description',
+      'locales/tr.json: MonitorApp has no dashboard widget "ghost" of "monitor"',
+      'locales/tr.json: MonitorApp\'s dashboard widget "link" of "monitor" "unit" is not a text of it: title, description',
+      'locales/tr.json: MonitorApp\'s dashboard columns of widget "devices" of "monitor" "age" is not a text of it: name, seen',
+    ]);
+  });
+});

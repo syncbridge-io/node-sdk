@@ -34,6 +34,18 @@ import { findWorkspacePackage } from '../workspace.js';
  * its dotted path: { "components": { "hl7Client": { "description": ...
  * } } }.
  *
+ * Its dashboards by their names; in each, its sections and widgets by id,
+ * a widget's columns by field and its chart's series by name:
+ *
+ *   { "dashboards": { "monitor": { "title": "Monitör",
+ *     "sections": { "beds": { "title": "Yataklar" } },
+ *     "widgets": { "traffic": { "title": "Trafik", "unit": "B/sn",
+ *       "series": { "rx": "Alınan" } },
+ *       "devices": { "columns": { "seen": "Son görülme" } } } } } }
+ *
+ * A column with no title, a series with no label, is named by its field
+ * or its name in the package's language.
+ *
  * The base's texts first - all but its name - then its own over them. So a
  * file may tell the texts of what the package exports for others to build
  * on: its abstract classes, its classes of settings. locales/ is packed
@@ -50,12 +62,14 @@ const EXTENDS = '@extends';
 const ELEMENT_TEXTS = ['displayName', 'description', 'summary'] as const;
 const PLUGIN_TEXTS = ['title', 'description'] as const;
 const VARIABLE_TEXTS = ['label', 'description'] as const;
+const DASHBOARD_TEXTS = ['title', 'description'] as const;
 /** What a class built on another does not take of it: its own name */
 const NOT_INHERITED = ['displayName', 'title'];
 
 interface Element {
   className: string;
   variables?: Record<string, any>;
+  dashboards?: Record<string, any>;
   settings?: Record<string, any>;
   [key: string]: any;
 }
@@ -74,12 +88,22 @@ interface Texts {
   variables: Record<string, Record<string, string>>;
   /** By the component slots' dotted paths */
   components: Record<string, Record<string, string>>;
+  /**
+   * By dashboard texts' paths: "monitor", "monitor.sections.beds",
+   * "monitor.widgets.traffic", its ".columns" and ".series"
+   */
+  dashboards: Record<string, Record<string, string>>;
 }
 
 /** The texts of a component slot a locale file tells */
 const SLOT_TEXTS = ['description'] as const;
 
-const noTexts = (): Texts => ({ fields: {}, variables: {}, components: {} });
+const noTexts = (): Texts => ({
+  fields: {},
+  variables: {},
+  components: {},
+  dashboards: {},
+});
 
 export interface PackLocalesOptions {
   /**
@@ -99,6 +123,8 @@ export interface LocaleBase {
   variables?: Record<string, any>;
   /** Its component slots: an abstract app's or component's */
   components?: Record<string, any>;
+  /** Its dashboards: an abstract app's or component's */
+  dashboards?: Record<string, any>;
 }
 
 export interface PackedLocales {
@@ -201,13 +227,15 @@ export function packLocales(
           ? found.element.components
           : base!.components;
       const hasSlots = !plugin && base?.kind !== 'variables';
+      const dashboards = found ? found.element.dashboards : base!.dashboards;
       /* Its own: checked against the class */
       for (const [key, value] of Object.entries(told)) {
         if (key === 'variables' || key === EXTENDS) continue;
-        if (key === 'components' && hasSlots) continue;
+        if ((key === 'components' || key === 'dashboards') && hasSlots)
+          continue;
         if (!fields.includes(key)) {
           errors.push(
-            `${at}: ${className}'s "${key}" is not a text of it: ${[...fields, 'variables', ...(hasSlots ? ['components'] : []), EXTENDS].join(', ')}`,
+            `${at}: ${className}'s "${key}" is not a text of it: ${[...fields, 'variables', ...(hasSlots ? ['components', 'dashboards'] : []), EXTENDS].join(', ')}`,
           );
           continue;
         }
@@ -284,6 +312,32 @@ export function packLocales(
           }
       }
 
+      if (hasSlots && told.dashboards !== undefined) {
+        const flat = flatDashboards(told.dashboards, `${className}'s`);
+        errors.push(...flat.errors.map(e => `${at}: ${e}`));
+        for (const [p, toldTexts] of Object.entries(flat.texts)) {
+          const textSlots = dashboardSlots(dashboards, p);
+          if (!textSlots) {
+            errors.push(
+              `${at}: ${className} has no dashboard ${dashboardWhat(p)}`,
+            );
+            continue;
+          }
+          for (const [key, value] of Object.entries(toldTexts)) {
+            if (!textSlots[key]) {
+              errors.push(
+                `${at}: ${className}'s dashboard ${dashboardWhat(p)} "${key}" is not a text of it: ${Object.keys(textSlots).join(', ')}`,
+              );
+              continue;
+            }
+            if (!isText(value))
+              errors.push(
+                `${at}: ${className}'s dashboard ${dashboardWhat(p)} ${key} is empty, or not text`,
+              );
+          }
+        }
+      }
+
       /* With what it extends: the base's first, its own over them */
       const resolved = resolver.resolve('', className);
       errors.push(...resolver.errors.splice(0).map(e => `${at}: ${e}`));
@@ -321,6 +375,22 @@ export function packLocales(
             `'s ${setting}`,
           );
       }
+      /* Likewise a dashboard's text: a column's, a series', named by its
+       * field or name where the code tells no text */
+      const toldDashboards = isMap(told.dashboards)
+        ? flatDashboards(told.dashboards, '').texts
+        : {};
+      for (const [p, dt] of Object.entries(resolved.dashboards)) {
+        const textSlots = dashboardSlots(dashboards, p);
+        if (!textSlots) continue;
+        for (const [key, value] of Object.entries(dt)) {
+          const slot = textSlots[key];
+          if (!slot) continue;
+          if (slot.own !== undefined || isText(toldDashboards[p]?.[key]))
+            slot.set(withLanguage(slot.own, language, lang, value));
+          else leftOut.push(`${className}'s dashboard ${p} ${key}`);
+        }
+      }
       /* Likewise a slot */
       for (const [slotPath, st] of Object.entries(resolved.components)) {
         const slot = slotAt(slots, slotPath);
@@ -351,12 +421,17 @@ export function packLocales(
         for (const key of VARIABLE_TEXTS)
           if (lacks(v[key], lang)) missing.push(`${className}'s ${p} ${key}`);
       });
-      if (!plugin)
+      if (!plugin) {
         walkSlots(element.components, (p, slot) => {
           for (const key of SLOT_TEXTS)
             if (lacks(slot[key], lang))
               missing.push(`${className}'s ${p} component ${key}`);
         });
+        walkDashboardTexts(element.dashboards, (p, key, text) => {
+          if (lacks(text, lang))
+            missing.push(`${className}'s dashboard ${p} ${key}`);
+        });
+      }
     }
     if (missing.length)
       warn(
@@ -416,9 +491,17 @@ class Resolver {
         if (!NOT_INHERITED.includes(k)) out.fields[k] = v;
       Object.assign(out.variables, base.variables);
       Object.assign(out.components, base.components);
+      for (const [p, t] of Object.entries(base.dashboards))
+        out.dashboards[p] = { ...out.dashboards[p], ...t };
     }
     for (const [k, v] of Object.entries(told))
       if (k !== 'variables' && k !== EXTENDS && isText(v)) out.fields[k] = v;
+    if (isMap(told.dashboards))
+      for (const [p, t] of Object.entries(
+        flatDashboards(told.dashboards, '').texts,
+      ))
+        for (const [k, v] of Object.entries(t))
+          if (isText(v)) (out.dashboards[p] ??= {})[k] = v;
     for (const [slot, st] of Object.entries<any>(
       isMap(told.components) ? told.components : {},
     )) {
@@ -492,7 +575,187 @@ function packedTexts(texts: Texts): Record<string, any> {
     ...(Object.keys(texts.components).length
       ? { components: texts.components }
       : {}),
+    ...(Object.keys(texts.dashboards).length
+      ? { dashboards: unflatDashboards(texts.dashboards) }
+      : {}),
   };
+}
+
+/**
+ * A file's dashboards' texts by path - "monitor", "monitor.sections.beds",
+ * "monitor.widgets.traffic", "monitor.widgets.traffic.columns" - what is
+ * not of their shape told
+ */
+function flatDashboards(
+  dashboards: unknown,
+  whose: string,
+): { texts: Record<string, Record<string, unknown>>; errors: string[] } {
+  const texts: Record<string, Record<string, unknown>> = {};
+  const errors: string[] = [];
+  const of = (p: string) => `${whose} dashboard ${dashboardWhat(p)}`.trim();
+  if (!isMap(dashboards)) {
+    errors.push(`${whose} dashboards are an object, by dashboard`.trim());
+    return { texts, errors };
+  }
+  const own = (p: string, told: Record<string, any>, nested: string[]) => {
+    const t: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(told))
+      if (!nested.includes(k)) t[k] = v;
+    if (Object.keys(t).length) texts[p] = t;
+  };
+  for (const [name, d] of Object.entries<any>(dashboards)) {
+    if (!isMap(d)) {
+      errors.push(`${of(name)}: its texts are an object`);
+      continue;
+    }
+    own(name, d, ['sections', 'widgets']);
+    for (const group of ['sections', 'widgets'] as const) {
+      if (d[group] === undefined) continue;
+      if (!isMap(d[group])) {
+        errors.push(`${of(name)}: its ${group} are an object, by id`);
+        continue;
+      }
+      for (const [id, it] of Object.entries<any>(d[group])) {
+        const p = `${name}.${group}.${id}`;
+        if (!isMap(it)) {
+          errors.push(`${of(p)}: its texts are an object`);
+          continue;
+        }
+        own(p, it, group === 'widgets' ? ['columns', 'series'] : []);
+        if (group !== 'widgets') continue;
+        for (const by of ['columns', 'series'] as const) {
+          if (it[by] === undefined) continue;
+          if (!isMap(it[by]))
+            errors.push(`${of(p)}: its ${by} are an object, by name`);
+          else texts[`${p}.${by}`] = { ...it[by] };
+        }
+      }
+    }
+  }
+  return { texts, errors };
+}
+
+/** Dashboards' texts by path, as a file tells them */
+function unflatDashboards(
+  flat: Record<string, Record<string, string>>,
+): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const [p, t] of Object.entries(flat)) {
+    const [name, group, id, by] = p.split('.');
+    const d = (out[name] ??= {});
+    if (!group) Object.assign(d, t);
+    else {
+      const it = ((d[group] ??= {})[id] ??= {});
+      if (by) it[by] = { ...it[by], ...t };
+      else Object.assign(it, t);
+    }
+  }
+  return out;
+}
+
+/** "monitor", widget "traffic" of "monitor", its "columns"... in words */
+function dashboardWhat(p: string): string {
+  const [name, group, id, by] = p.split('.');
+  if (!group) return `"${name}"`;
+  const what = `${group === 'sections' ? 'section' : 'widget'} "${id}" of "${name}"`;
+  return by ? `${by} of ${what}` : what;
+}
+
+/** A text a dashboard's metadata holds: the code's, and where it goes */
+interface DashboardSlot {
+  own: LocalizedText | undefined;
+  set(text: LocalizedText): void;
+}
+
+/**
+ * The texts a dashboard's path names, by key: a dashboard's, a section's,
+ * a widget's - its unit where its code tells one - a widget's columns by
+ * field, its series by name. None where the path names nothing
+ */
+function dashboardSlots(
+  dashboards: Record<string, any> | undefined,
+  p: string,
+): Record<string, DashboardSlot> | undefined {
+  const [name, group, id, by] = p.split('.');
+  const d = dashboards?.[name];
+  if (!isMap(d)) return;
+  const fields = (target: Record<string, any>, keys: readonly string[]) =>
+    Object.fromEntries(
+      keys.map(k => [
+        k,
+        { own: target[k], set: (t: LocalizedText) => (target[k] = t) },
+      ]),
+    );
+  if (!group) return fields(d, DASHBOARD_TEXTS);
+  const list: any[] = Array.isArray(d[group]) ? d[group] : [];
+  const it = list.find(x => isMap(x) && x.id === id);
+  if (!it || (group !== 'sections' && group !== 'widgets')) return;
+  if (group === 'sections') return by ? undefined : fields(it, DASHBOARD_TEXTS);
+  const props: Record<string, any> = it.properties ?? {};
+  if (!by)
+    return {
+      ...fields(it, DASHBOARD_TEXTS),
+      ...(props.unit !== undefined ? fields(props, ['unit']) : {}),
+    };
+  if (by === 'columns') {
+    const columns: any[] = Array.isArray(props.columns) ? props.columns : [];
+    return Object.fromEntries(
+      columns
+        .filter(c => isMap(c) && typeof c.field === 'string')
+        .map(c => [
+          c.field,
+          {
+            own: c.title ?? c.field,
+            set: (t: LocalizedText) => (c.title = t),
+          },
+        ]),
+    );
+  }
+  if (by === 'series') {
+    const series: string[] = Array.isArray(it.data?.series)
+      ? it.data.series
+      : [];
+    return Object.fromEntries(
+      series.map(s => [
+        s,
+        {
+          own: props.labels?.[s] ?? s,
+          set: (t: LocalizedText) =>
+            (((it.properties ??= {}).labels ??= {})[s] = t),
+        },
+      ]),
+    );
+  }
+}
+
+/**
+ * Each text a dashboard's code tells, with its path and key: a column's
+ * title, a series' label only where told
+ */
+function walkDashboardTexts(
+  dashboards: Record<string, any> | undefined,
+  fn: (path: string, key: string, text: LocalizedText) => void,
+) {
+  const each = (p: string, target: any, keys: readonly string[]) => {
+    for (const k of keys) if (target?.[k] !== undefined) fn(p, k, target[k]);
+  };
+  for (const [name, d] of Object.entries<any>(dashboards ?? {})) {
+    if (!isMap(d)) continue;
+    each(name, d, DASHBOARD_TEXTS);
+    for (const s of Array.isArray(d.sections) ? d.sections : [])
+      each(`${name}.sections.${s?.id}`, s, DASHBOARD_TEXTS);
+    for (const w of Array.isArray(d.widgets) ? d.widgets : []) {
+      const p = `${name}.widgets.${w?.id}`;
+      each(p, w, DASHBOARD_TEXTS);
+      each(p, w?.properties, ['unit']);
+      for (const c of Array.isArray(w?.properties?.columns)
+        ? w.properties.columns
+        : [])
+        if (c?.title !== undefined) fn(`${p}.columns`, c.field, c.title);
+      for (const [s, label] of Object.entries<any>(w?.properties?.labels ?? {}))
+        fn(`${p}.series`, s, label);
+    }
+  }
 }
 
 /**

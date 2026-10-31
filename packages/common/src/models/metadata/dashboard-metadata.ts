@@ -1,4 +1,5 @@
 import { ApiField, ArrayType, ComplexType } from '@opra/common';
+import type { LocalizedText } from '../../registry/localized-text.js';
 
 /**
  * What a widget's data is, as the engine keeps it: a value, points in
@@ -93,11 +94,11 @@ export class WidgetMetadata {
   })
   declare type: string;
 
-  @ApiField({ label: 'Title' })
-  declare title?: string;
+  @ApiField({ label: 'Title', type: 'any' })
+  declare title?: LocalizedText;
 
-  @ApiField({ label: 'Description' })
-  declare description?: string;
+  @ApiField({ label: 'Description', type: 'any' })
+  declare description?: LocalizedText;
 
   @ApiField({ description: "The section it goes into: one of its dashboard's" })
   declare section?: string;
@@ -127,11 +128,11 @@ export class DashboardSectionMetadata {
   })
   declare id: string;
 
-  @ApiField({ label: 'Title' })
-  declare title?: string;
+  @ApiField({ label: 'Title', type: 'any' })
+  declare title?: LocalizedText;
 
-  @ApiField({ label: 'Description' })
-  declare description?: string;
+  @ApiField({ label: 'Description', type: 'any' })
+  declare description?: LocalizedText;
 
   @ApiField({
     description: 'Whether widgets defined as the worker runs may go here',
@@ -195,11 +196,11 @@ export class DashboardMetadata {
   @ApiField({ description: 'The property the dashboard is assigned to' })
   declare propertyKey?: string;
 
-  @ApiField({ label: 'Title' })
-  declare title?: string;
+  @ApiField({ label: 'Title', type: 'any' })
+  declare title?: LocalizedText;
 
-  @ApiField({ label: 'Description' })
-  declare description?: string;
+  @ApiField({ label: 'Description', type: 'any' })
+  declare description?: LocalizedText;
 
   @ApiField({ description: "Its place among its element's dashboards" })
   declare order?: number;

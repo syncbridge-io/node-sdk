@@ -6,6 +6,7 @@ import {
   WidgetMetadata,
   WidgetSize,
 } from '../models/index.js';
+import type { LocalizedText } from '../registry/localized-text.js';
 
 /**
  * Defines a widget of a dashboard class (a DashboardBase), assigned to the
@@ -46,8 +47,8 @@ export function Widget(
 export interface DashboardContainer {
   sections?: {
     id: string;
-    title?: string;
-    description?: string;
+    title?: LocalizedText;
+    description?: LocalizedText;
     dynamic?: boolean;
   }[];
   /** By id, in the order defined */
@@ -117,8 +118,8 @@ export namespace Widget {
    */
   export interface Definition<H> {
     type: string;
-    title?: string;
-    description?: string;
+    title?: LocalizedText;
+    description?: LocalizedText;
     section?: string;
     size?: Size;
     properties?: Record<string, any>;
@@ -140,10 +141,14 @@ export namespace Widget {
     height?: 's' | 'm' | 'l';
   }
 
-  /** What every widget takes */
+  /**
+   * What every widget takes. A text - a title, a unit, a column's title -
+   * is in the package's language, or by language ({ en: 'Rate', tr:
+   * 'Hız' }); a class's widgets' texts are translated in locales/ too
+   */
   export interface Options {
-    title?: string;
-    description?: string;
+    title?: LocalizedText;
+    description?: LocalizedText;
     /** One of its dashboard's sections (`@DashboardSections`) */
     section?: string;
     size?: Size;
@@ -162,7 +167,7 @@ export namespace Widget {
   export interface Column {
     /** The row's field */
     field: string;
-    title?: string;
+    title?: LocalizedText;
     format?: Format;
     /** Relative width */
     width?: number;
@@ -192,8 +197,8 @@ export namespace Widget {
       | 'grid'
       | 'divider';
     value?: string;
-    label?: string;
-    unit?: string;
+    label?: LocalizedText;
+    unit?: LocalizedText;
     format?: Format;
     decimals?: number;
     thresholds?: Thresholds;
@@ -259,7 +264,7 @@ export namespace Widget {
   export type Pie = Table<Category>;
 
   export interface StatOptions extends Options {
-    unit?: string;
+    unit?: LocalizedText;
     format?: Format;
     decimals?: number;
     thresholds?: Thresholds;
@@ -268,6 +273,8 @@ export namespace Widget {
   export interface ChartOptions extends Options {
     /** Its lines, by name */
     series: string[];
+    /** Its lines' names shown, by series; default the series' names */
+    labels?: Record<string, LocalizedText>;
     /** How far back it shows: '15m', '1h', or seconds */
     window?: number | string;
     /**
@@ -281,7 +288,7 @@ export namespace Widget {
      * default 200, at most 1000
      */
     points?: number;
-    unit?: string;
+    unit?: LocalizedText;
     /** The axis' bounds */
     min?: number;
     max?: number;
@@ -297,7 +304,7 @@ export namespace Widget {
     /** Default 0 */
     min?: number;
     max: number;
-    unit?: string;
+    unit?: LocalizedText;
     format?: Format;
     decimals?: number;
     thresholds?: Thresholds;
@@ -305,7 +312,7 @@ export namespace Widget {
 
   /** Categories compared, each a row */
   export interface CategoryOptions extends Options {
-    unit?: string;
+    unit?: LocalizedText;
     format?: Format;
     decimals?: number;
     /** At most this many categories */
@@ -381,6 +388,7 @@ export namespace Widget {
         min: o.min,
         max: o.max,
         style: o.style,
+        labels: o.labels,
       }),
       data: omitUndefined({
         kind: 'series' as const,
