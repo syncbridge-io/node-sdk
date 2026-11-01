@@ -1,10 +1,12 @@
 import process from 'node:process';
 
 /**
- * What a worker process holds of its own: its stdio and IPC pipes. Any
- * other active resource is its app's.
+ * What a worker process holds of its own: its stdio and IPC pipes, and a
+ * write to them still on its way - a busy host reads the last lines late.
+ * Any other active resource is its app's; a socket's write in flight is
+ * told by the socket itself.
  */
-const OWN = new Set(['PipeWrap', 'TTYWrap']);
+const OWN = new Set(['PipeWrap', 'TTYWrap', 'SimpleWriteWrap', 'WriteWrap']);
 
 /**
  * What keeps this process alive beyond its own stdio and IPC, as
