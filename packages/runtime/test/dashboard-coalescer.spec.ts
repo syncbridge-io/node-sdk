@@ -84,6 +84,51 @@ describe('DashboardCoalescer', () => {
     ]);
   });
 
+  it("should send attention after the data, the last for each widget, row or field, a row's going with the row", () => {
+    c.push({ op: 'attend', widget: 'd/q', attention: 'pulse' });
+    c.push({ op: 'attend', widget: 'd/q', attention: null });
+    c.push({ op: 'attend', widget: 'd/t', key: 'a', attention: 'pulse' });
+    c.push({
+      op: 'attend',
+      widget: 'd/t',
+      key: 'a',
+      field: 'hr',
+      attention: 'highlight',
+      until: 5,
+    });
+    c.push({ op: 'attend', widget: 'd/t', key: 'b', attention: 'pulse' });
+    c.push({ op: 'upsert', widget: 'd/t', key: 'a', row: { hr: 1 } });
+    c.push({ op: 'remove', widget: 'd/t', key: 'b' });
+    c.flush();
+    expect(batches[0]).toEqual([
+      { op: 'upsert', widget: 'd/t', key: 'a', row: { hr: 1 } },
+      { op: 'remove', widget: 'd/t', key: 'b' },
+      { op: 'attend', widget: 'd/q', attention: null },
+      { op: 'attend', widget: 'd/t', key: 'a', attention: 'pulse' },
+      {
+        op: 'attend',
+        widget: 'd/t',
+        key: 'a',
+        field: 'hr',
+        attention: 'highlight',
+        until: 5,
+      },
+    ]);
+    c.push({ op: 'attend', widget: 'd/t', key: 'a', attention: 'pulse' });
+    c.push({ op: 'attend', widget: 'd/t', key: 'c', attention: 'pulse' });
+    c.push({ op: 'attend', widget: 'd/t', attention: 'highlight' });
+    c.push({ op: 'replace', widget: 'd/t', rows: [{ key: 'c', row: {} }] });
+    c.push({ op: 'attend', widget: 'd/u', key: 'x', attention: 'pulse' });
+    c.push({ op: 'clear', widget: 'd/u' });
+    c.flush();
+    expect(batches[1]).toEqual([
+      { op: 'replace', widget: 'd/t', rows: [{ key: 'c', row: {} }] },
+      { op: 'clear', widget: 'd/u' },
+      { op: 'attend', widget: 'd/t', key: 'c', attention: 'pulse' },
+      { op: 'attend', widget: 'd/t', attention: 'highlight' },
+    ]);
+  });
+
   it('should send once the interval is up, nothing when nothing was written', async () => {
     const fast = new DashboardCoalescer(ops => batches.push(ops), 250);
     fast.push({ op: 'set', widget: 'd/q', value: 1 });

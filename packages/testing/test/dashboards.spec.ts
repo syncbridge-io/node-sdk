@@ -1,6 +1,7 @@
 import path from 'node:path';
+import { Widget, widgetMetadataOf } from '@syncbridge/common';
 import { expect } from 'expect';
-import { createTestEnv } from '../src/index.js';
+import { createTestEnv, TestDashboards } from '../src/index.js';
 import { MeterApp } from './_fixtures/demo-ext/src/index.js';
 
 const FIXTURE = path.resolve(import.meta.dirname, '_fixtures/demo-ext');
@@ -64,5 +65,66 @@ describe('A test env reading dashboards', () => {
     expect(
       env.logs(app).some(e => String(e.message).includes('meter/broken')),
     ).toBe(true);
+  });
+
+  it("should hold a value with its tone and hint, and the attention not ended - a row's going with the row", () => {
+    const d = new TestDashboards();
+    d.apply({
+      op: 'define',
+      dashboard: 'ops',
+      widget: widgetMetadataOf('hr', Widget.stat()),
+    });
+    d.apply({
+      op: 'define',
+      dashboard: 'ops',
+      widget: widgetMetadataOf(
+        'beds',
+        Widget.table({ columns: [{ field: 'hr' }] }),
+      ),
+    });
+    d.apply({
+      op: 'set',
+      widget: 'ops/hr',
+      value: 132,
+      tone: 'error',
+      hint: 'High',
+    });
+    d.apply({ op: 'attend', widget: 'ops/hr', attention: 'pulse' });
+    expect(d.get('ops/hr')).toMatchObject({
+      kind: 'value',
+      value: 132,
+      tone: 'error',
+      hint: 'High',
+      attention: [{ attention: 'pulse' }],
+    });
+    /* One over by its duration takes the place of the one before */
+    d.apply({
+      op: 'attend',
+      widget: 'ops/hr',
+      attention: 'highlight',
+      until: Date.now() - 1,
+    });
+    expect(d.get('ops/hr')?.attention).toBeUndefined();
+    /* A row's needs the row, and goes with it */
+    d.apply({
+      op: 'attend',
+      widget: 'ops/beds',
+      key: 'b1',
+      attention: 'pulse',
+    });
+    expect(d.get('ops/beds')).toBeUndefined();
+    d.apply({ op: 'upsert', widget: 'ops/beds', key: 'b1', row: { hr: 1 } });
+    d.apply({
+      op: 'attend',
+      widget: 'ops/beds',
+      key: 'b1',
+      field: 'hr',
+      attention: 'pulse',
+    });
+    expect(d.get('ops/beds')?.attention).toEqual([
+      { attention: 'pulse', key: 'b1', field: 'hr' },
+    ]);
+    d.apply({ op: 'remove', widget: 'ops/beds', key: 'b1' });
+    expect(d.get('ops/beds')?.attention).toBeUndefined();
   });
 });

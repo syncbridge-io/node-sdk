@@ -1,6 +1,8 @@
 import {
   type AppMetadata,
   coreWidgetType,
+  DASHBOARD_LIMITS,
+  type DashboardAttention,
   DashboardCounters,
   type DashboardMetadataRecord,
   type DashboardOp,
@@ -15,13 +17,21 @@ import {
 
 /**
  * A widget's data as SyncBridge holds it: what its dashboard shows. The
- * same shape the engine gives (GET worker@<id>/dashboards)
+ * same shape the engine gives (GET worker@<id>/dashboards). `attention`:
+ * what is drawn attention to now - the widget, rows, rows' fields
  */
-export type DashboardData =
-  | { kind: 'value'; value: unknown; at: number }
+export type DashboardData = (
+  | {
+      kind: 'value';
+      value: unknown;
+      tone?: string;
+      hint?: string;
+      at: number;
+    }
   | { kind: 'series'; series: Record<string, [number, number][]> }
   | { kind: 'table'; rows: { key: string; row: DashboardRow }[] }
-  | { kind: 'feed'; rows: { at: number; row: DashboardRow }[] };
+  | { kind: 'feed'; rows: { at: number; row: DashboardRow }[] }
+) & { attention?: DashboardAttention[] };
 
 /**
  * An app's dashboards in a test env: each write applied at once - no
@@ -30,6 +40,8 @@ export type DashboardData =
  */
 export class TestDashboards {
   protected _data = new Map<string, DashboardData>();
+  /** By widget path: what is drawn attention to */
+  protected _attention = new Map<string, DashboardAttention[]>();
   /** By dashboard path, by id */
   protected _defined = new Map<string, Map<string, WidgetMetadata>>();
   protected _issues = new Map<string, string[]>();
@@ -46,9 +58,21 @@ export class TestDashboards {
       this._check(path, widget);
   }
 
-  /** A widget's data, by its path: `ops/queue`, `io/device/errors` */
+  /**
+   * A widget's data, by its path: `ops/queue`, `io/device/errors` - and
+   * the attention not ended, nor over by its duration
+   */
   get(path: string): DashboardData | undefined {
-    return this._data.get(path);
+    const data = this._data.get(path);
+    const now = Date.now();
+    const attention = (this._attention.get(path) || []).filter(
+      a => a.until == null || a.until > now,
+    );
+    if (!attention.length) return data;
+    return {
+      ...(data || emptyData(this._widget(path)!.data.kind)),
+      attention,
+    } as DashboardData;
   }
 
   /** The widgets defined as the app runs into a dashboard, by path */
@@ -77,6 +101,7 @@ export class TestDashboards {
       const path = dashboardPath(op.dashboard, op.id);
       this._defined.get(op.dashboard)?.delete(op.id);
       this._data.delete(path);
+      this._attention.delete(path);
       this._issues.delete(path);
       return;
     }
@@ -88,9 +113,39 @@ export class TestDashboards {
         this._data.set(op.widget, {
           kind: 'value',
           value: op.value,
+          ...(op.tone != null ? { tone: op.tone } : {}),
+          ...(op.hint != null ? { hint: op.hint } : {}),
           at: Date.now(),
         });
         return;
+      case 'attend': {
+        if (
+          op.key != null &&
+          !(before?.kind === 'table' && before.rows.some(r => r.key === op.key))
+        )
+          return;
+        const now = Date.now();
+        const list = (this._attention.get(op.widget) || []).filter(
+          a =>
+            (a.until == null || a.until > now) &&
+            !(a.key === op.key && a.field === op.field),
+        );
+        if (op.attention !== null && (op.until == null || op.until > now)) {
+          if (list.length >= DASHBOARD_LIMITS.attentions) list.shift();
+          list.push(
+            Object.fromEntries(
+              Object.entries({
+                attention: op.attention,
+                key: op.key,
+                field: op.field,
+                until: op.until,
+              }).filter(([, v]) => v != null),
+            ) as unknown as DashboardAttention,
+          );
+        }
+        this._attention.set(op.widget, list);
+        return;
+      }
       case 'point': {
         const series = before?.kind === 'series' ? before.series : {};
         const points = [...(series[op.series] || []), [op.at, op.value]] as [
@@ -112,10 +167,10 @@ export class TestDashboards {
         const at = rows.findIndex(r => r.key === op.key);
         if (at >= 0) rows[at] = { key: op.key, row: op.row };
         else rows.push({ key: op.key, row: op.row });
-        this._data.set(op.widget, {
-          kind: 'table',
-          rows: rows.slice(-dataMax('table', widget.data.max)),
-        });
+        const kept = rows.slice(-dataMax('table', widget.data.max));
+        this._data.set(op.widget, { kind: 'table', rows: kept });
+        if (kept.length < rows.length)
+          this._dropAttention(op.widget, key => !kept.some(r => r.key === key));
         return;
       }
       case 'remove':
@@ -124,13 +179,15 @@ export class TestDashboards {
             kind: 'table',
             rows: before.rows.filter(r => r.key !== op.key),
           });
+        this._dropAttention(op.widget, key => key === op.key);
         return;
-      case 'replace':
-        this._data.set(op.widget, {
-          kind: 'table',
-          rows: op.rows.slice(-dataMax('table', widget.data.max)),
-        });
+      case 'replace': {
+        const rows = op.rows.slice(-dataMax('table', widget.data.max));
+        this._data.set(op.widget, { kind: 'table', rows });
+        const keys = new Set(rows.map(r => r.key));
+        this._dropAttention(op.widget, key => !keys.has(key));
         return;
+      }
       case 'append': {
         const rows = before?.kind === 'feed' ? [...before.rows] : [];
         rows.push({ at: op.at, row: op.row });
@@ -145,9 +202,22 @@ export class TestDashboards {
           const series = { ...before.series };
           delete series[op.series];
           this._data.set(op.widget, { kind: 'series', series });
-        } else this._data.delete(op.widget);
+        } else {
+          this._data.delete(op.widget);
+          this._dropAttention(op.widget, () => true);
+        }
         return;
     }
+  }
+
+  /** The attention to rows whose key is gone: it goes with them */
+  protected _dropAttention(path: string, gone: (key: string) => boolean) {
+    const list = this._attention.get(path);
+    if (list)
+      this._attention.set(
+        path,
+        list.filter(a => a.key == null || !gone(a.key)),
+      );
   }
 
   /** A widget checked as SyncBridge checks it: its type a core one, or none known */
@@ -166,6 +236,20 @@ export class TestDashboards {
     return at > 0
       ? this._defined.get(path.slice(0, at))?.get(path.slice(at + 1))
       : undefined;
+  }
+}
+
+/** A widget's data holding nothing yet, by its kind */
+function emptyData(kind: string): DashboardData {
+  switch (kind) {
+    case 'series':
+      return { kind: 'series', series: {} };
+    case 'table':
+      return { kind: 'table', rows: [] };
+    case 'feed':
+      return { kind: 'feed', rows: [] };
+    default:
+      return { kind: 'value', value: null, at: 0 };
   }
 }
 

@@ -28,6 +28,13 @@ export const DASHBOARD_LIMITS = {
   keyLength: 200,
   /** A value or a row as JSON, in bytes */
   itemBytes: 4096,
+  /** A value's hint, in characters */
+  hintLength: 500,
+  /** An attention's duration, in seconds: least, most */
+  attentionMin: 1,
+  attentionMax: 86400,
+  /** A widget's attentions at once: its own, its rows', their fields' */
+  attentions: 500,
   /** All of a worker's dashboard state as JSON, in bytes */
   workerBytes: 8 * 1024 * 1024,
 } as const;

@@ -223,4 +223,87 @@ describe('Dashboard widgets as the worker runs', () => {
     counters.flush(start + 20000);
     expect(sent).toEqual([]);
   });
+
+  it('should send a value with its tone and hint, a status with its hint', () => {
+    app.ops.queue.set(132, { tone: 'error', hint: 'Over 130 three times' });
+    app.ops.queue.set(80);
+    app.ops.link.set('warning', { text: 'Slow', hint: 'Answers in 4 s' });
+    expect(sent).toEqual([
+      {
+        op: 'set',
+        widget: 'ops/queue',
+        value: 132,
+        tone: 'error',
+        hint: 'Over 130 three times',
+      },
+      { op: 'set', widget: 'ops/queue', value: 80 },
+      {
+        op: 'set',
+        widget: 'ops/link',
+        value: { status: 'warning', text: 'Slow' },
+        hint: 'Answers in 4 s',
+      },
+    ]);
+  });
+
+  it('should refuse a tone not known, a status toned, a hint too long', () => {
+    app.ops.queue.set(1, { tone: 'red' as any });
+    app.ops.link.set('ok', { tone: 'ok' } as any);
+    app.ops.queue.set(1, { hint: 'x'.repeat(501) });
+    expect(sent).toEqual([]);
+    expect(warned).toEqual([
+      'Dashboard widget "ops/queue" refused a write: a tone is one of muted, ok, info, accent, warning, error',
+      'Dashboard widget "ops/link" refused a write: a status\'s tone is its status',
+      'Dashboard widget "ops/queue" refused a write: a hint is a text of at most 500 characters',
+    ]);
+  });
+
+  it("should draw attention to a widget, a row, a row's field - for a duration or until ended", () => {
+    const now = Date.now();
+    app.ops.queue.attend({ attention: 'pulse' });
+    app.ops.rate.attend({ attention: 'highlight', duration: '3s' });
+    app.ops.devices.attend({ key: 'd1', attention: 'pulse', duration: 5 });
+    app.ops.devices.attend({
+      key: 'd1',
+      field: 'name',
+      attention: 'highlight',
+    });
+    app.ops.queue.attend({ attention: null, duration: '1m' });
+    expect(sent.slice(0, 1)).toEqual([
+      { op: 'attend', widget: 'ops/queue', attention: 'pulse' },
+    ]);
+    expect(sent[1]).toMatchObject({
+      widget: 'ops/rate',
+      attention: 'highlight',
+    });
+    expect((sent[1] as any).until).toBeGreaterThanOrEqual(now + 3000);
+    expect((sent[1] as any).until).toBeLessThan(now + 4000);
+    expect(sent[2]).toMatchObject({ key: 'd1', attention: 'pulse' });
+    expect(sent.slice(3)).toEqual([
+      {
+        op: 'attend',
+        widget: 'ops/devices',
+        key: 'd1',
+        field: 'name',
+        attention: 'highlight',
+      },
+      /* An end lasts no while */
+      { op: 'attend', widget: 'ops/queue', attention: null },
+    ]);
+  });
+
+  it('should refuse attention of no kind known, to a row of a value, a field without its row, of a duration out of bounds', () => {
+    app.ops.queue.attend({ attention: 'blink' as any });
+    app.ops.queue.attend({ key: 'a', attention: 'pulse' } as any);
+    app.ops.devices.attend({ field: 'name', attention: 'pulse' });
+    app.ops.devices.attend({ attention: 'pulse', duration: '2d' });
+    app.ops.devices.attend({ attention: 'pulse', duration: 'soon' });
+    expect(sent).toEqual([]);
+    expect(warned).toEqual([
+      'Dashboard widget "ops/queue" refused a write: an attention is one of highlight, pulse, or null to end it',
+      'Dashboard widget "ops/queue" refused a write: "ops/queue" has no rows by key to attend',
+      'Dashboard widget "ops/devices" refused a write: a field is attended in a row: its key',
+      "Dashboard widget \"ops/devices\" refused a write: an attention's duration is 1 s to 24 h ('3s', '2m')",
+    ]);
+  });
 });

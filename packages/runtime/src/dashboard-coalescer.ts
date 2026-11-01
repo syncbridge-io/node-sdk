@@ -28,17 +28,22 @@ type Pending =
   /** A clear before any write told the widget's kind */
   | { kind: 'cleared'; all: boolean; series: Set<string> };
 
+type Attend = DashboardOp & { op: 'attend' };
+
 /**
  * A worker's dashboard writes gathered for the engine (engine
  * docs/worker-dashboards.md, section 8): a value set many times goes as
  * its last, a series' points and a feed's rows together, a table's rows
  * as each one's last change; a clear or a replace drops what came before
  * it. Sent at most once an interval, so a loop of writes costs nothing.
- * Widgets defined and undefined go first, in their order.
+ * Widgets defined and undefined go first, in their order; attention last,
+ * the last for each widget, row or field - a row's dropped with the row.
  */
 export class DashboardCoalescer {
   protected _layout: DashboardOp[] = [];
   protected _data = new Map<string, Pending>();
+  /** By widget, by what it is drawn to */
+  protected _attend = new Map<string, Map<string, Attend>>();
   protected _timer?: NodeJS.Timeout;
   readonly interval: number;
 
@@ -58,7 +63,16 @@ export class DashboardCoalescer {
       case 'undefine':
         this._layout.push(op);
         this._data.delete(`${op.dashboard}/${op.id}`);
+        this._attend.delete(`${op.dashboard}/${op.id}`);
         break;
+      case 'attend': {
+        let targets = this._attend.get(op.widget);
+        if (!targets) this._attend.set(op.widget, (targets = new Map()));
+        const target = `${op.key ?? ''}\u0000${op.field ?? ''}`;
+        targets.delete(target);
+        targets.set(target, op);
+        break;
+      }
       case 'set':
         this._data.set(op.widget, { kind: 'value', op });
         break;
@@ -90,6 +104,7 @@ export class DashboardCoalescer {
         >;
         p.changes.delete(op.key);
         p.changes.set(op.key, op.op === 'upsert' ? op.row : null);
+        if (op.op === 'remove') this._dropAttends(op.widget, k => k === op.key);
         break;
       }
       case 'replace': {
@@ -99,10 +114,13 @@ export class DashboardCoalescer {
         >;
         p.base = op.rows;
         p.changes.clear();
+        const keys = new Set(op.rows.map(r => r.key));
+        this._dropAttends(op.widget, k => !keys.has(k));
         break;
       }
       case 'clear':
         this._clear(op.widget, op.series);
+        if (op.series == null) this._dropAttends(op.widget, () => true);
         break;
     }
     this._schedule();
@@ -114,8 +132,10 @@ export class DashboardCoalescer {
     this._timer = undefined;
     const ops = [...this._layout];
     for (const [widget, p] of this._data) ops.push(...expand(widget, p));
+    for (const targets of this._attend.values()) ops.push(...targets.values());
     this._layout = [];
     this._data.clear();
+    this._attend.clear();
     if (ops.length) this._send(ops);
   }
 
@@ -128,6 +148,14 @@ export class DashboardCoalescer {
     if (this._timer) return;
     this._timer = setTimeout(() => this.flush(), this.interval);
     this._timer.unref?.();
+  }
+
+  /** A widget's pending attention to rows whose key is gone */
+  protected _dropAttends(widget: string, gone: (key: string) => boolean) {
+    const targets = this._attend.get(widget);
+    if (!targets) return;
+    for (const [target, op] of targets)
+      if (op.key != null && gone(op.key)) targets.delete(target);
   }
 
   /**

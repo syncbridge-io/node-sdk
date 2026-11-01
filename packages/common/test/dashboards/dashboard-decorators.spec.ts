@@ -68,6 +68,60 @@ describe('The core widget types', () => {
     ).toEqual(['"cardWidth" is one of s, m, l']);
   });
 
+  it("should bind a row's tone and hint: a card's and its template's to row fields, a list's to fields", () => {
+    const issues = (d: Widget.Definition<any>) =>
+      widgetIssues(widgetMetadataOf('w', d), coreWidgetType(d.type));
+    const template = {
+      type: 'stack' as const,
+      children: [
+        { type: 'text' as const, value: 'row.name', tone: 'muted' },
+        {
+          type: 'number' as const,
+          value: 'row.hr',
+          tone: 'row.hrTone',
+          hint: 'row.hrHint',
+        },
+      ],
+    };
+    const cards = Widget.cards({
+      template,
+      cardTone: 'row.tone',
+      cardHint: 'row.note',
+    });
+    expect(cards.properties).toEqual({
+      template,
+      cardTone: 'row.tone',
+      cardHint: 'row.note',
+    });
+    expect(issues(cards)).toEqual([]);
+    const table = Widget.table({
+      columns: [{ field: 'hr', tone: 'hrTone', hint: 'hrHint' }],
+      rowTone: 'tone',
+    });
+    expect(table.properties).toEqual({
+      columns: [{ field: 'hr', tone: 'hrTone', hint: 'hrHint' }],
+      rowTone: 'tone',
+    });
+    expect(issues(table)).toEqual([]);
+    expect(
+      issues(
+        Widget.cards({
+          template: {
+            type: 'number',
+            value: 'row.hr',
+            tone: 'red',
+            hint: 'Too fast',
+          },
+          cardTone: 'tone',
+        }),
+      ),
+    ).toEqual([
+      'template root: its tone "red" is a tone or binds row.<field> or prop.<name>',
+      'template root: its hint "Too fast" binds row.<field> or prop.<name>',
+      '"cardTone" binds row.<field>',
+    ]);
+  });
+
   it("should take its texts by language - a title, a unit, a series' label - and refuse one not text", () => {
     const issues = (id: string, d: Widget.Definition<any>) =>
       widgetIssues(widgetMetadataOf(id, d), coreWidgetType(d.type));

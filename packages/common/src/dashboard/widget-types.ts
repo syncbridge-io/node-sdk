@@ -1,4 +1,4 @@
-import type { Widget } from '../decorators/widget.decorator.js';
+import { type Widget, WIDGET_TONES } from '../decorators/widget.decorator.js';
 import type {
   DataKind,
   WidgetMetadata,
@@ -108,7 +108,7 @@ export const CORE_WIDGET_TYPES: readonly WidgetTypeSpec[] = [
     name: 'core.stat',
     version: 1,
     title: 'Number',
-    description: 'A number or a short text, its unit, colored by thresholds',
+    description: 'A number or a short text, its unit, in the tone given',
     renderer: 'builtin',
     data: ['value'],
     properties: {
@@ -148,7 +148,11 @@ export const CORE_WIDGET_TYPES: readonly WidgetTypeSpec[] = [
     description: 'Rows under columns',
     renderer: 'builtin',
     data: ['table', 'feed'],
-    properties: { columns: { type: 'array', required: true } },
+    properties: {
+      columns: { type: 'array', required: true },
+      rowTone: { type: 'string' },
+      rowHint: { type: 'string' },
+    },
   },
   {
     name: 'core.card',
@@ -160,13 +164,15 @@ export const CORE_WIDGET_TYPES: readonly WidgetTypeSpec[] = [
     properties: {
       template: { type: 'template', required: true },
       cardWidth: { type: 'string', values: ['s', 'm', 'l'] },
+      cardTone: { type: 'string' },
+      cardHint: { type: 'string' },
     },
   },
   {
     name: 'core.gauge',
     version: 1,
     title: 'Gauge',
-    description: 'A dial between its bounds, colored by thresholds',
+    description: 'A dial between its bounds, in the tone given',
     renderer: 'builtin',
     data: ['value'],
     properties: BOUNDED,
@@ -175,7 +181,7 @@ export const CORE_WIDGET_TYPES: readonly WidgetTypeSpec[] = [
     name: 'core.progress',
     version: 1,
     title: 'Progress',
-    description: 'A bar between its bounds, colored by thresholds',
+    description: 'A bar between its bounds, in the tone given',
     renderer: 'builtin',
     data: ['value'],
     properties: BOUNDED,
@@ -281,7 +287,20 @@ export function widgetIssues(
     if (wrong) issues.push(`"${name}" ${wrong}`);
     else if (p.type === 'template') issues.push(...templateIssues(value));
   }
+  if (spec.name === 'core.card')
+    for (const name of ['cardTone', 'cardHint'])
+      if (typeof props[name] === 'string' && !bindsTo(props[name], ['row']))
+        issues.push(`"${name}" binds row.<field>`);
   return issues;
+}
+
+/** Whether a binding is one, to one of the scopes */
+function bindsTo(value: unknown, scopes: readonly TemplateScope[]): boolean {
+  return (
+    typeof value === 'string' &&
+    BINDING.test(value) &&
+    scopes.includes(value.split('.')[0] as TemplateScope)
+  );
 }
 
 function propertyIssue(value: any, p: WidgetPropertySpec): string | undefined {
@@ -329,15 +348,19 @@ export function templateIssues(
     }
     if (!TEMPLATE_PRIMITIVES.includes(node.type))
       issues.push(`template ${at}: "${node.type}" is not a primitive`);
+    const binds = scopes.map(s => SCOPE_WORDS[s]).join(' or ');
+    if (node.value != null && !bindsTo(node.value, scopes))
+      issues.push(`template ${at}: "${node.value}" binds ${binds}`);
     if (
-      node.value != null &&
-      (typeof node.value !== 'string' ||
-        !BINDING.test(node.value) ||
-        !scopes.includes(node.value.split('.')[0] as TemplateScope))
+      node.tone != null &&
+      !WIDGET_TONES.includes(node.tone) &&
+      !bindsTo(node.tone, scopes)
     )
       issues.push(
-        `template ${at}: "${node.value}" binds ${scopes.map(s => SCOPE_WORDS[s]).join(' or ')}`,
+        `template ${at}: its tone "${node.tone}" is a tone or binds ${binds}`,
       );
+    if (node.hint != null && !bindsTo(node.hint, scopes))
+      issues.push(`template ${at}: its hint "${node.hint}" binds ${binds}`);
     if (node.format != null && !FORMATS.includes(node.format))
       issues.push(`template ${at}: "${node.format}" is not a format`);
     if (node.children != null) {

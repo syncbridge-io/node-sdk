@@ -2,7 +2,10 @@ import { DashboardBase } from '../classes/dashboard-base.js';
 import {
   DATA_KINDS,
   Widget,
+  WIDGET_ATTENTIONS,
+  WIDGET_TONES,
   widgetMetadataOf,
+  windowSeconds,
 } from '../decorators/widget.decorator.js';
 import type {
   DashboardSectionMetadata,
@@ -13,6 +16,7 @@ import { countIntervalMs, DASHBOARD_LIMITS, dashboardPath } from './limits.js';
 
 const STATUSES: readonly string[] = ['ok', 'warning', 'error', 'unknown'];
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
+const FIELD = /^[A-Za-z0-9_-]{1,64}$/;
 const TYPE = /^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+@[1-9]\d{0,3}$/;
 
 /**
@@ -22,7 +26,13 @@ const TYPE = /^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+@[1-9]\d{0,3}$/;
  * milliseconds. The runtime gathers them for the engine
  */
 export type DashboardOp =
-  | { op: 'set'; widget: string; value: Widget.Scalar | DashboardStatus }
+  | {
+      op: 'set';
+      widget: string;
+      value: Widget.Scalar | DashboardStatus;
+      tone?: Widget.Tone;
+      hint?: string;
+    }
   | { op: 'point'; widget: string; series: string; value: number; at: number }
   | { op: 'clear'; widget: string; series?: string }
   | { op: 'upsert'; widget: string; key: string; row: DashboardRow }
@@ -33,11 +43,29 @@ export type DashboardOp =
       rows: { key: string; row: DashboardRow }[];
     }
   | { op: 'append'; widget: string; row: DashboardRow; at: number }
+  /** Attention drawn to the widget, a row or a row's field, or ended */
+  | ({ op: 'attend'; widget: string } & DashboardAttendTarget & {
+        attention: Widget.Attention | null;
+        /** When it ends by itself, epoch milliseconds */
+        until?: number;
+      })
   /** A widget defined as the worker runs, by its dashboard's path */
   | { op: 'define'; dashboard: string; widget: WidgetMetadata }
   | { op: 'undefine'; dashboard: string; id: string };
 
 export type DashboardSink = (op: DashboardOp) => void;
+
+/** What an attention is drawn to: the widget, a row, a row's field */
+export interface DashboardAttendTarget {
+  key?: string;
+  field?: string;
+}
+
+/** An attention a widget's data holds, as the engine gives it */
+export interface DashboardAttention extends DashboardAttendTarget {
+  attention: Widget.Attention;
+  until?: number;
+}
 
 export interface DashboardStatus {
   status: Widget.StatusLevel;
@@ -99,13 +127,40 @@ export class WidgetWriter
 
   /**
    * A value: a number, a text, a boolean, null, or a status - a status
-   * widget's `set('ok', 'Connected')`
+   * widget's `set('ok', 'Connected')`. Its tone and hint go with it: a
+   * set without them ends the ones before
    */
-  set(value: any, text?: string): void {
+  set(
+    value: any,
+    options?: string | Widget.SetOptions | Widget.StatusSetOptions,
+  ): void {
     if (this._silent) return;
     if (!this._is('value', 'set')) return;
+    if (
+      options != null &&
+      typeof options !== 'string' &&
+      typeof options !== 'object'
+    )
+      return this._refuse("a value's options are an object");
+    const o: Widget.SetOptions & Widget.StatusSetOptions =
+      typeof options === 'string' ? { text: options } : options || {};
+    const status = this.metadata.type === 'core.status@1';
+    if (o.tone != null) {
+      if (status) return this._refuse("a status's tone is its status");
+      if (!WIDGET_TONES.includes(o.tone))
+        return this._refuse(`a tone is one of ${WIDGET_TONES.join(', ')}`);
+    }
+    if (
+      o.hint != null &&
+      (typeof o.hint !== 'string' ||
+        o.hint.length > DASHBOARD_LIMITS.hintLength)
+    )
+      return this._refuse(
+        `a hint is a text of at most ${DASHBOARD_LIMITS.hintLength} characters`,
+      );
+    const text = o.text;
     let out: Widget.Scalar | DashboardStatus;
-    if (this.metadata.type === 'core.status@1' || text !== undefined) {
+    if (status || text !== undefined) {
       if (!STATUSES.includes(value))
         return this._refuse(`a status is one of ${STATUSES.join(', ')}`);
       out =
@@ -129,7 +184,65 @@ export class WidgetWriter
         'a value is a number, a string, a boolean, null or a status',
       );
     if (!this._fits(out)) return;
-    this._sink?.({ op: 'set', widget: this.path, value: out });
+    this._sink?.({
+      op: 'set',
+      widget: this.path,
+      value: out,
+      ...(o.tone != null ? { tone: o.tone } : {}),
+      ...(o.hint ? { hint: o.hint } : {}),
+    });
+  }
+
+  /**
+   * Draws attention to the widget - a table's row by its key, the row's
+   * field - or ends it: until ended, or for its duration. A later one for
+   * the same takes its place
+   */
+  attend(options: Widget.RowAttendOptions): void {
+    if (this._silent) return;
+    if (!options || typeof options !== 'object')
+      return this._refuse('attend() takes its options: { attention }');
+    const { attention, duration, key, field } = options;
+    if (attention !== null && !WIDGET_ATTENTIONS.includes(attention))
+      return this._refuse(
+        `an attention is one of ${WIDGET_ATTENTIONS.join(', ')}, or null to end it`,
+      );
+    if (key != null) {
+      if (this.metadata.data.kind !== 'table')
+        return this._refuse(`"${this.path}" has no rows by key to attend`);
+      if (!this._key(key)) return;
+    }
+    if (field != null) {
+      if (key == null)
+        return this._refuse('a field is attended in a row: its key');
+      if (typeof field !== 'string' || !FIELD.test(field))
+        return this._refuse("a field is a row's field name");
+    }
+    let until: number | undefined;
+    if (attention !== null && duration != null) {
+      let seconds: number;
+      try {
+        seconds = windowSeconds(duration);
+      } catch {
+        seconds = NaN;
+      }
+      if (
+        !(seconds >= DASHBOARD_LIMITS.attentionMin) ||
+        !(seconds <= DASHBOARD_LIMITS.attentionMax)
+      )
+        return this._refuse(
+          `an attention's duration is ${DASHBOARD_LIMITS.attentionMin} s to ${DASHBOARD_LIMITS.attentionMax / 3600} h ('3s', '2m')`,
+        );
+      until = Date.now() + Math.round(seconds * 1000);
+    }
+    this._sink?.({
+      op: 'attend',
+      widget: this.path,
+      ...(key != null ? { key } : {}),
+      ...(field != null ? { field } : {}),
+      attention,
+      ...(until != null ? { until } : {}),
+    });
   }
 
   point(series: string, value: number, at?: Date): void {
