@@ -200,16 +200,20 @@ describe('Dashboard widgets as the worker runs', () => {
     expect(sent).toEqual([]);
     counters.tick(start + 1000);
     expect(sent).toEqual([]);
-    counters.tick(start + 5000);
+    /* The count began at its first add: a few ms after start, it may be */
+    counters.tick(start + 5500);
     expect(sent).toEqual([
       {
         op: 'point',
         widget: 'ops/traffic',
         series: 'rx',
         value: 3001,
-        at: start + 5000,
+        at: expect.any(Number),
       },
     ]);
+    const at = (sent[0] as { at: number }).at;
+    expect(at - start).toBeGreaterThanOrEqual(5000);
+    expect(at - start).toBeLessThan(5500);
     /* Wrong series or kind refused as point() is; a clear drops the count */
     app.ops.traffic.count('tx', 1);
     (app.ops.queue as any).count('in', 1);
