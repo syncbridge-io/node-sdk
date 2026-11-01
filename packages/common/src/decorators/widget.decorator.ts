@@ -96,6 +96,25 @@ export const DATA_KINDS: readonly DataKind[] = [
   'feed',
 ];
 
+/**
+ * The tones a worker gives what it writes: how the web UI colors it. A
+ * tone the web UI does not know is drawn neutral
+ */
+export const WIDGET_TONES: readonly Widget.Tone[] = [
+  'muted',
+  'ok',
+  'info',
+  'accent',
+  'warning',
+  'error',
+];
+
+/** How a widget, a row or a row's field draws attention, until cleared */
+export const WIDGET_ATTENTIONS: readonly Widget.Attention[] = [
+  'highlight',
+  'pulse',
+];
+
 /** '30s', '15m', '1h', '1d' or seconds, in seconds */
 export function windowSeconds(window: number | string): number {
   if (typeof window === 'number') return window;
@@ -154,7 +173,10 @@ export namespace Widget {
     size?: Size;
   }
 
-  /** A color by thresholds: the higher the worse, unless `below` */
+  /**
+   * A color by thresholds: the higher the worse, unless `below`
+   * @deprecated The worker gives a value its tone: `set(v, { tone })`
+   */
   export interface Thresholds {
     warning?: number;
     error?: number;
@@ -171,6 +193,54 @@ export namespace Widget {
     format?: Format;
     /** Relative width */
     width?: number;
+    /** The row's field holding this value's tone */
+    tone?: string;
+    /** The row's field holding this value's hint */
+    hint?: string;
+  }
+
+  /**
+   * What a value tells by its color, not its meaning: muted, ok, info,
+   * accent, warning, error. Drawn neutral where none is given
+   */
+  export type Tone = 'muted' | 'ok' | 'info' | 'accent' | 'warning' | 'error';
+
+  /**
+   * highlight: a steady glow; pulse: a glow coming and going - steady
+   * where the viewer asks for less motion
+   */
+  export type Attention = 'highlight' | 'pulse';
+
+  /** What a value is written with, beside it */
+  export interface SetOptions {
+    tone?: Tone;
+    /**
+     * Why the value is what it is: shown by an (i) beside it, on hover,
+     * focus or tap. Plain text, at most 500 characters
+     */
+    hint?: string;
+  }
+
+  export interface StatusSetOptions {
+    text?: string;
+    hint?: string;
+  }
+
+  /**
+   * Draws attention to a widget, or ends it (`attention: null`). Lasts
+   * until ended, or its duration: '3s', '2m', or seconds - 1 s to 24 h. A
+   * later one for the same widget, row or field takes its place
+   */
+  export interface AttendOptions {
+    attention: Attention | null;
+    duration?: number | string;
+  }
+
+  /** To a row by its key, or to a row's field */
+  export interface RowAttendOptions extends AttendOptions {
+    key?: string;
+    /** A row's field: the value it shows. Needs the row's key */
+    field?: string;
   }
 
   export type StatusLevel = 'ok' | 'warning' | 'error' | 'unknown';
@@ -181,7 +251,8 @@ export namespace Widget {
 
   /**
    * A template's node: the web UI's primitives, nothing of the app's code.
-   * `value` binds what it shows: `row.<field>`, `prop.<name>`
+   * `value` binds what it shows: `row.<field>`, `prop.<name>`; `tone` its
+   * tone, bound so or one of the tones; `hint` binds its hint
    */
   export interface TemplateNode {
     type:
@@ -201,7 +272,10 @@ export namespace Widget {
     unit?: LocalizedText;
     format?: Format;
     decimals?: number;
+    /** @deprecated A tone bound: `tone: 'row.<field>'` */
     thresholds?: Thresholds;
+    tone?: string;
+    hint?: string;
     columns?: number;
     direction?: 'row' | 'column';
     fields?: Column[];
@@ -212,7 +286,9 @@ export namespace Widget {
 
   /** A value: a number, a text, a status */
   export interface Value<T = Scalar> {
-    set(value: T): void;
+    /** Its value, its tone and hint with it: what is not given goes */
+    set(value: T, options?: SetOptions): void;
+    attend(options: AttendOptions): void;
   }
 
   /** Points in time, by series */
@@ -228,6 +304,7 @@ export namespace Widget {
     count(series: string, amount?: number): void;
     /** A series' points, or all */
     clear(series?: string): void;
+    attend(options: AttendOptions): void;
   }
 
   /** Rows by key */
@@ -236,19 +313,23 @@ export namespace Widget {
     remove(key: string): void;
     replace(rows: Record<string, R> | { key: string; row: R }[]): void;
     clear(): void;
+    /** To the widget, a row or a row's field: a row's goes with the row */
+    attend(options: RowAttendOptions): void;
   }
 
   /** The newest rows */
   export interface Feed<R extends Row = Row> {
     append(row: R): void;
     clear(): void;
+    attend(options: AttendOptions): void;
   }
 
   /* --- The core types --- */
 
   export type Stat = Value<number | string | null>;
   export interface Status {
-    set(status: StatusLevel, text?: string): void;
+    set(status: StatusLevel, text?: string | StatusSetOptions): void;
+    attend(options: AttendOptions): void;
   }
   export type Chart = Series;
   export type Cards<R extends Row = Row> = Table<R>;
@@ -259,6 +340,8 @@ export namespace Widget {
     /** Its name shown: the key unless given */
     label?: string;
     value: number | null;
+    tone?: Tone;
+    hint?: string;
   }
   export type Bars = Table<Category>;
   export type Pie = Table<Category>;
@@ -267,6 +350,7 @@ export namespace Widget {
     unit?: LocalizedText;
     format?: Format;
     decimals?: number;
+    /** @deprecated The worker gives a value its tone: `set(v, { tone })` */
     thresholds?: Thresholds;
   }
 
@@ -307,6 +391,7 @@ export namespace Widget {
     unit?: LocalizedText;
     format?: Format;
     decimals?: number;
+    /** @deprecated The worker gives a value its tone: `set(v, { tone })` */
     thresholds?: Thresholds;
   }
 
@@ -326,6 +411,10 @@ export namespace Widget {
 
   export interface ListOptions extends Options {
     columns: Column[];
+    /** The row's field holding the row's tone */
+    rowTone?: string;
+    /** The row's field holding the row's hint */
+    rowHint?: string;
     /** At most this many rows */
     max?: number;
   }
@@ -339,6 +428,10 @@ export namespace Widget {
      * to fill it
      */
     cardWidth?: 's' | 'm' | 'l';
+    /** A card's tone, bound: `row.<field>` */
+    cardTone?: string;
+    /** A card's hint, bound: `row.<field>` */
+    cardHint?: string;
     /** At most this many cards */
     max?: number;
   }
@@ -364,7 +457,7 @@ export namespace Widget {
       size: o.size,
     });
 
-  /** A number or a short text, its unit, colored by thresholds */
+  /** A number or a short text, its unit, in the tone it is given */
   export function stat(o: StatOptions = {}): Definition<Stat> {
     return {
       ...base(o),
@@ -406,6 +499,13 @@ export namespace Widget {
     };
   }
 
+  const list = (o: ListOptions) =>
+    omitUndefined({
+      columns: o.columns,
+      rowTone: o.rowTone,
+      rowHint: o.rowHint,
+    });
+
   /** The newest rows under columns: a log of events, messages */
   export function feed<R extends Row = Row>(
     o: ListOptions,
@@ -413,7 +513,7 @@ export namespace Widget {
     return {
       ...base(o),
       type: 'core.list@1',
-      properties: { columns: o.columns },
+      properties: list(o),
       data: omitUndefined({ kind: 'feed' as const, max: o.max }),
     };
   }
@@ -425,7 +525,7 @@ export namespace Widget {
     return {
       ...base(o),
       type: 'core.list@1',
-      properties: { columns: o.columns },
+      properties: list(o),
       data: omitUndefined({ kind: 'table' as const, max: o.max }),
     };
   }
@@ -440,6 +540,8 @@ export namespace Widget {
       properties: omitUndefined({
         template: o.template,
         cardWidth: o.cardWidth,
+        cardTone: o.cardTone,
+        cardHint: o.cardHint,
       }),
       data: omitUndefined({ kind: 'table' as const, max: o.max }),
     };

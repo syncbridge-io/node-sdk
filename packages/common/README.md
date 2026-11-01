@@ -271,8 +271,7 @@ import {
   { id: 'devices', title: 'Devices', dynamic: true },
 ])
 export class OperationsDashboard extends DashboardBase {
-  @Widget.Stat({ title: 'Waiting', section: 'queue', unit: 'msg',
-    thresholds: { warning: 100, error: 500 } })
+  @Widget.Stat({ title: 'Waiting', section: 'queue', unit: 'msg' })
   declare readonly queue: Widget.Stat;
 
   @Widget.Chart({ title: 'Throughput', section: 'queue',
@@ -300,7 +299,7 @@ A widget holds its data, of one of four kinds whatever it looks like:
 
 | Kind | Written with | Widgets |
 | --- | --- | --- |
-| value | `set(value)` | `Stat`, `Status` (`set('warning', 'Slow')`), `Gauge`, `Progress` |
+| value | `set(value, { tone?, hint? })` | `Stat`, `Status` (`set('warning', 'Slow')`), `Gauge`, `Progress` |
 | series | `point(series, value, at?)`, `count(series, amount?)`, `clear(series?)` | `Chart`: `style` line, area, bar or stacked |
 | table | `upsert(key, row)`, `remove(key)`, `replace(rows)`, `clear()` | `Table`, `Cards` (a `template` per row, `cardWidth` s, m or l), `Bars`, `Pie` |
 | feed | `append(row)`, `clear()` | `Feed`: its newest rows |
@@ -329,6 +328,69 @@ A widget holds its data, of one of four kinds whatever it looks like:
 - Everything is held in memory by SyncBridge, never kept: a worker
   started again begins empty. What must survive is the app's to keep.
 - A user may hide a dashboard or a widget, for everyone.
+
+### Tone, hint and attention
+
+A widget only draws: it never judges a value. The worker tells how a
+value looks as it writes it, whatever the value is - a number, a text,
+a state:
+
+```ts
+this.monitor.hr.set(132, {
+  tone: 'error',
+  hint: 'Over 130 three times in the last 5 minutes',
+});
+this.monitor.hr.set(72); // its tone and hint go with a set without them
+```
+
+- `tone`: `muted`, `ok`, `info`, `accent`, `warning` or `error` - a
+  color, not a meaning; none, drawn neutral. A status's tone is its
+  status.
+- `hint`: why the value is what it is, shown by an (i) beside it on
+  hover, focus or tap. Plain text, at most 500 characters. It is data,
+  not translated in `locales/`; a widget's `description` tells what the
+  widget is.
+
+A row holds its tones and hints in its own fields, and the widget says
+which field is which:
+
+```ts
+@Widget.Cards({
+  template: { type: 'number', value: 'row.hr', unit: 'bpm',
+    tone: 'row.hrTone', hint: 'row.hrHint' },
+  cardTone: 'row.tone', cardHint: 'row.note',
+})
+declare readonly beds: Widget.Cards;
+
+@Widget.Table({ columns: [{ field: 'hr', tone: 'hrTone', hint: 'hrHint' }],
+  rowTone: 'tone' })
+declare readonly list: Widget.Table;
+```
+
+A template node's `tone` may be a tone itself (`tone: 'muted'`). `Bars`'
+and `Pie`'s rows take a `tone` and a `hint` of their own.
+
+`attend` draws attention to a widget, a table's row or a row's field,
+whenever the worker decides - a value changed, or did not change for
+too long:
+
+```ts
+this.monitor.hr.attend({ attention: 'pulse' });                 // until ended
+this.monitor.firmware.attend({ attention: 'highlight', duration: '3s' });
+this.monitor.beds.attend({ key: 'bed-3', field: 'hr', attention: 'pulse', duration: '2m' });
+this.monitor.hr.attend({ attention: null });                    // ended
+```
+
+- `highlight` glows steady, `pulse` comes and goes - steady where the
+  viewer asks for less motion.
+- It lasts until ended, or its `duration` (`'3s'`, `'2m'`, seconds; 1 s
+  to 24 h). A later one for the same widget, row or field takes its
+  place; a row's goes with the row.
+- A dashboard is a monitoring view, not an alarm: nobody may be looking.
+  What must reach someone is the app's to send.
+
+A gauge's or a template's `thresholds` are deprecated: give the value its
+tone.
 
 A widget the class cannot foresee - a device's own - is defined as the
 worker runs, into a section marked `dynamic`; `define` returns its writer,
