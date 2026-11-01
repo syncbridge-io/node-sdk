@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to aa78870f547b8e152ab3db6198521d78d4aecb30 -->
+<!-- rman:documented-up-to 9a529577bf206212d0345c4b937f689ec920c9b8 -->
+
+## @syncbridge/common@2.20.0 (2026-11-01)
+
+### ✨ Features
+
+- **dashboards:** tone, hint and attention written by the worker (57f48d3)
+
+### 🧪 Tests
+
+- **dashboards:** a count's interval begins at its first add, not the test's start (8f0d6af)
+
+---
 
 ## @syncbridge/common@2.19.0 (2026-10-31)
 

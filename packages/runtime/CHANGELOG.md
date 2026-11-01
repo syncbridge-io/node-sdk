@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to d538e84ec2754227729aa97ea56d63442277efb1 -->
+<!-- rman:documented-up-to 9a529577bf206212d0345c4b937f689ec920c9b8 -->
+
+## @syncbridge/runtime@2.6.0 (2026-11-01)
+
+### ✨ Features
+
+- **dashboards:** tone, hint and attention written by the worker (57f48d3)
+
+---
 
 ## @syncbridge/runtime@2.5.0 (2026-10-31)
 
