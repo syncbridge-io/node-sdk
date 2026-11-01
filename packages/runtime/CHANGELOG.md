@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 9a529577bf206212d0345c4b937f689ec920c9b8 -->
+<!-- rman:documented-up-to 153cdb3c25fb5b48cd899442280a606eebd44b62 -->
+
+## @syncbridge/runtime@2.6.1 (2026-11-01)
+
+### 🐛 Bug Fixes
+
+- **runtime:** a write to the worker's own pipes still on its way is not its app's left open (46e897a)
+
+---
 
 ## @syncbridge/runtime@2.6.0 (2026-11-01)
 
