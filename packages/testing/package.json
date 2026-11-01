@@ -1,6 +1,6 @@
 {
   "name": "@syncbridge/testing",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Test environment for SyncBridge extension packages",
   "author": "Panates Inc",
   "license": "MIT",
@@ -21,7 +21,7 @@
     "ts-gems": "^4.0.4"
   },
   "peerDependencies": {
-    "@syncbridge/common": "^2.16.0"
+    "@syncbridge/common": "^2.20.0"
   },
   "devDependencies": {
     "expect": "^30.5.2"
