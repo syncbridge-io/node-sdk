@@ -199,8 +199,9 @@ function normalizeVariables(
   variables?: VariableMetadataRecord,
 ): VariableMetadataRecord | undefined {
   if (!variables) return;
-  /** Convert object enumValues to arrays */
+  /** Convert object enumValues to arrays: a nested group's too */
   for (const v of Object.values(variables)) {
+    if (v.variables) normalizeVariables(v.variables);
     if (
       v.enumValues &&
       typeof v.enumValues === 'object' &&
