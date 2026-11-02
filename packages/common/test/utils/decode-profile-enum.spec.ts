@@ -24,10 +24,32 @@ class EnumVariables {
   declare device?: string;
 }
 
+/* A TS enum: an object, made a list of its values */
+enum Parameter {
+  HR = 'hr',
+  SpO2 = 'spo2',
+}
+
+class LimitVariables {
+  @DefineVariable({ type: VariableType.Enum, enumValues: Parameter })
+  declare parameter: Parameter;
+
+  @DefineVariable({ type: VariableType.Number })
+  declare low?: number;
+}
+
+class NestedEnumVariables extends EnumVariables {
+  @DefineVariable({ type: VariableType.Enum, enumValues: Parameter })
+  declare main?: Parameter;
+
+  @DefineVariable({ variables: LimitVariables, isArray: true })
+  declare limits?: LimitVariables[];
+}
+
 @App({ displayName: 'Enum' })
 class EnumApp extends AppBase {
-  @App.UseVariables(EnumVariables)
-  declare values: EnumVariables;
+  @App.UseVariables(NestedEnumVariables)
+  declare values: NestedEnumVariables;
 }
 
 function decode(values: Record<string, any>) {
@@ -76,5 +98,19 @@ describe('Profile Decode, enum variables', () => {
     });
     expect(v.device.enumValues).toBeUndefined();
     expect(decode({ device: '/dev/ttyUSB0' }).device).toBe('/dev/ttyUSB0');
+  });
+
+  it("should take a TS enum's values in a nested group, a list of groups too", () => {
+    const v = ExtensionRegistry.getApp((EnumApp as any).uri).metadata
+      .variables!;
+    expect(v.main.enumValues).toEqual(['hr', 'spo2']);
+    expect(v.limits.variables!.parameter.enumValues).toEqual(['hr', 'spo2']);
+    expect(decode({ main: 'hr' }).main).toBe('hr');
+    expect(decode({ limits: [{ parameter: 'hr', low: 50 }] }).limits).toEqual([
+      { parameter: 'hr', low: 50 },
+    ]);
+    expect(() => decode({ limits: [{ parameter: 'temp' }] })).toThrow(
+      /enumeration/,
+    );
   });
 });
