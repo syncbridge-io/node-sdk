@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 9a529577bf206212d0345c4b937f689ec920c9b8 -->
+<!-- rman:documented-up-to 090d147555f303781946ce9865b602d06b502ce9 -->
+
+## @syncbridge/common@2.20.1 (2026-11-02)
+
+### 🐛 Bug Fixes
+
+- **common:** a nested group's TS enum made a list of its values, as a top-level one is (6d8c178)
+
+---
 
 ## @syncbridge/common@2.20.0 (2026-11-01)
 
