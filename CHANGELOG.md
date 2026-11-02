@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to 090d147555f303781946ce9865b602d06b502ce9 -->
+<!-- rman:documented-up-to ac24110cf46ca358386fbbf8ab187a5c80e3fa1b -->
+
+## v2026.11.2-1136 (2026-11-02)
+
+### ✨ Features
+
+- an app's own migrateProfile given the whole profile (692e24d)
+
+### 🧹 Chores
+
+- sync lockfile [skip ci] (ee76747)
+
+---
 
 ## v2026.11.2-652 (2026-11-02)
 
