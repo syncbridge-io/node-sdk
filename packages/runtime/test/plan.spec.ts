@@ -124,6 +124,33 @@ describe('computeWorkerPlan', () => {
     });
   });
 
+  it('should take the package of every component a profile to migrate names', () => {
+    const app = pkg('@abisena/ge', '2.0.0');
+    const r = computeWorkerPlan({
+      app: { pkg: app, version: app.version } as any,
+      profile: {
+        components: {
+          hl7Server: {
+            uri: '@syncbridge/net:TcpServer',
+            components: { tls: { uri: '@syncbridge/tls:Tls' } },
+          },
+        },
+      } as any,
+      versionsOf: registry(
+        app,
+        pkg('@syncbridge/net', '1.0.0'),
+        pkg('@syncbridge/tls', '1.0.0'),
+      ),
+      isInstalled: () => true,
+      hostURL: 'file:///app/package.json',
+    });
+    expect(Object.keys(r.packages).sort()).toEqual([
+      '@abisena/ge',
+      '@syncbridge/net',
+      '@syncbridge/tls',
+    ]);
+  });
+
   it('should take the app at the version the profile resolved to', () => {
     const v1 = pkg('@abisena/lab', '1.0.0');
     const v2 = pkg('@abisena/lab', '2.0.0');

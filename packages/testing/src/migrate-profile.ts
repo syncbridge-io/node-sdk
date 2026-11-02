@@ -13,7 +13,10 @@ import {
 export interface MigratedProfile {
   /** The profile carried to the classes as they are */
   profile: Profile;
-  /** What their declarations changed (formerly, formerlyValues...) */
+  /**
+   * What their declarations changed (formerly, formerlyValues...), then
+   * what the app's own migrateProfile moved about its profile
+   */
   changes: ProfileCarryChange[];
   /** The classes whose own migrateProfile ran */
   migrated: string[];
@@ -37,14 +40,20 @@ export async function migrateProfileTo(
   await initializeModelsDocument();
   const { profile: carried, changes } = carryProfile(profile);
   const steps = profileMigrations(carried);
-  const migrated = await runProfileMigrations(carried, steps, step => {
-    const ext =
-      step.kind === 'app'
-        ? ExtensionRegistry.findApp(step.uri, step.version)
-        : ExtensionRegistry.findComponent(step.uri, step.version);
-    if (!ext) throw new Error(`${step.uri} ${step.version} is not registered`);
-    return ext.getClass();
-  });
+  const migrated = await runProfileMigrations(
+    carried,
+    steps,
+    step => {
+      const ext =
+        step.kind === 'app'
+          ? ExtensionRegistry.findApp(step.uri, step.version)
+          : ExtensionRegistry.findComponent(step.uri, step.version);
+      if (!ext)
+        throw new Error(`${step.uri} ${step.version} is not registered`);
+      return ext.getClass();
+    },
+    { changes },
+  );
   const decoded = decodeProfileSilent(migrated);
   return {
     profile: migrated,

@@ -324,6 +324,85 @@ export class VerifyApp extends AppBase {
     expect(failed.carried[0].message).toMatch(/values\/port/);
   });
 
+  it('should carry a profile its app moves about: a required component it adds, a setting moved into it', async () => {
+    writePackage(pkgDir);
+    write(
+      path.join(pkgDir, 'src', 'common.d.ts'),
+      `declare module '@syncbridge/common' {
+  export const App: any;
+  export const Component: any;
+  export const DefineVariable: any;
+  export class AppBase {
+    logger?: any;
+    protected _start(signal?: AbortSignal): Promise<void>;
+  }
+  export class ComponentBase {}
+}`,
+    );
+    write(
+      path.join(pkgDir, 'src', 'index.ts'),
+      `import {
+  App,
+  AppBase,
+  Component,
+  ComponentBase,
+  DefineVariable,
+} from '@syncbridge/common';
+
+class DeviceVariables {
+  @DefineVariable({ required: true })
+  declare freq: number;
+}
+
+@Component({ displayName: 'Device' })
+export class VerifyDevice extends ComponentBase {
+  @Component.UseVariables(DeviceVariables)
+  declare values: DeviceVariables;
+}
+
+/* 0.9 kept freq itself: 1.0 took the device's work into VerifyDevice */
+@App({ displayName: 'Verify' })
+export class VerifyApp extends AppBase {
+  @App.UseComponent({ required: true, uri: '@vt/prc:VerifyDevice' })
+  declare device: VerifyDevice;
+
+  @App.MigrateProfile()
+  static migrateProfile(m: any) {
+    m.profile.addComponent('components/device', '@vt/prc:VerifyDevice');
+    m.profile.move('values/freq', 'components/device/values/freq');
+    return m.values;
+  }
+}
+`,
+    );
+    write(path.join(pkgDir, 'test', 'profiles', '0.9.0', 'ward.json'), {
+      appUri: '@vt/prc:VerifyApp',
+      values: { freq: 5 },
+    });
+    write(path.join(pkgDir, 'test', 'profiles', 'given.json'), {
+      appUri: '@vt/prc:VerifyApp',
+      components: {
+        device: { uri: '@vt/prc:VerifyDevice', values: { freq: 5 } },
+      },
+    });
+    const r = await verifyPackage({
+      packageDir: pkgDir,
+      execArgv: EXEC_ARGV,
+      permissionModel: false,
+      timeout: 10000,
+      profile: path.join(pkgDir, 'test', 'profiles', 'given.json'),
+    });
+    expect(r.carried).toEqual([
+      {
+        file: path.join('test', 'profiles', '0.9.0', 'ward.json'),
+        from: '0.9.0',
+        ok: true,
+        changes: 0,
+        migrated: ['@vt/prc:VerifyApp'],
+      },
+    ]);
+  });
+
   it('should keep the npm dependencies in a store of its own, shared by every verify', async () => {
     expect(defaultStoreDir()).toBe(store);
     writePackage(pkgDir);
