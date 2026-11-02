@@ -14,6 +14,7 @@ import type {
 } from '../registry/extension-package.js';
 import { ExtensionRegistry } from '../registry/extension-registry.js';
 import { SECRET_PREFIX } from './encrypt-helpers.js';
+import { ProfileEditor } from './profile-editor.js';
 import { hasValueRef } from './value-refs.js';
 
 /**
@@ -21,8 +22,22 @@ import { hasValueRef } from './value-refs.js';
  * profile's issues are (`values/host`, `components/server/values/port`)
  */
 export interface ProfileCarryChange {
-  /** migrated: a class's own migrateProfile carried its values */
-  kind: 'class' | 'component' | 'value' | 'choice' | 'dropped' | 'migrated';
+  /**
+   * migrated: a class's own migrateProfile carried its values; moved,
+   * added, removed, set: an app's own migrateProfile changed its profile
+   * there (ProfileEditor)
+   */
+  kind:
+    | 'class'
+    | 'component'
+    | 'value'
+    | 'choice'
+    | 'dropped'
+    | 'migrated'
+    | 'moved'
+    | 'added'
+    | 'removed'
+    | 'set';
   location: string;
   /** What it was: a class's uri, a slot's or a setting's name, a choice */
   from: string;
@@ -170,7 +185,11 @@ function carrySlots(
   }
 }
 
-/** The components in its slots: each of its class now, its values carried */
+/**
+ * The components in its slots: each of its class now, its values carried.
+ * One in a slot its holder no longer declares too, by its own class: for
+ * what holds it to move it on in its own migrateProfile, carried
+ */
 function carryComponents(
   element: Profile | ProfileComponent,
   slots: ElementComponentMetadataRecord | undefined,
@@ -179,9 +198,10 @@ function carryComponents(
   findComponent: (uri: string) => ComponentExtension | undefined,
   changes: ProfileCarryChange[],
 ) {
-  if (!slots || !element.components) return;
-  for (const [slot, def] of Object.entries<ElementComponentMetadata>(slots)) {
+  if (!element.components) return;
+  for (const slot of slotsOf(element, slots)) {
     const component = element.components[slot];
+    const def: ElementComponentMetadata | undefined = slots?.[slot];
     if (!component?.uri) continue;
     const where = `${at}components/${slot}/`;
     let reg = findComponent(component.uri);
@@ -198,7 +218,7 @@ function carryComponents(
       /* Its class's settings, as its slot overrides them */
       const variables = merge(
         {},
-        [reg.metadata.variables || {}, def.variables || {}],
+        [reg.metadata.variables || {}, def?.variables || {}],
         { deep: 'full' },
       ) as VariableMetadataRecord;
       component.values = carryValues(
@@ -219,6 +239,19 @@ function carryComponents(
       changes,
     );
   }
+}
+
+/**
+ * The slots of an element holding a component: those its class declares,
+ * in their order, then those it no longer does
+ */
+function slotsOf(
+  element: Profile | ProfileComponent,
+  slots: ElementComponentMetadataRecord | undefined,
+): string[] {
+  const held = Object.keys(element.components || {});
+  const declared = Object.keys(slots || {}).filter(n => held.includes(n));
+  return [...declared, ...held.filter(n => !declared.includes(n))];
 }
 
 /** Values carried to the settings defined now */
@@ -324,6 +357,12 @@ export interface ProfileMigration {
   to: string;
   /** Where in the profile: "" its app, "components/server" a component */
   path: string;
+  /**
+   * The whole profile, given to an app's own alone: what changes from one
+   * place to another - a slot moved down into a component, a setting into
+   * a component's. Its app's values are `values`, the same object
+   */
+  profile?: ProfileEditor;
 }
 
 /** A class of a profile whose own migrateProfile is to run */
@@ -341,10 +380,12 @@ export interface ProfileMigrationStep {
 }
 
 /**
- * The classes of a profile whose own migrateProfile is to run, the app
- * first, then its components down: each that declares one and whose
- * values were written with an earlier version than the one taken, or
- * with one not told. Of a profile as carryProfile leaves it.
+ * The classes of a profile whose own migrateProfile is to run, its
+ * components down first - in slots their holders no longer declare too -
+ * then the app: each that declares one and whose values were written with
+ * an earlier version than the one taken, or with one not told. Of a
+ * profile as carryProfile leaves it. The app last, given the whole
+ * profile: what it moves, its components have carried already.
  */
 export function profileMigrations(
   profile: Profile,
@@ -378,13 +419,12 @@ export function profileMigrations(
         method,
       });
   };
-  step('app', '', app, profile.writtenWith);
   const walk = (
     element: Profile | ProfileComponent,
     slots: ElementComponentMetadataRecord | undefined,
     at: string,
   ) => {
-    for (const slot of Object.keys(slots || {})) {
+    for (const slot of slotsOf(element, slots)) {
       const component = element.components?.[slot];
       if (!component?.uri) continue;
       const reg = findComponent(component.uri);
@@ -395,21 +435,29 @@ export function profileMigrations(
     }
   };
   walk(profile, app.metadata.components, '');
+  step('app', '', app, profile.writtenWith);
   return steps;
+}
+
+export interface RunProfileMigrationsOptions {
+  /** What an app's own migrateProfile changed in its profile, told here */
+  changes?: ProfileCarryChange[];
 }
 
 /**
  * Runs the classes' own migrateProfile on a profile, in turn: each given
- * its values, its answer taken as them. A sealed secret is a token to it,
- * moved or dropped: one it answers that it was not given is refused. The
- * profile given is not changed.
+ * its values, its answer taken as them - an app's given the whole profile
+ * too (ProfileEditor), its changes told. A sealed secret is a token to
+ * it, moved or dropped: one it answers that it was not given is refused.
+ * The profile given is not changed.
  */
 export async function runProfileMigrations(
   profile: Profile,
   steps: ProfileMigrationStep[],
   classOf: (step: ProfileMigrationStep) => Promise<any> | any,
+  options?: RunProfileMigrationsOptions,
 ): Promise<Profile> {
-  const out = clone(profile, { deep: 'full' }) as Profile;
+  let out = clone(profile, { deep: 'full' }) as Profile;
   for (const s of steps) {
     const element = elementAt(out, s.path);
     if (!element) continue;
@@ -417,6 +465,10 @@ export async function runProfileMigrations(
     const fn = ctor?.[s.method];
     if (typeof fn !== 'function')
       throw new Error(`${s.uri} ${s.version} has no static ${s.method}`);
+    if (s.kind === 'app') {
+      out = await migrateApp(out, s, ctor, fn, options);
+      continue;
+    }
     const given = element.values ?? {};
     const answered = await fn.call(ctor, {
       values: clone(given, { deep: 'full' }),
@@ -424,19 +476,62 @@ export async function runProfileMigrations(
       to: s.version,
       path: s.path,
     } satisfies ProfileMigration);
-    if (!isRecord(answered))
-      throw new Error(
-        `${s.uri} ${s.version}: ${s.method} answered no values, an object`,
-      );
-    const had = new Set(secretsIn(given));
-    const made = secretsIn(answered).filter(t => !had.has(t));
-    if (made.length)
-      throw new Error(
-        `${s.uri} ${s.version}: ${s.method} answered a secret it was not given - a sealed secret is moved or dropped, never made or changed`,
-      );
+    assertValues(s, answered);
+    refuseMadeSecrets(s, given, answered);
     element.values = JSON.parse(JSON.stringify(answered));
   }
   return out;
+}
+
+/**
+ * An app's own migrateProfile run: given its values and the whole
+ * profile, a copy - its values the same object - what it answers taken
+ * as its values, what it changed there as the profile's
+ */
+async function migrateApp(
+  profile: Profile,
+  s: ProfileMigrationStep,
+  ctor: any,
+  fn: (m: ProfileMigration) => any,
+  options: RunProfileMigrationsOptions | undefined,
+): Promise<Profile> {
+  const work = clone(profile, { deep: 'full' }) as Profile;
+  work.values ??= {};
+  const changes: ProfileCarryChange[] = [];
+  const editor = new ProfileEditor(work, changes);
+  const answered = await fn.call(ctor, {
+    values: work.values,
+    from: s.from,
+    to: s.version,
+    path: s.path,
+    profile: editor,
+  } satisfies ProfileMigration);
+  assertValues(s, answered);
+  work.values = answered;
+  refuseMadeSecrets(s, profile, work);
+  options?.changes?.push(...changes);
+  return JSON.parse(JSON.stringify(work));
+}
+
+function assertValues(s: ProfileMigrationStep, answered: unknown) {
+  if (!isRecord(answered))
+    throw new Error(
+      `${s.uri} ${s.version}: ${s.method} answered no values, an object`,
+    );
+}
+
+/** A sealed secret in what it answered that it was not given: refused */
+function refuseMadeSecrets(
+  s: ProfileMigrationStep,
+  given: unknown,
+  answered: unknown,
+) {
+  const had = new Set(secretsIn(given));
+  const made = secretsIn(answered).filter(t => !had.has(t));
+  if (made.length)
+    throw new Error(
+      `${s.uri} ${s.version}: ${s.method} answered a secret it was not given - a sealed secret is moved or dropped, never made or changed`,
+    );
 }
 
 /** The app ("") or a component ("components/a/components/b") of a profile */

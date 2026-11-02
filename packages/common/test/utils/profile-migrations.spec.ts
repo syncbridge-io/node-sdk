@@ -113,17 +113,17 @@ describe('A class carrying its own values, migrateProfile', () => {
     const steps = profileMigrations(profile('0.0.1'));
     expect(steps).toEqual([
       {
-        kind: 'app',
-        path: '',
-        uri: (MigratingApp as any).uri,
+        kind: 'component',
+        path: 'components/link',
+        uri: (MigratingLink as any).uri,
         version,
         from: '0.0.1',
         method: 'migrateProfile',
       },
       {
-        kind: 'component',
-        path: 'components/link',
-        uri: (MigratingLink as any).uri,
+        kind: 'app',
+        path: '',
+        uri: (MigratingApp as any).uri,
         version,
         from: '0.0.1',
         method: 'migrateProfile',
@@ -156,7 +156,7 @@ describe('A class carrying its own values, migrateProfile', () => {
       host: 'lis.local',
       port: 2575,
     });
-    expect(seen).toEqual([
+    expect(seen).toMatchObject([
       { values: { title: 'Ward 3' }, from: '0.0.1', to: version, path: '' },
     ]);
     expect(given).toEqual(profile('0.0.1'));

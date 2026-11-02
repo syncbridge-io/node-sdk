@@ -5,6 +5,8 @@ import type {
   AppMetadata,
   ElementComponentMetadataRecord,
   ExtensionPackage,
+  Profile,
+  ProfileComponentRecord,
 } from '@syncbridge/common';
 import { SbError } from '@syncbridge/common';
 import semver from 'semver';
@@ -59,6 +61,12 @@ export interface ComputePlanSource {
 export interface ComputeWorkerPlanArgs extends ComputePlanSource {
   app: AppExtension;
   metadata?: AppMetadata;
+  /**
+   * A profile its classes' own migrateProfile is to run on: the package of
+   * every component it names too - in a slot no longer declared, or not
+   * yet configured as the version taken wants
+   */
+  profile?: Profile;
 }
 
 /** A package a plan starts from, and the range it is wanted at */
@@ -88,7 +96,8 @@ interface Requirement {
  * Picks one version of every registry package a worker needs.
  *
  * The roots are the app, at the version the profile resolved to, and
- * the package of every component its metadata assigns; see computePlan.
+ * the package of every component its metadata assigns - and its profile
+ * names, when given one to migrate; see computePlan.
  */
 export function computeWorkerPlan(args: ComputeWorkerPlanArgs): WorkerPlan {
   const roots: PlanRoot[] = [
@@ -106,6 +115,14 @@ export function computeWorkerPlan(args: ComputeWorkerPlanArgs): WorkerPlan {
     }
   };
   walk(args.metadata?.components);
+  const named = (components?: ProfileComponentRecord, at = '') => {
+    for (const [key, cmp] of Object.entries(components || {})) {
+      const name = cmp?.uri?.split(':')[0];
+      if (name) roots.push({ name, range: '*', by: `component "${at}${key}"` });
+      named(cmp?.components, `${at}${key}/`);
+    }
+  };
+  named(args.profile?.components);
   return computePlan({ ...args, roots });
 }
 

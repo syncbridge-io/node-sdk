@@ -52,6 +52,7 @@ export {
 } from './utils/encrypt-helpers.js';
 export * from './utils/materialize-metadata.js';
 export * from './utils/normalize-metadata.js';
+export * from './utils/profile-editor.js';
 export * from './utils/registry-names.js';
 export * from './utils/slot-interfaces.js';
 export * from './utils/type-guards.js';

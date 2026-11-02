@@ -891,7 +891,11 @@ async function carryOlder(
       carried.appUri,
       carried.appVersion || '*',
     );
-    const materialized = materializeMetadataSilent(carried);
+    /* As its migrations take it: a slot the version taken requires may be
+     * theirs to configure */
+    const materialized = materializeMetadataSilent(carried, {
+      returnUndefinedComponentsAsAbstract: true,
+    });
     if (!app || !materialized.result) {
       result.message = app
         ? materialized.issues!.map(i => i.message).join('; ')
@@ -903,6 +907,7 @@ async function carryOlder(
       plan = computeWorkerPlan({
         app,
         metadata: materialized.metadata,
+        profile: carried,
         versionsOf: n => ctx.packages.get(n),
         isInstalled: p => !ctx.provided.has(p.name),
         hostURL: pathToFileURL(path.join(ctx.hostDir, 'package.json')).href,
