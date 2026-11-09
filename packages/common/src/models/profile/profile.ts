@@ -6,6 +6,18 @@ import { ProfileComponentRecord } from './profile-component.js';
 /**
  * ProfileSettings
  */
+/**
+ * ProfilePackageVersions
+ */
+@ComplexType({
+  description:
+    "The versions a worker takes of its components' packages, by package name: each a semver range",
+  additionalFields: 'string',
+})
+export class ProfilePackageVersions {
+  [packageName: string]: string;
+}
+
 @ComplexType()
 export class ProfileSettings {
   constructor(init?: Partial<ProfileSettings>) {
@@ -67,6 +79,13 @@ export class Profile {
       'Determines which installed version will be used. This value accepts semver format. https://semver.npmjs.com/',
   })
   declare appVersion?: string;
+
+  @ApiField({
+    label: 'Package versions',
+    description:
+      "The versions of its components' packages it takes, a semver range by package name: one not named, the newest installed. A package its app depends on stays within the app's range too; its app's own package goes with the app. https://semver.npmjs.com/",
+  })
+  declare packageVersions?: ProfilePackageVersions;
 
   @ApiField({
     label: 'Written with',

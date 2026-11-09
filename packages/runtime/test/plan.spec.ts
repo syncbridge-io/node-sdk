@@ -34,10 +34,12 @@ function plan(
   prc: ExtensionPackage,
   versionsOf: (name: string) => ExtensionPackage[] | undefined,
   components?: any,
+  packageVersions?: Record<string, string>,
 ) {
   return computeWorkerPlan({
     app: { pkg: prc, version: prc.version } as any,
     metadata: components ? ({ components } as any) : undefined,
+    packageVersions,
     versionsOf,
     isInstalled: p => p.name !== '@syncbridge/builtins',
     hostURL: 'file:///app/package.json',
@@ -167,6 +169,76 @@ describe('computeWorkerPlan', () => {
       },
     });
     expect(r.packages['@syncbridge/builtins'].source).toBe('module');
+  });
+
+  describe('package versions', () => {
+    const client = {
+      client: { classUri: '@acme/hl7:Hl7Link', components: {} },
+    };
+
+    it("should narrow a component's package to the range the profile takes", () => {
+      const prc = pkg('@abisena/lab', '1.0.0');
+      const r = plan(
+        prc,
+        registry(
+          prc,
+          pkg('@acme/hl7', '1.0.0'),
+          pkg('@acme/hl7', '1.0.3'),
+          pkg('@acme/hl7', '1.1.0'),
+          pkg('@acme/hl7', '2.0.0'),
+        ),
+        client,
+        { '@acme/hl7': '~1.0.0' },
+      );
+      expect(r.packages['@acme/hl7'].version).toBe('1.0.3');
+    });
+
+    it("should keep a package within the app's range too", () => {
+      const prc = pkg('@abisena/lab', '1.0.0', { '@acme/hl7': '^1.0.0' });
+      const r = plan(
+        prc,
+        registry(
+          prc,
+          pkg('@acme/hl7', '1.2.0'),
+          pkg('@acme/hl7', '1.4.0'),
+          pkg('@acme/hl7', '2.0.0'),
+        ),
+        client,
+        { '@acme/hl7': '>=1.2.0 <1.4.0 || >=2.0.0' },
+      );
+      expect(r.packages['@acme/hl7'].version).toBe('1.2.0');
+    });
+
+    it("should report a range that leaves none within the app's, with who asked", () => {
+      const prc = pkg('@abisena/lab', '1.0.0', { '@acme/hl7': '^1.0.0' });
+      expect(() =>
+        plan(
+          prc,
+          registry(prc, pkg('@acme/hl7', '1.4.0'), pkg('@acme/hl7', '2.0.0')),
+          client,
+          { '@acme/hl7': '^2.0.0' },
+        ),
+      ).toThrow(
+        /"@acme\/hl7" satisfies .*\^1\.0\.0 \(@abisena\/lab@1\.0\.0\).*\^2\.0\.0 \(its package versions\)/,
+      );
+    });
+
+    it('should not load a package only its versions name', () => {
+      const prc = pkg('@abisena/lab', '1.0.0');
+      const r = plan(prc, registry(prc, pkg('@acme/hl7', '1.0.0')), undefined, {
+        '@acme/hl7': '1.0.0',
+      });
+      expect(r.packages['@acme/hl7']).toBeUndefined();
+    });
+
+    it("should leave its app's own package to the app's version", () => {
+      const v1 = pkg('@abisena/lab', '1.0.0');
+      const v2 = pkg('@abisena/lab', '2.0.0');
+      const r = plan(v1, registry(v1, v2), undefined, {
+        '@abisena/lab': '2.0.0',
+      });
+      expect(r.packages['@abisena/lab'].version).toBe('1.0.0');
+    });
   });
 
   it('should share @syncbridge/common and every declared peer', () => {
