@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 153cdb3c25fb5b48cd899442280a606eebd44b62 -->
+<!-- rman:documented-up-to 372d2ba95df657ee05baec174b74d9679dfec558 -->
+
+## @syncbridge/runtime@2.8.0 (2026-11-09)
+
+### ✨ Features
+
+- a profile's package versions - each package's range of its own, within what the app asks: the worker's plan takes the versions of a package it wants that fall in both (8a54b72)
+
+---
 
 ## @syncbridge/runtime@2.6.1 (2026-11-01)
 
