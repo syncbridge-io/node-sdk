@@ -1,5 +1,6 @@
 import type { Type } from 'ts-gems';
 import type { Contribution, ContributionPoint } from './contributions.js';
+import type { LogTarget } from './log-target.js';
 import type { WidgetTypeDefinition } from './widget-type.js';
 
 /**
@@ -12,6 +13,11 @@ import type { WidgetTypeDefinition } from './widget-type.js';
  */
 export interface PluginHost {
   readonly engine: PluginHost.Engine;
+  /**
+   * @deprecated SyncBridge no longer takes log targets: its logs are kept
+   * in its log store alone. `registerTarget` throws.
+   */
+  readonly logs: PluginHost.Logs;
   readonly events: PluginHost.Events;
   readonly workers: PluginHost.Workers;
   /** How it is doing, told on its card: since 2.1 */
@@ -21,6 +27,16 @@ export interface PluginHost {
 }
 
 export namespace PluginHost {
+  /** @deprecated See PluginHost.logs */
+  export interface Logs {
+    /**
+     * @deprecated Throws: SyncBridge no longer takes log targets
+     */
+    registerTarget<TValues = any>(
+      definition: LogTarget.Definition<TValues>,
+    ): void;
+  }
+
   export interface Engine {
     /** The version of SyncBridge */
     readonly version: string;
