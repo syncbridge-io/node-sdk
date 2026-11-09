@@ -53,6 +53,8 @@ or in the environment: `SB_PLUGINS_AUDIT_ENABLED=true`,
 - `this.settings`, `this.logger`, `this.dataDirectory`, `this.name`: the
   plugin's own.
 - `this.host.engine`: SyncBridge's version and the API's.
+- `this.host.logs`: deprecated. SyncBridge keeps its logs in its log store
+  alone and no longer takes log targets: `registerTarget` throws.
 - `this.host.events.on(event, listener)`: the engine's and the workers'
   lifecycle, to observe only.
 - `this.host.workers`: the workers and their status, read;
