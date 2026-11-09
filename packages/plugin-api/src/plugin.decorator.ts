@@ -16,10 +16,10 @@ const NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
  * exports from its entry point and lists it in the package's manifest.
  *
  * @example
- * @Plugin({ name: 'elasticsearch-log', settings: ElasticSettings })
- * export class ElasticsearchLogPlugin extends PluginBase<ElasticSettings> {
+ * @Plugin({ name: 'audit', settings: AuditSettings })
+ * export class AuditPlugin extends PluginBase<AuditSettings> {
  *   async activate() {
- *     this.host.logs.registerTarget({ name: 'elasticsearch', create: … });
+ *     this.host.events.on('worker-updated', worker => send(worker));
  *   }
  * }
  */

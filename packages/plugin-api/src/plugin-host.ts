@@ -1,6 +1,5 @@
 import type { Type } from 'ts-gems';
 import type { Contribution, ContributionPoint } from './contributions.js';
-import type { LogTarget } from './log-target.js';
 import type { WidgetTypeDefinition } from './widget-type.js';
 
 /**
@@ -13,7 +12,6 @@ import type { WidgetTypeDefinition } from './widget-type.js';
  */
 export interface PluginHost {
   readonly engine: PluginHost.Engine;
-  readonly logs: PluginHost.Logs;
   readonly events: PluginHost.Events;
   readonly workers: PluginHost.Workers;
   /** How it is doing, told on its card: since 2.1 */
@@ -28,18 +26,6 @@ export namespace PluginHost {
     readonly version: string;
     /** The version of the plugin API it provides: @syncbridge/plugin-api */
     readonly apiVersion: string;
-  }
-
-  export interface Logs {
-    /**
-     * Registers a log target. It is set and turned on in the config under
-     * its name (`logs.targets.<name>`), and is off unless it is. Plugins are
-     * activated before the log targets start, so a target registered in
-     * `activate` is found as the engine starts.
-     */
-    registerTarget<TValues = any>(
-      definition: LogTarget.Definition<TValues>,
-    ): void;
   }
 
   /**
