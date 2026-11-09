@@ -3,8 +3,8 @@
 The API SyncBridge plugins are written against: `PluginBase`, `@Plugin`
 and the types of `host`, the plugin's bridge to SyncBridge.
 
-A plugin extends SyncBridge itself: a log target, a native library the
-workers use, more as the API grows. SyncBridge runs each plugin in a
+A plugin extends SyncBridge itself: an audit of the workers' changes, a
+native library the workers use, more as the API grows. SyncBridge runs each plugin in a
 process of its own, as a user of its own, held to what it declares and the
 server's admins approve. It declares this package as a peer; SyncBridge
 provides it, and does not load a plugin whose range its version does not
@@ -14,24 +14,26 @@ satisfy.
 import { DefineVariable } from '@syncbridge/common';
 import { Plugin, PluginBase, PluginPermission } from '@syncbridge/plugin-api';
 
-class ElasticSettings {
+class AuditSettings {
   @DefineVariable({ label: 'URL', required: true })
   url!: string;
 }
 
 @Plugin({
-  name: 'elasticsearch-log',
-  title: 'Elasticsearch',
-  settings: ElasticSettings,
-  permissions: [PluginPermission.LogRecords, PluginPermission.Network],
-  hosts: ['es.example.com'],
+  name: 'audit',
+  title: 'Audit',
+  settings: AuditSettings,
+  permissions: [PluginPermission.Workers, PluginPermission.Network],
+  hosts: ['audit.example.com'],
 })
-export class ElasticsearchLogPlugin extends PluginBase<ElasticSettings> {
+export class AuditPlugin extends PluginBase<AuditSettings> {
   async activate() {
-    this.host.logs.registerTarget({
-      name: 'elasticsearch',
-      create: () => new ElasticTarget(this.settings),
-    });
+    this.host.events.on('worker-updated', worker =>
+      fetch(this.settings.url, {
+        method: 'POST',
+        body: JSON.stringify({ worker: worker.id, at: new Date() }),
+      }),
+    );
   }
 }
 ```
@@ -40,22 +42,19 @@ A plugin is off until the config turns it on, with its settings:
 
 ```yaml
 plugins:
-  elasticsearch-log:
+  audit:
     enabled: true
-    url: https://es:9200
-logs:
-  targets:
-    elasticsearch:
-      enabled: true
+    url: https://audit.example.com/events
 ```
 
-or in the environment: `SB_PLUGINS_ELASTICSEARCH_LOG_ENABLED=true`,
-`SB_PLUGINS_ELASTICSEARCH_LOG_URL=...`.
+or in the environment: `SB_PLUGINS_AUDIT_ENABLED=true`,
+`SB_PLUGINS_AUDIT_URL=...`.
 
 - `this.settings`, `this.logger`, `this.dataDirectory`, `this.name`: the
   plugin's own.
 - `this.host.engine`: SyncBridge's version and the API's.
-- `this.host.logs.registerTarget(definition)`: a log target.
+- `this.host.logs`: deprecated. SyncBridge keeps its logs in its log store
+  alone and no longer takes log targets: `registerTarget` throws.
 - `this.host.events.on(event, listener)`: the engine's and the workers'
   lifecycle, to observe only.
 - `this.host.workers`: the workers and their status, read;
@@ -99,7 +98,7 @@ when an update declares more:
 | `PluginPermission` | What it gives |
 | --- | --- |
 | `WorkerEnvironment` | `host.workers.addEnvironment` |
-| `LogRecords` | `host.logs.registerTarget`: every log record, the workers' messages among them |
+| `LogRecords` | its buttons on a log's toolbar and a record's menu: every log record, the workers' messages among them |
 | `Workers` | `host.workers.list/get` and the workers' events |
 | `Network` | the network; the hosts it reaches named in `hosts` |
 | `ChildProcesses` | starting other programs |

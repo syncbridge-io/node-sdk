@@ -6,7 +6,7 @@ import type { PluginHost } from './plugin-host.js';
  * the engine is reached through `host` only.
  *
  * SyncBridge creates it when the plugin is enabled (`plugins.<name>`),
- * calls `activate` as it starts, before its log targets start, and
+ * calls `activate` as it starts, and
  * `deactivate` as it stops. Its life's other hooks, each optional, since
  * 2.3:
  *

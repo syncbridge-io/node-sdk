@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to 090d147555f303781946ce9865b602d06b502ce9 -->
+<!-- rman:documented-up-to 372d2ba95df657ee05baec174b74d9679dfec558 -->
+
+## @syncbridge/common@2.22.0 (2026-11-09)
+
+### ✨ Features
+
+- a profile's package versions - each package's range of its own, within what the app asks: the worker's plan takes the versions of a package it wants that fall in both (8a54b72)
+
+### 🔧 Refactoring
+
+- log targets removed from the plugin API (594f2a4)
+
+---
 
 ## @syncbridge/common@2.20.1 (2026-11-02)
 

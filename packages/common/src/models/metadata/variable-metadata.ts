@@ -169,7 +169,7 @@ export class VariableMetadata {
 
   @ApiField({
     description:
-      "How SyncBridge's settings screen treats it, as a log target's or plugin's setting: hidden, not shown there; readonly, shown and not changed there. Either is set only where SyncBridge is deployed. Default: shown and changed there",
+      "How SyncBridge's settings screen treats it, as a plugin's setting: hidden, not shown there; readonly, shown and not changed there. Either is set only where SyncBridge is deployed. Default: shown and changed there",
   })
   declare ui?: 'hidden' | 'readonly';
 }

@@ -8,7 +8,7 @@ import { EnumType } from '@opra/common';
 export enum PluginPermission {
   /** `host.workers.addEnvironment`: what every worker starts with */
   WorkerEnvironment = 'worker-environment',
-  /** `host.logs.registerTarget`: every log record, the workers' messages among them */
+  /** Its buttons on a log's toolbar and a record's menu: every log record, the workers' messages among them */
   LogRecords = 'log-records',
   /** `host.workers.list/get` and the workers' events: their ids, names, statuses */
   Workers = 'workers',

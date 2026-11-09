@@ -1,13 +1,11 @@
 import type { Type } from 'ts-gems';
 
 /**
- * Where copies of the log records go besides the store: the console, files,
- * or a service such as Elasticsearch. A target only writes; the UI reads
- * the store.
+ * Where copies of the log records went besides the store.
  *
- * A target is registered by name (`host.logs.registerTarget`) and set in
- * the config under that name, `logs.targets.<name>`. SyncBridge registers
- * `console` and `file`.
+ * @deprecated SyncBridge keeps its logs in its log store alone and no
+ * longer takes log targets: `host.logs.registerTarget` throws. Kept in
+ * 2.x so plugins written against it still build.
  */
 export interface LogTarget {
   /** Writes a record. A target that fails throws; the record is not retried */
@@ -17,6 +15,7 @@ export interface LogTarget {
   close?(): Promise<void>;
 }
 
+/** @deprecated See LogTarget */
 export namespace LogTarget {
   /**
    * A record as a target gets it: what the store keeps, with the log it is

@@ -67,6 +67,13 @@ export interface ComputeWorkerPlanArgs extends ComputePlanSource {
    * yet configured as the version taken wants
    */
   profile?: Profile;
+  /**
+   * The versions the profile takes of its components' packages, a semver
+   * range by package name (`Profile.packageVersions`): each narrows its
+   * package where the worker loads it, within every other range it is
+   * wanted at - its app's own package goes with the app, not named here
+   */
+  packageVersions?: Record<string, string>;
 }
 
 /** A package a plan starts from, and the range it is wanted at */
@@ -79,6 +86,11 @@ export interface PlanRoot {
 
 export interface ComputePlanArgs extends ComputePlanSource {
   roots: PlanRoot[];
+  /**
+   * Ranges a package is narrowed to where the plan loads it: never a
+   * package of their own, only one the roots or their dependencies want
+   */
+  constraints?: PlanRoot[];
 }
 
 /** Always shared, whether or not a package declares it as a peer */
@@ -123,7 +135,10 @@ export function computeWorkerPlan(args: ComputeWorkerPlanArgs): WorkerPlan {
     }
   };
   named(args.profile?.components);
-  return computePlan({ ...args, roots });
+  const constraints = Object.entries(args.packageVersions || {})
+    .filter(([name, range]) => range && name !== args.app.pkg.name)
+    .map(([name, range]) => ({ name, range, by: 'its package versions' }));
+  return computePlan({ ...args, roots, constraints });
 }
 
 /**
@@ -161,6 +176,9 @@ export function computePlan(args: ComputePlanArgs): WorkerPlan {
       for (const [name, range] of Object.entries(pkg.registryDependencies))
         addTo(reqs, name, { range, by: `${pkg.name}@${pkg.version}` });
     }
+    /* A package narrowed only where it is loaded */
+    for (const c of args.constraints || [])
+      if (reqs.has(c.name)) addTo(reqs, c.name, { range: c.range, by: c.by });
 
     const next = new Map<string, ExtensionPackage>();
     problems = [];

@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to f813a9862f12ca77eb5067c7eb414f3046e2f0f1 -->
+<!-- rman:documented-up-to 372d2ba95df657ee05baec174b74d9679dfec558 -->
+
+## @syncbridge/plugin-api@2.5.0 (2026-11-09)
+
+### 🐛 Bug Fixes
+
+- **plugin-api:** host.logs kept, deprecated - SyncBridge no longer takes log targets, registerTarget throws; removing it would have broken every plugin's ^2 range (b26def2)
+
+### 🔧 Refactoring
+
+- log targets removed from the plugin API (594f2a4)
+
+---
 
 ## @syncbridge/plugin-api@2.4.0 (2026-10-31)
 

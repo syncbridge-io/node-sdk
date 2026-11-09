@@ -13,6 +13,10 @@ import type { WidgetTypeDefinition } from './widget-type.js';
  */
 export interface PluginHost {
   readonly engine: PluginHost.Engine;
+  /**
+   * @deprecated SyncBridge no longer takes log targets: its logs are kept
+   * in its log store alone. `registerTarget` throws.
+   */
   readonly logs: PluginHost.Logs;
   readonly events: PluginHost.Events;
   readonly workers: PluginHost.Workers;
@@ -23,23 +27,21 @@ export interface PluginHost {
 }
 
 export namespace PluginHost {
+  /** @deprecated See PluginHost.logs */
+  export interface Logs {
+    /**
+     * @deprecated Throws: SyncBridge no longer takes log targets
+     */
+    registerTarget<TValues = any>(
+      definition: LogTarget.Definition<TValues>,
+    ): void;
+  }
+
   export interface Engine {
     /** The version of SyncBridge */
     readonly version: string;
     /** The version of the plugin API it provides: @syncbridge/plugin-api */
     readonly apiVersion: string;
-  }
-
-  export interface Logs {
-    /**
-     * Registers a log target. It is set and turned on in the config under
-     * its name (`logs.targets.<name>`), and is off unless it is. Plugins are
-     * activated before the log targets start, so a target registered in
-     * `activate` is found as the engine starts.
-     */
-    registerTarget<TValues = any>(
-      definition: LogTarget.Definition<TValues>,
-    ): void;
   }
 
   /**
