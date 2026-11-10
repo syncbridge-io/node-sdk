@@ -11,6 +11,7 @@ import {
   installDependencies,
   installStamp,
   packageManager,
+  verifyDependencies,
 } from '../src/index.js';
 
 describe('extractPackage', () => {
@@ -70,11 +71,15 @@ describe('installDependencies', () => {
     peerDependencies: {
       '@syncbridge/common': '^2.0.0',
       '@syncbridge/builtins': '>=2.0.0 <3',
+      hl7v2: '>=2.3.0 <3',
     },
-    peerDependenciesMeta: { '@syncbridge/builtins': { optional: false } },
+    peerDependenciesMeta: {
+      '@syncbridge/builtins': { optional: false },
+      hl7v2: { optional: false },
+    },
   };
 
-  it("should not give pnpm the package's own peers - the host's - and keep its package.json as it was", async () => {
+  it("should give pnpm the package's npm peers, not those it cannot fetch - a SyncBridge module, what the host shares - and keep its package.json as it was", async () => {
     const file = path.join(dir, 'package.json');
     const original = JSON.stringify(pkgJson, null, 2);
     fs.writeFileSync(file, original);
@@ -88,8 +93,8 @@ describe('installDependencies', () => {
       storeDir: path.join(dir, 'store'),
     });
     expect(seen.dependencies).toEqual(pkgJson.dependencies);
-    expect(seen.peerDependencies).toBeUndefined();
-    expect(seen.peerDependenciesMeta).toBeUndefined();
+    expect(seen.peerDependencies).toEqual({ hl7v2: '>=2.3.0 <3' });
+    expect(seen.peerDependenciesMeta).toEqual({ hl7v2: { optional: false } });
     expect(fs.readFileSync(file, 'utf8')).toBe(original);
   });
 
@@ -104,5 +109,34 @@ describe('installDependencies', () => {
       }),
     ).rejects.toThrow('pnpm failed');
     expect(fs.existsSync(dir)).toBe(false);
+  });
+});
+
+describe('verifyDependencies', () => {
+  const pkg = (peers: Record<string, string>) =>
+    ({
+      name: '@acme/gw',
+      version: '1.0.0',
+      registryDependencies: {},
+      peerDependencies: peers,
+    }) as any;
+  const host: Record<string, string> = { '@syncbridge/common': '2.10.0' };
+  const options = {
+    versionsOf: () => undefined,
+    hostVersionOf: (name: string) => host[name],
+  };
+
+  it('should not ask the host for npm peers: they are installed for the workers', () => {
+    expect(() =>
+      verifyDependencies(pkg({ mysql2: '^3', hl7v2: '>=2.3.2' }), options),
+    ).not.toThrow();
+  });
+
+  it('should refuse a package wanting more of what the host shares than it has', () => {
+    expect(() =>
+      verifyDependencies(pkg({ '@syncbridge/common': '^2.20.0' }), options),
+    ).toThrow(
+      'The host provides "@syncbridge/common" 2.10.0, which does not satisfy ^2.20.0',
+    );
   });
 });

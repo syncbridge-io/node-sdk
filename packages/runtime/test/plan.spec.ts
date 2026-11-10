@@ -111,7 +111,7 @@ describe('computeWorkerPlan', () => {
       source: 'installed',
     });
     /* Not the host's: the loader takes it to the planned version */
-    expect(r.shared).toEqual(['@syncbridge/common']);
+    expect(r.shared).toEqual(['@syncbridge/common', '@syncbridge/plugin-api']);
 
     /* The server's, while no newer one is installed */
     const r2 = computeWorkerPlan({
@@ -241,10 +241,14 @@ describe('computeWorkerPlan', () => {
     });
   });
 
-  it('should share @syncbridge/common and every declared peer', () => {
+  it("should share SyncBridge's own packages alone, not the peers declared", () => {
     const prc = pkg('@abisena/lab', '1.0.0', {}, { '@opra/common': '^1' });
     const r = plan(prc, registry(prc));
-    expect(r.shared.sort()).toEqual(['@opra/common', '@syncbridge/common']);
+    /* A peer is installed for the worker, at a version its ranges allow */
+    expect(r.shared.sort()).toEqual([
+      '@syncbridge/common',
+      '@syncbridge/plugin-api',
+    ]);
     expect(r.hostURL).toBe('file:///app/package.json');
   });
 
