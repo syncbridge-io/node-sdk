@@ -4,6 +4,10 @@ import semver from 'semver';
  * What a SyncBridge engine provides a package as its peers: the packages at
  * the top of its installed tree, at their versions - as its install check
  * finds them. The registry serves the latest stable engine's.
+ *
+ * @deprecated A package's peers are installed for the workers that load it;
+ * the engine shares only its own packages. Neither spm nor SyncBridge checks
+ * this list any more.
  */
 export interface EngineProvides {
   /** The engine's version */
@@ -15,6 +19,8 @@ export interface EngineProvides {
 /**
  * What a host lacks of a package's peers, as SyncBridge tells it when it
  * refuses to install the package: one line a peer
+ *
+ * @deprecated See EngineProvides
  */
 export function hostPeerProblems(
   peers: Record<string, string> | undefined,

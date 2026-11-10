@@ -22,10 +22,6 @@ import { version as spmVersion } from '../constants.js';
 import { packPackage } from '../pack-package.js';
 import { resolveRegistry } from '../registry/credentials.js';
 import {
-  checkHostPeers,
-  fetchEngineProvides,
-} from '../registry/host-provides.js';
-import {
   ciFetch,
   inGitHubActions,
   RegistryError,
@@ -78,8 +74,8 @@ export interface PublishOptions {
    */
   skipExisting?: boolean;
   /**
-   * What SyncBridge provides as peers, given rather than asked of the
-   * registry; null: not checked here (the registry checks it)
+   * @deprecated Not used: a package's peers are installed for the workers
+   * that load it, not checked against what SyncBridge provides
    */
   hostProvides?: EngineProvides | null;
   logger?: (message: string) => void;
@@ -280,14 +276,6 @@ export async function publishPackage(
       throw new SbError(`${archive} is not a package: no package.json`);
     const pkgJson = JSON.parse(zip.readAsText(pkgEntry));
     const { name, version } = pkgJson;
-    /* Peers SyncBridge does not provide: refused before it is sent, as a
-     * server would refuse it */
-    if (options.hostProvides !== null)
-      checkHostPeers(
-        pkgJson,
-        options.hostProvides ?? (await fetchEngineProvides(registry)),
-        log,
-      );
     await checkCarried(registry, zip, name, version, log);
     const docs = docsOf(zip);
     /* As the CI job it runs in, or as its signed-in user */
