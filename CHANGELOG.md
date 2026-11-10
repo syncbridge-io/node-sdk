@@ -1,6 +1,15 @@
 # Changelog
 
-<!-- rman:documented-up-to 372d2ba95df657ee05baec174b74d9679dfec558 -->
+<!-- rman:documented-up-to 4129357ad6f8ab0fc6ee1b3add490e24b05a3fe9 -->
+
+## v2026.11.10-1758 (2026-11-10)
+
+### 🧹 Chores
+
+- sync lockfile (d01c37c)
+- dependencies updated - commander 15.1.0, pnpm 12.18.0, semver 7.8.6, valgen 7.0.8 (4129357)
+
+---
 
 ## v2026.11.9-2335 (2026-11-09)
 
