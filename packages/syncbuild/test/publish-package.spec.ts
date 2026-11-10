@@ -33,9 +33,8 @@ function fakeRegistry() {
     sent: [] as { query: string; zip: AdmZip }[],
     /** Its last published version's apps and components, by class name */
     ext: {} as Record<string, any>,
-    /** What the latest SyncBridge provides as peers: none told, unset */
-    provides: undefined as
-      { engine: string; packages: Record<string, string> } | undefined,
+    /** Paths asked, in order */
+    paths: [] as string[],
   };
   const server = http.createServer((req, res) => {
     const chunks: Buffer[] = [];
@@ -47,11 +46,8 @@ function fakeRegistry() {
         res.end(data === undefined ? '' : JSON.stringify(data));
       };
       const [url, query = ''] = req.url!.split('?');
+      state.paths.push(url);
       /* GitHub, handing a job its OIDC token for an audience */
-      if (url === '/registry/host-provides')
-        return state.provides
-          ? json(200, state.provides)
-          : json(404, { errors: [{ message: 'none yet' }] });
       if (url === '/gh-oidc') {
         if (req.headers.authorization !== 'Bearer gh-request')
           return json(403, {});
@@ -246,11 +242,7 @@ describe('spm publish', function () {
     );
   });
 
-  it('should refuse a package whose peers SyncBridge does not provide, before anything is sent; a SyncBridge module declared a peer not one', async () => {
-    fake.state.provides = {
-      engine: '1.13.0',
-      packages: { '@syncbridge/common': '2.13.1', '@sqb/connect': '6.3.3' },
-    };
+  it('should publish a package whose peers are npm packages, not asking what SyncBridge provides: they are installed for its workers', async () => {
     const zip = new AdmZip(archive);
     zip.updateFile(
       'package.json',
@@ -260,22 +252,14 @@ describe('spm publish', function () {
           version: '1.1.0',
           peerDependencies: {
             '@syncbridge/common': '^2.13.0',
-            '@syncbridge/builtins': '^2.0.0',
-            '@sqb/connect': '^6.3.0',
             mysql2: '^3.0.0',
           },
         }),
       ),
     );
     zip.writeZip(archive);
-    await expect(publishPackage({ archive, registry })).rejects.toThrow(
-      '@acme/gw@1.1.0 cannot be installed.\n  The host does not provide "mysql2"\nAs SyncBridge 1.13.0 provides its packages: declare the others in dependencies',
-    );
-    expect(fake.state.prepared).toHaveLength(0);
-    expect(fake.state.sent).toHaveLength(0);
-    /* Its peers provided: published */
-    fake.state.provides.packages.mysql2 = '3.24.6';
     expect((await publishPackage({ archive, registry })).created).toBe(true);
+    expect(fake.state.paths).not.toContain('/registry/host-provides');
   });
 
   it('should not wait on an approval when told not to: refused at once, nothing sent', async () => {

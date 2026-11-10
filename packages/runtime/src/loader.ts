@@ -6,8 +6,8 @@
  * - `sb:@vendor/name` -> the one version of that registry package the plan
  *   selected. So is one of SyncBridge's modules imported under its own
  *   name, `@syncbridge/builtins`.
- * - A shared package (`@syncbridge/common`, and every peer the plan's
- *   packages declare) -> the host's copy, even when the importing extension
+ * - A shared package (`@syncbridge/common`, `@syncbridge/plugin-api`:
+ *   HOST_SHARED) -> the host's copy, even when the importing extension
  *   carries its own. Those modules hold the registry, the decorators'
  *   metadata and the error classes, and must be one instance.
  * - A bare specifier an installed extension cannot resolve -> the host. An

@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { ILogger } from '@syncbridge/common';
 import {
   ExtensionPackage,
+  isSyncBridgeModule,
   MANIFEST_FILE,
   SbError,
   validateRegistryName,
@@ -14,6 +15,7 @@ import semver from 'semver';
 import { loadExtensionPackage } from './load-extension-package.js';
 import { moveDir } from './move-dir.js';
 import { packageManager } from './package-manager.js';
+import { HOST_SHARED } from './plan.js';
 
 /**
  * The steps SyncBridge installs an extension package archive with, one
@@ -115,13 +117,18 @@ export async function readPackage(
 export interface VerifyDependenciesOptions {
   /** Installed versions of a registry package */
   versionsOf: (name: string) => ExtensionPackage[] | undefined;
-  /** The version of an npm package the host provides, if it does */
-  hostVersionOf: (name: string) => string | undefined;
+  /**
+   * The version of a package the host shares (HOST_SHARED), if it has it.
+   * Not given: those peers are not checked
+   */
+  hostVersionOf?: (name: string) => string | undefined;
 }
 
 /**
  * A package must find the registry packages it depends on already
- * installed, and the host must provide its peers.
+ * installed, and the host the packages it shares with workers
+ * (HOST_SHARED) at the versions its peers on them ask. Its other peers are
+ * installed for the workers that load it (initWorker).
  */
 export function verifyDependencies(
   pkg: ExtensionPackage,
@@ -139,6 +146,7 @@ export function verifyDependencies(
       );
   }
   for (const [name, range] of Object.entries(pkg.peerDependencies)) {
+    if (!options.hostVersionOf || !HOST_SHARED.includes(name)) continue;
     const version = options.hostVersionOf(name);
     if (!version) problems.push(`The host does not provide "${name}"`);
     else if (!semver.satisfies(version, range))
@@ -190,16 +198,25 @@ export async function installDependencies(
   },
 ): Promise<void> {
   if (!Object.keys(pkgJson.dependencies || {}).length) return;
-  /* Its own peers are the host's: unsaid to pnpm, whose auto-install-peers
-   * would fetch them from npm - where a registry package is not - and
-   * install a copy no one loads. Its package.json as it was, after */
+  /* Its peers on what pnpm cannot or need not fetch are left unsaid to
+   * pnpm, whose auto-install-peers installs the others: a SyncBridge
+   * module (a registry package, not on npm) and what the host shares
+   * (HOST_SHARED). Its package.json as it was, after */
   const file = path.join(pkg.path, 'package.json');
   const original = fs.readFileSync(file, 'utf8');
-  const { peerDependencies, peerDependenciesMeta, ...forPnpm } =
-    JSON.parse(original);
+  const forPnpm = JSON.parse(original);
+  const notFetched = (name: string) =>
+    isSyncBridgeModule(name) || HOST_SHARED.includes(name);
+  let changed = false;
+  for (const field of ['peerDependencies', 'peerDependenciesMeta']) {
+    for (const name of Object.keys(forPnpm[field] || {})) {
+      if (!notFetched(name)) continue;
+      delete forPnpm[field][name];
+      changed = true;
+    }
+  }
   try {
-    if (peerDependencies || peerDependenciesMeta)
-      fs.writeFileSync(file, JSON.stringify(forPnpm, null, 2));
+    if (changed) fs.writeFileSync(file, JSON.stringify(forPnpm, null, 2));
     if (options.overrides && Object.keys(options.overrides).length) {
       /* pnpm reads its settings from here; JSON is YAML */
       fs.writeFileSync(
