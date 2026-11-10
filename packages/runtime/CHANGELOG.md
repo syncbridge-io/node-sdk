@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to 372d2ba95df657ee05baec174b74d9679dfec558 -->
+<!-- rman:documented-up-to 4129357ad6f8ab0fc6ee1b3add490e24b05a3fe9 -->
+
+## @syncbridge/runtime@2.9.0 (2026-11-10)
+
+### ✨ Features
+
+- **runtime:** a worker's installation holds all of its plan's packages and installs their peers; its dependency updates checked and installed (512b582)
+
+### 🧹 Chores
+
+- dependencies updated - commander 15.1.0, pnpm 12.18.0, semver 7.8.6, valgen 7.0.8 (4129357)
+
+---
 
 ## @syncbridge/runtime@2.8.0 (2026-11-09)
 
