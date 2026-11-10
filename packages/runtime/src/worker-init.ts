@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ILogger } from '@syncbridge/common';
 import { SbError } from '@syncbridge/common';
+import semver from 'semver';
 import { installStamp } from './install.js';
 import { packageManager } from './package-manager.js';
 import type { WorkerPlan, WorkerPlanPackage } from './plan.js';
@@ -31,7 +32,7 @@ export interface WorkerInitRecord {
 }
 
 export type WorkerInitState =
-  /** The plan installs nothing: every package is the host's */
+  /** The plan has no packages on disk: nothing to install */
   | 'not-needed'
   /** Installed for this plan */
   | 'ready'
@@ -64,8 +65,19 @@ export interface InitWorkerOptions {
    * installation's own is gone too
    */
   lockfile?: string;
+  /**
+   * A lockfile checkWorkerUpdates resolved for the worker's installation -
+   * its dependencies at the newest versions their ranges allow: installed
+   * as it is
+   */
+  updatedLockfile?: string;
   /** See packageManager.install */
   pnpm?: string[];
+  /**
+   * Packages whose install scripts run - reviewed: each fetches or checks a
+   * native addon. pnpm runs no other's. Given to pnpm as `allowBuilds`
+   */
+  allowBuilds?: string[];
   logger?: ILogger;
   abortSignal?: AbortSignal;
 }
@@ -93,14 +105,14 @@ const INIT_FILE = 'init.json';
 const LOCKFILE = 'pnpm-lock.yaml';
 
 /**
- * Identifies what a plan installs: its installed packages, their versions
+ * Identifies what a plan installs: its packages, their versions
  * and the archives they were installed from - a version installed again
  * from another archive needs an init again. Two plans with the same digest
  * share an installation. A package installed before archives were told
  * counts by its version alone, so its installation stays as it is.
  */
 export function planDigest(plan: WorkerPlan): string {
-  const list = installedPackages(plan)
+  const list = workerPackages(plan)
     .map(p => {
       const stamp = installStamp(p.path);
       return `${p.name}@${p.version}` + (stamp ? `#${stamp}` : '');
@@ -134,7 +146,7 @@ export function workerInitState(
   workerDir: string,
   hostDir?: string,
 ): WorkerInitState {
-  if (!installedPackages(plan).length) return 'not-needed';
+  if (!workerPackages(plan).length) return 'not-needed';
   const record = readWorkerInit(workerDir);
   if (record?.digest !== planDigest(plan)) return 'needs-init';
   const dir = path.join(workerDir, record.depsDir);
@@ -154,20 +166,14 @@ const sameLinks = (
 
 /**
  * The host's packages an installation links, and where they are: the
- * shared packages and the module packages the host has
+ * shared packages the host has
  */
 export function hostLinks(
   plan: WorkerPlan,
   hostDir: string,
 ): Record<string, string> {
   const links: Record<string, string> = {};
-  const provided = new Set([
-    ...plan.shared,
-    ...Object.values(plan.packages)
-      .filter(p => p.source === 'module')
-      .map(p => p.name),
-  ]);
-  for (const name of [...provided].sort()) {
+  for (const name of [...new Set(plan.shared)].sort()) {
     const dir = findHostPackage(name, hostDir);
     if (dir) links[name] = dir;
   }
@@ -175,8 +181,8 @@ export function hostLinks(
 }
 
 /**
- * The plan as the worker runs it once installed: each installed package
- * is the copy in the worker's installation. `undefined` when the worker is
+ * The plan as the worker runs it once installed: each package is the copy
+ * in the worker's installation. `undefined` when the worker is
  * not installed for the plan; the plan itself when it installs nothing.
  */
 export function installedWorkerPlan(
@@ -193,10 +199,10 @@ export function installedWorkerPlan(
 
 /**
  * Installs what a worker loads, together, as one project would: the plan's
- * installed packages with `file:`, the packages the host provides with
- * `link:` to the host's copies, and pnpm resolves the rest - npm
- * dependencies and the peers nobody provides - into one tree, a single copy
- * of each library where the ranges allow it.
+ * packages with `file:` - those SyncBridge comes with too, which are only
+ * installed beforehand - the packages the host shares with `link:` to the
+ * host's copies, and pnpm resolves the rest - npm dependencies and peers -
+ * into one tree, a single copy of each library where the ranges allow it.
  *
  * Installs into a new directory and switches init.json to it only when
  * pnpm succeeded and the installed versions are the plan's, so a failed
@@ -209,15 +215,20 @@ export async function initWorker(
   const started = Date.now();
   const { plan, workerDir, logger } = options;
   const digest = planDigest(plan);
-  const packages = installedPackages(plan);
+  const packages = workerPackages(plan);
   const previous = readWorkerInit(workerDir);
   const depsDir = 'deps-' + digest;
   const target = path.join(workerDir, depsDir);
   fs.mkdirSync(workerDir, { recursive: true });
 
+  const frozen = options.frozen || !!options.updatedLockfile;
   logger?.info(
     `Initializing for ${packages.map(p => `${p.name}@${p.version}`).join(', ') || 'no packages'}` +
-      (options.frozen ? ', from the last lockfile' : ''),
+      (options.updatedLockfile
+        ? ', its dependencies updated'
+        : options.frozen
+          ? ', from the last lockfile'
+          : ''),
   );
   const temp = path.join(workerDir, `.${depsDir}-${randomUUID().slice(0, 8)}`);
   fs.mkdirSync(temp, { recursive: true });
@@ -234,16 +245,34 @@ export async function initWorker(
         2,
       ),
     );
+    if (options.allowBuilds?.length) {
+      /* pnpm reads its settings from here; JSON is YAML */
+      fs.writeFileSync(
+        path.join(temp, 'pnpm-workspace.yaml'),
+        JSON.stringify(
+          {
+            allowBuilds: Object.fromEntries(
+              [...options.allowBuilds].sort().map(name => [name, true]),
+            ),
+          },
+          null,
+          2,
+        ),
+      );
+    }
     /* Restoring takes this plan's lockfile only; a new init starts from the
      * previous one, whatever plan it was for */
-    const seed = [
-      path.join(target, LOCKFILE),
-      options.frozen
-        ? options.lockfile
-        : previous && path.join(workerDir, previous.depsDir, LOCKFILE),
-    ].find(f => f && fs.existsSync(f));
-    if (seed) fs.copyFileSync(seed, path.join(temp, LOCKFILE));
-    else if (options.frozen)
+    const seed = options.updatedLockfile
+      ? options.updatedLockfile
+      : [
+          path.join(target, LOCKFILE),
+          options.frozen
+            ? options.lockfile
+            : previous && path.join(workerDir, previous.depsDir, LOCKFILE),
+        ].find(f => f && fs.existsSync(f));
+    if (seed && fs.existsSync(seed))
+      fs.copyFileSync(seed, path.join(temp, LOCKFILE));
+    else if (frozen)
       throw new SbError(
         `There is no lockfile to restore the worker's packages from`,
         { code: 'WORKER_INIT_FAILED' },
@@ -253,10 +282,12 @@ export async function initWorker(
       cwd: temp,
       storeDir: options.storeDir,
       pnpm: options.pnpm,
-      args: options.frozen
+      args: frozen
         ? ['--frozen-lockfile', '--prefer-offline']
         : ['--prefer-offline'],
-      outputLevel: 'info',
+      /* pnpm's lines name the libraries: what an app is made of is its
+       * publisher's, not for the worker's log at its usual levels */
+      outputLevel: 'trace',
       logger,
       abortSignal: options.abortSignal,
     });
@@ -339,7 +370,7 @@ export function removeStaleInstallations(workerDir: string): string[] {
  */
 function findDuplicates(plan: WorkerPlan): WorkerDuplicate[] {
   const used = new Map<string, Map<string, string[]>>();
-  for (const p of installedPackages(plan)) {
+  for (const p of workerPackages(plan)) {
     const json = JSON.parse(
       fs.readFileSync(path.join(p.path, 'package.json'), 'utf8'),
     );
@@ -373,15 +404,20 @@ function resolvedVersion(name: string, dir: string): string | undefined {
   }
 }
 
-function installedPackages(plan: WorkerPlan): WorkerPlanPackage[] {
-  return Object.values(plan.packages).filter(p => p.source === 'installed');
+/**
+ * The packages a worker's installation holds: the plan's packages on disk,
+ * those SyncBridge comes with (`module`) as well as those installed later.
+ * A class registered directly (`ExtensionRegistry.registerClass`) has no
+ * package directory to install from: it stays the host's.
+ */
+function workerPackages(plan: WorkerPlan): WorkerPlanPackage[] {
+  return Object.values(plan.packages).filter(p => !!p.path);
 }
 
 /**
- * The installation's package.json dependencies: the installed packages
- * from their directories, and what the host provides - the shared packages
- * and the module packages - linked to the host's copies, which the
- * packages' peers resolve to
+ * The installation's package.json dependencies: the plan's packages from
+ * their directories, and the shared packages linked to the host's copies,
+ * which the packages' peers on them resolve to
  */
 function repoDependencies(
   plan: WorkerPlan,
@@ -390,7 +426,7 @@ function repoDependencies(
   const deps: Record<string, string> = {};
   for (const [name, dir] of Object.entries(hostLinks(plan, hostDir)))
     deps[name] = 'link:' + dir;
-  for (const p of installedPackages(plan)) deps[p.name] = 'file:' + p.path;
+  for (const p of workerPackages(plan)) deps[p.name] = 'file:' + p.path;
   return deps;
 }
 
@@ -404,11 +440,14 @@ function findHostPackage(name: string, hostDir: string): string | undefined {
   }
 }
 
-/** The plan with its installed packages at their copies in `depsDir` */
+/**
+ * The plan with its packages at their copies in `depsDir`: all of them
+ * `installed` there, those SyncBridge came with too
+ */
 function rewritePlan(plan: WorkerPlan, depsDir: string): WorkerPlan {
   const packages: Record<string, WorkerPlanPackage> = {};
   for (const [name, p] of Object.entries(plan.packages)) {
-    if (p.source !== 'installed') {
+    if (!p.path) {
       packages[name] = p;
       continue;
     }
@@ -418,9 +457,138 @@ function rewritePlan(plan: WorkerPlan, depsDir: string): WorkerPlan {
       : p.entryPoint;
     packages[name] = {
       ...p,
+      source: 'installed',
       path: dir,
       entryPoint: path.join(dir, path.relative(p.path, entry)),
     };
   }
   return { ...plan, packages };
+}
+
+/** A library a worker's installation would move, its packages' ranges allowing it */
+export interface WorkerDependencyUpdate {
+  name: string;
+  /** The versions installed: more than one where ranges no single one satisfies split it */
+  from: string[];
+  /** The versions it would have */
+  to: string[];
+}
+
+export interface CheckWorkerUpdatesOptions {
+  /** The worker's directory, initialized (initWorker) */
+  workerDir: string;
+  /** pnpm's store, as for initWorker */
+  storeDir: string;
+  /** See packageManager.install */
+  pnpm?: string[];
+  logger?: ILogger;
+  abortSignal?: AbortSignal;
+}
+
+export interface WorkerUpdatesCheck {
+  /** What would move, by name */
+  updates: WorkerDependencyUpdate[];
+  /**
+   * The lockfile resolved, kept in the worker's directory: given to
+   * initWorker as `updatedLockfile` to install them. None when nothing
+   * moves
+   */
+  lockfile?: string;
+}
+
+/** Where the last check keeps the lockfile it resolved */
+const UPDATED_LOCKFILE = 'updated-pnpm-lock.yaml';
+
+/**
+ * What of a worker's npm dependencies - its packages' own, their peers and
+ * what those depend on - has newer versions the packages' ranges allow:
+ * its installation's lockfile resolved again in a copy, compared with the
+ * one it runs on. Nothing installed, the installation untouched; the
+ * ranges are the publishers', never changed. A worker not initialized has
+ * nothing to update.
+ */
+export async function checkWorkerUpdates(
+  options: CheckWorkerUpdatesOptions,
+): Promise<WorkerUpdatesCheck> {
+  const { workerDir } = options;
+  const record = readWorkerInit(workerDir);
+  const deps = record && path.join(workerDir, record.depsDir);
+  const current = deps && path.join(deps, LOCKFILE);
+  const kept = path.join(workerDir, UPDATED_LOCKFILE);
+  fs.rmSync(kept, { force: true });
+  if (!current || !fs.existsSync(current)) return { updates: [] };
+  const temp = path.join(workerDir, `.check-${randomUUID().slice(0, 8)}`);
+  fs.mkdirSync(temp, { recursive: true });
+  try {
+    for (const file of ['package.json', LOCKFILE, 'pnpm-workspace.yaml']) {
+      const from = path.join(deps, file);
+      if (fs.existsSync(from)) fs.copyFileSync(from, path.join(temp, file));
+    }
+    const locked = lockedVersions(fs.readFileSync(current, 'utf8'));
+    /* Each named: pnpm updates only what the project itself depends on
+     * otherwise, not the peers it installed for its packages */
+    await packageManager.updateLockfile({
+      cwd: temp,
+      storeDir: options.storeDir,
+      pnpm: options.pnpm,
+      args: [...locked.keys()].sort(),
+      logger: options.logger,
+      abortSignal: options.abortSignal,
+    });
+    const updates = lockfileChanges(
+      locked,
+      lockedVersions(fs.readFileSync(path.join(temp, LOCKFILE), 'utf8')),
+    );
+    if (!updates.length) return { updates };
+    fs.copyFileSync(path.join(temp, LOCKFILE), kept);
+    return { updates, lockfile: kept };
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+}
+
+/**
+ * The npm packages a pnpm lockfile (v9) installs, by name: the keys of
+ * its `packages` section - `name@version`, quoted or not. A package from a
+ * directory (`file:`) or linked (`link:`) is not one: it is not
+ * resolved from a registry.
+ */
+export function lockedVersions(lockfile: string): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  let inPackages = false;
+  for (const line of lockfile.split(/\r?\n/)) {
+    if (/^\S/.test(line)) {
+      inPackages = line.startsWith('packages:');
+      continue;
+    }
+    if (!inPackages) continue;
+    const m = /^ {2}(['"]?)(@?[^@\s'"]+)@([^'"]+)\1:\s*$/.exec(line);
+    if (!m) continue;
+    const [, , name, version] = m;
+    if (/^(file|link|workspace):/.test(version)) continue;
+    let versions = out.get(name);
+    if (!versions) out.set(name, (versions = new Set()));
+    versions.add(version);
+  }
+  return out;
+}
+
+/** What moved between two lockfiles' packages: changed, added or gone */
+function lockfileChanges(
+  before: Map<string, Set<string>>,
+  after: Map<string, Set<string>>,
+): WorkerDependencyUpdate[] {
+  const sorted = (s?: Set<string>) =>
+    [...(s || [])].sort((a, b) =>
+      semver.valid(a) && semver.valid(b)
+        ? semver.compare(a, b)
+        : a.localeCompare(b),
+    );
+  const out: WorkerDependencyUpdate[] = [];
+  for (const name of new Set([...before.keys(), ...after.keys()])) {
+    const from = sorted(before.get(name));
+    const to = sorted(after.get(name));
+    if (from.join() !== to.join()) out.push({ name, from, to });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
 }

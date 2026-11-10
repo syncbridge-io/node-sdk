@@ -215,25 +215,6 @@ describe('spm verify', function () {
       timeout: 10000,
     });
 
-  it('should refuse a package whose peers SyncBridge does not provide, as a server would, before packing it', async () => {
-    writePackage(pkgDir);
-    const pkgFile = path.join(pkgDir, 'package.json');
-    const pkgJson = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
-    pkgJson.peerDependencies = { ...pkgJson.peerDependencies, mysql2: '^3' };
-    fs.writeFileSync(pkgFile, JSON.stringify(pkgJson));
-    await expect(
-      verifyPackage({
-        packageDir: pkgDir,
-        hostProvides: {
-          engine: '1.13.0',
-          packages: { '@syncbridge/common': '2.13.1' },
-        },
-      }),
-    ).rejects.toThrow(
-      /cannot be installed\.\n {2}The host does not provide "mysql2"/,
-    );
-  });
-
   it('should load the package and create its app as SyncBridge would', async () => {
     writePackage(pkgDir);
     const r = await verify();

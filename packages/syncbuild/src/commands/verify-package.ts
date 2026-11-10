@@ -38,16 +38,10 @@ import semver from 'semver';
 import * as yaml from 'yaml';
 import { packPackage } from '../pack-package.js';
 import { pnpmCommand } from '../pnpm-hook.js';
-import { resolveRegistry } from '../registry/credentials.js';
-import {
-  checkHostPeers,
-  fetchEngineProvides,
-} from '../registry/host-provides.js';
 import {
   findWorkspaceNpmPackage,
   findWorkspacePackage,
   publishedRange,
-  publishedRanges,
   type WorkspacePackage,
 } from '../workspace.js';
 
@@ -84,8 +78,8 @@ export interface VerifyOptions {
   /** The registry telling what SyncBridge provides as peers */
   registry?: string;
   /**
-   * What SyncBridge provides as peers, given rather than asked of the
-   * registry; null: not checked
+   * @deprecated Not used: a package's peers are installed for the workers
+   * that load it, not checked against what SyncBridge provides
    */
   hostProvides?: EngineProvides | null;
   logger?: (message: string) => void;
@@ -175,17 +169,6 @@ export async function verifyPackage(
   const log = options.logger || (() => undefined);
   const packageDir = path.resolve(options.packageDir || '.');
   const pkgJson = readJson(path.join(packageDir, 'package.json'));
-  /* Peers SyncBridge does not provide: refused, as a server refuses it */
-  if (options.hostProvides !== null)
-    checkHostPeers(
-      {
-        ...pkgJson,
-        peerDependencies: publishedRanges(pkgJson.peerDependencies, packageDir),
-      },
-      options.hostProvides ??
-        (await fetchEngineProvides(resolveRegistry(options.registry))),
-      log,
-    );
   const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'spm-verify-'));
   const dirs = {
     dist: path.join(sandbox, 'dist'),

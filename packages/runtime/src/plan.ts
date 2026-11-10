@@ -25,6 +25,8 @@ export interface WorkerPlanPackage {
    * `installed` packages live in an extension directory and are registered
    * from their metadata files; `module` packages are npm packages the engine
    * resolves itself (`config.extensions`) and are registered by importing them.
+   * A worker's installation holds both (initWorker): there they are all
+   * `installed`.
    */
   source: 'installed' | 'module';
 }
@@ -38,7 +40,7 @@ export interface WorkerPlan {
   /**
    * Bare specifiers always resolved from the host, never from an extension's
    * own directory - the packages whose classes and metadata must be the
-   * host's instance.
+   * host's instance (HOST_SHARED).
    */
   shared: string[];
   /** The URL shared and unresolvable specifiers are resolved from */
@@ -93,8 +95,12 @@ export interface ComputePlanArgs extends ComputePlanSource {
   constraints?: PlanRoot[];
 }
 
-/** Always shared, whether or not a package declares it as a peer */
-const ALWAYS_SHARED = ['@syncbridge/common'];
+/**
+ * The packages a worker shares with the host: SyncBridge's own, whose
+ * classes and metadata must be one instance. Every other package - a
+ * peer too - is installed for the worker, at the version its ranges allow.
+ */
+export const HOST_SHARED = ['@syncbridge/common', '@syncbridge/plugin-api'];
 
 /** A selection that keeps changing after this many rounds is a conflict */
 const MAX_ROUNDS = 20;
@@ -228,10 +234,8 @@ export function computePlan(args: ComputePlanArgs): WorkerPlan {
     );
   }
 
-  const shared = new Set(ALWAYS_SHARED);
   const packages: Record<string, WorkerPlanPackage> = {};
   for (const pkg of selected.values()) {
-    for (const name of Object.keys(pkg.peerDependencies)) shared.add(name);
     packages[pkg.name] = {
       name: pkg.name,
       version: pkg.version,
@@ -240,7 +244,7 @@ export function computePlan(args: ComputePlanArgs): WorkerPlan {
       source: args.isInstalled(pkg) ? 'installed' : 'module',
     };
   }
-  return { packages, shared: [...shared], hostURL: args.hostURL };
+  return { packages, shared: [...HOST_SHARED], hostURL: args.hostURL };
 }
 
 /** Writes the plan where the worker reads it from, returning its path */
