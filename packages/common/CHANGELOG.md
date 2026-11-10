@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to 372d2ba95df657ee05baec174b74d9679dfec558 -->
+<!-- rman:documented-up-to 4129357ad6f8ab0fc6ee1b3add490e24b05a3fe9 -->
+
+## @syncbridge/common@2.23.0 (2026-11-10)
+
+### ✨ Features
+
+- **syncbuild:** spm verify and publish no longer check a package's peers against what SyncBridge provides (aae7bd6)
+
+### 🧹 Chores
+
+- dependencies updated - commander 15.1.0, pnpm 12.18.0, semver 7.8.6, valgen 7.0.8 (4129357)
+
+---
 
 ## @syncbridge/common@2.22.0 (2026-11-09)
 
