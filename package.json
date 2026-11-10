@@ -19,18 +19,18 @@
     "citest": "c8 mocha"
   },
   "devDependencies": {
-    "@opra/common": "^1.35.0",
-    "@panates/eslint-config": "^2.3.4",
-    "@panates/eslint-config-ts": "^2.3.4",
-    "@panates/rman-preset": "^2.2.1",
+    "@opra/common": "^1.35.1",
+    "@panates/eslint-config": "^2.3.5",
+    "@panates/eslint-config-ts": "^2.3.5",
+    "@panates/rman-preset": "^2.2.2",
     "@panates/tsconfig": "^2.1.8",
     "@swc-node/register": "^1.12.1",
-    "@swc/core": "^1.16.21",
-    "@swc/helpers": "^0.5.23",
+    "@swc/core": "^1.16.22",
+    "@swc/helpers": "^0.5.24",
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.6.6",
     "c8": "^12.0.0",
-    "globals": "^17.13.0",
+    "globals": "^17.14.0",
     "mocha": "^12.0.3",
     "typescript": "6.0.3"
   }

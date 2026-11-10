@@ -19,7 +19,7 @@
     "@jsopen/objects": "^2.3.4",
     "adm-zip": "^0.6.1",
     "jsonc-parser": "^3.3.1",
-    "semver": "^7.8.5"
+    "semver": "^7.8.6"
   },
   "peerDependencies": {
     "@syncbridge/common": "^2.22.0"
