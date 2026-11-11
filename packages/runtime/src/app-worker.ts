@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import {
   type AppBase,
   AppFactory,
+  type BaseElement,
   type ComponentBase,
   DashboardCounters,
   type DashboardOp,
@@ -22,6 +23,16 @@ export interface ComponentStatusInfo {
   statusMessage: string;
 }
 
+/** An element's two lines as last set: its path "" for the app itself */
+export interface ElementLinesInfo {
+  path: string;
+  glance?: BaseElement.Line;
+  activity?: BaseElement.Line;
+}
+
+/** The shortest time between two changes of an element's lines told */
+const LINES_INTERVAL = 1000;
+
 /**
  * The part of a SyncBridge worker that runs the app, whatever carries
  * its messages: it creates the app from a profile, updates it when
@@ -38,6 +49,11 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
   /** The charts' counts, written as points by the tick while it runs */
   protected _counters?: DashboardCounters;
   protected _tick?: NodeJS.Timeout;
+  /** Each element's lines: when last told, and a change waiting */
+  protected _lines = new Map<
+    string,
+    { told: number; timer?: NodeJS.Timeout; element: BaseElement }
+  >();
 
   constructor(readonly options: AppWorker.Options) {
     super();
@@ -113,6 +129,12 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
 
   async stop(): Promise<void> {
     await this.app?.stop();
+    /* Changes waiting go now, the last as they were */
+    for (const [path, entry] of this._lines) {
+      if (!entry.timer) continue;
+      clearTimeout(entry.timer);
+      this._tellLines(path, entry.element);
+    }
     clearInterval(this._tick);
     this._tick = undefined;
     /* What the app counted and wrote as it stopped goes too */
@@ -126,6 +148,10 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
     app.on('status-change', (status, statusMessage) =>
       this.emit('status-change', status, statusMessage || ''),
     );
+    app.on('line-change', () => this._linesChanged('', app));
+    app.on('component-line-change', component =>
+      this._linesChanged(component.path, component),
+    );
     app.on(
       'component-status-change',
       (component: ComponentBase, status, statusMessage) =>
@@ -136,6 +162,34 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
           statusMessage: statusMessage || '',
         }),
     );
+  }
+
+  /**
+   * An element's lines changed: told at once, unless told less than a
+   * second ago - then once that second is over, as they are by then
+   */
+  protected _linesChanged(path: string, element: BaseElement) {
+    const entry = this._lines.get(path) ?? { told: 0, element };
+    entry.element = element;
+    this._lines.set(path, entry);
+    if (entry.timer) return;
+    const wait = entry.told + LINES_INTERVAL - Date.now();
+    if (wait <= 0) return this._tellLines(path, element);
+    entry.timer = setTimeout(() => this._tellLines(path, entry.element), wait);
+    entry.timer.unref();
+  }
+
+  protected _tellLines(path: string, element: BaseElement) {
+    const entry = this._lines.get(path);
+    if (entry) {
+      entry.told = Date.now();
+      entry.timer = undefined;
+    }
+    this.emit('lines-change', {
+      path,
+      glance: element.glance,
+      activity: element.activity,
+    });
   }
 }
 
@@ -160,6 +214,8 @@ export namespace AppWorker {
       component: ComponentBase,
       info: ComponentStatusInfo,
     ];
+    /** An element's glance or activity changed: at most once a second each */
+    'lines-change': [info: ElementLinesInfo];
     error: [error: Error];
   }
 }
