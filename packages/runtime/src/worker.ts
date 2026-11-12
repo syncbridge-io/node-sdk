@@ -48,6 +48,7 @@ worker.on('error', err => logger.error(err));
 worker.on('status-change', (status, message) =>
   send({ type: 'status', status, message }),
 );
+worker.on('lines-change', info => send({ type: 'lines', ...info }));
 worker.on('component-status-change', (_component, info) =>
   send({
     type: 'component-status',

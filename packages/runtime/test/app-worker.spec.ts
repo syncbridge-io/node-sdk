@@ -14,10 +14,19 @@ import {
   Widget,
 } from '@syncbridge/common';
 import { expect } from 'expect';
-import { AppWorker, type ComponentStatusInfo } from '../src/index.js';
+import {
+  AppWorker,
+  type ComponentStatusInfo,
+  type ElementLinesInfo,
+} from '../src/index.js';
 
 @Component({ className: 'PwPart' })
-class PwPart extends ComponentBase {}
+class PwPart extends ComponentBase {
+  tell(glance?: string, activity?: string) {
+    this.setGlance(glance);
+    this.setActivity(activity, 'warning');
+  }
+}
 
 class PwVariables {
   @DefineVariable({ type: VariableType.Number, default: 1, hotPlug: true })
@@ -101,6 +110,39 @@ describe('AppWorker', () => {
         status: 'started',
       }),
     );
+  });
+
+  it("should tell a component's lines: at once, then at most once a second", async () => {
+    const told: ElementLinesInfo[] = [];
+    worker.on('lines-change', info => told.push(info));
+    await worker.updateProfile(profile(), logger);
+    await worker.start();
+    await new Promise(r => setTimeout(r, 50));
+    const part = (worker.app as PwApp).part as PwPart;
+    /* The glance told at once; the activity, set in the same second, waits */
+    part.tell('lis.local:2575', 'Queue 1');
+    expect(told).toEqual([
+      { path: part.path, glance: { text: 'lis.local:2575' } },
+    ]);
+    /* Within the second: the last of them, once it is over */
+    part.tell('lis.local:2575', 'Queue 2');
+    part.tell('lis.local:2575', 'Queue 3');
+    await new Promise(r => setTimeout(r, 1100));
+    expect(told).toHaveLength(2);
+    expect(told[1].activity).toEqual({ text: 'Queue 3', tone: 'warning' });
+  }).slow(2000);
+
+  it('should tell a change waiting as it stops', async () => {
+    const told: ElementLinesInfo[] = [];
+    worker.on('lines-change', info => told.push(info));
+    await worker.updateProfile(profile(), logger);
+    await worker.start();
+    await new Promise(r => setTimeout(r, 50));
+    const part = (worker.app as PwApp).part as PwPart;
+    part.tell('a');
+    part.tell('b');
+    await worker.stop();
+    expect(told.map(t => t.glance?.text)).toEqual(['a', 'b']);
   });
 
   it('should update the app it created', async () => {

@@ -232,6 +232,39 @@ always call `super`:
 `this.setStatus(ServiceStatus.unhealthy, message)`. An app's status
 follows its components'.
 
+## Glance and activity
+
+Two short lines an app or component writes of itself as it runs. The
+worker's component map shows them on its card:
+
+- **Glance**: what it would say first about itself, under its name.
+  Examples: an address, a port, a database.
+- **Activity**: what it is doing now, under its state. Examples: its
+  rate, its queue, the last thing it handled.
+
+```ts
+this.setGlance(`${remote.address}:${remote.port}`);
+this.setActivity(`↓ ${inMin} ↑ ${outMin} /min`);
+this.setActivity('Queue 980 / 1000', 'warning');
+this.setActivity(undefined); // none
+```
+
+- **Your words, your units.** Nothing is counted or worked out for you:
+  write what is worth telling, as often as it changes. The worker sends
+  at most one change a second for each app or component, the latest.
+- **Data, not prose.** The lines are shown as they are, not translated.
+- **Short.** One line each, at most 80 characters; a longer one is cut.
+- **Tone.** The second argument colours the line, with the same tones as
+  dashboards (`muted`, `ok`, `info`, `accent`, `warning`, `error`).
+  - It is your view of your work, not your state: a started component
+    may show `Queue 980 / 1000` in `warning`.
+  - Trouble that stops you is still your status (`setStatus`).
+- **Never a secret.** The lines are shown to everyone who can see the
+  worker.
+- **While the worker is stopped:**
+  - the last glance stays on the map, marked as old;
+  - the activity goes, so set it again when you start.
+
 ## Logging
 
 `this.logger` writes the element's log. A log channel is a log of its own

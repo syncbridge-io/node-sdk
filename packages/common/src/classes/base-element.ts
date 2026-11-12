@@ -1,4 +1,5 @@
 import type { LogChannel } from '../decorators/log-channel.decorator.js';
+import { type Widget, WIDGET_TONES } from '../decorators/widget.decorator.js';
 import type { ILogger } from '../interfaces/index.js';
 import { ServiceStatus } from '../models/index.js';
 import type { ComponentBase } from './component-base.js';
@@ -40,11 +41,84 @@ export abstract class BaseElement<
     return this._context.calculatedStatusMessage ?? this._context.statusMessage;
   }
 
+  /**
+   * What the element would say first about itself, as it runs: one short
+   * line under its name on the worker's map (`lis.local:2575`). Set with
+   * `setGlance`; none by default
+   */
+  get glance(): BaseElement.Line | undefined {
+    return this._context.glance;
+  }
+
+  /**
+   * What the element is doing now, as it runs: one short line under its
+   * state on the worker's map (`↓ 12 ↑ 11 /min`). Set with `setActivity`;
+   * none by default
+   */
+  get activity(): BaseElement.Line | undefined {
+    return this._context.activity;
+  }
+
+  /**
+   * Sets the element's glance: what it would say first about itself - an
+   * address, a port, a database - written by the element, as it learns
+   * it. Data, not prose: it is shown as it is, not translated. One line
+   * of at most 80 characters; a longer one is cut. Never a secret.
+   *
+   * @param text The line; `undefined` or empty for none
+   * @param tone How the web UI colors it; plain when none
+   */
+  protected setGlance(text?: string, tone?: Widget.Tone): void {
+    this._setLine('glance', text, tone);
+  }
+
+  /**
+   * Sets the element's activity: what it is doing now - its rate, its
+   * queue, the last thing it handled - in the words and units it
+   * chooses. It may be set as often as wanted: the worker sends at most
+   * one change a second. Cleared when the worker stops, never kept.
+   * Data, not prose; one line of at most 80 characters; never a secret.
+   *
+   * @param text The line; `undefined` or empty for none
+   * @param tone How the web UI colors it; plain when none
+   */
+  protected setActivity(text?: string, tone?: Widget.Tone): void {
+    this._setLine('activity', text, tone);
+  }
+
+  protected _setLine(
+    kind: BaseElement.LineKind,
+    text?: string,
+    tone?: Widget.Tone,
+  ): void {
+    const line = BaseElement.toLine(text, tone);
+    const old = this._context[kind];
+    if (old?.text === line?.text && old?.tone === line?.tone) return;
+    this._context[kind] = line;
+    this.emitSafe('line-change', kind, line);
+  }
+
   protected async _init(): Promise<void> {
     for (const component of Object.values(this.components)) {
       component.on('component-status-change', (...args) =>
         this.emitAsyncSafe('component-status-change', ...args),
       );
+      /* Its lines, and its own components', told up to the app */
+      component.on('line-change', (kind, line) =>
+        this.emitSafe('component-line-change', component, kind, line),
+      );
+      component.on('component-line-change', (...args) =>
+        this.emitSafe('component-line-change', ...args),
+      );
+      /* Those it set before it was listened to: told now */
+      for (const kind of ['glance', 'activity'] as const)
+        if (component[kind])
+          this.emitSafe(
+            'component-line-change',
+            component,
+            kind,
+            component[kind],
+          );
       component.on('status-change', (status, statusMessage) => {
         /** Reset counters */
         this._context.statusIndicators = this._context.statusIndicators || {};
@@ -139,6 +213,42 @@ export namespace BaseElement {
       statusMessage: string,
     ];
     'values-updated': [string[]];
+    /** Its glance or its activity changed; `line` none when cleared */
+    'line-change': [kind: BaseElement.LineKind, line?: BaseElement.Line];
+    /** A component's glance or activity changed, at any depth below */
+    'component-line-change': [
+      component: ComponentBase,
+      kind: BaseElement.LineKind,
+      line?: BaseElement.Line,
+    ];
+  }
+
+  /** The element's two lines on the worker's map */
+  export type LineKind = 'glance' | 'activity';
+
+  /** A line an element writes of itself: its text, and how it is colored */
+  export interface Line {
+    text: string;
+    tone?: Widget.Tone;
+  }
+
+  /** The longest line: a longer one is cut, ending in "…" */
+  export const LINE_MAX_LENGTH = 80;
+
+  /**
+   * A line as it is kept: on one line, trimmed, cut at LINE_MAX_LENGTH;
+   * none when empty. A tone not known is left out
+   */
+  export function toLine(text?: string, tone?: Widget.Tone): Line | undefined {
+    let t = String(text ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!t) return;
+    if (t.length > LINE_MAX_LENGTH)
+      t = t.slice(0, LINE_MAX_LENGTH - 1).trimEnd() + '…';
+    return tone && WIDGET_TONES.includes(tone)
+      ? { text: t, tone }
+      : { text: t };
   }
 
   export interface InitArgs extends Runnable.InitArgs {
@@ -148,6 +258,8 @@ export namespace BaseElement {
   }
 
   export interface Context extends Runnable.Context {
+    glance?: Line;
+    activity?: Line;
     calculatedStatus?: ServiceStatus;
     calculatedStatusMessage?: string;
     statusIndicators: Record<

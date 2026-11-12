@@ -48,7 +48,7 @@ export interface WorkerLogRecord {
 /**
  * An app running in a worker process of its own, with its plan's
  * resolve hooks: the way SyncBridge runs it. Emits `status`,
- * `component-status`, `log` and `exit`.
+ * `component-status`, `lines`, `log` and `exit`.
  */
 export class WorkerProcess extends EventEmitter {
   status = 'starting';
@@ -57,6 +57,11 @@ export class WorkerProcess extends EventEmitter {
   failure?: string;
   readonly logs: WorkerLogRecord[] = [];
   readonly components = new Map<string, { status: string; message: string }>();
+  /** Each element's glance and activity as last told; "" the app's */
+  readonly lines = new Map<
+    string,
+    Omit<Extract<WorkerMessage, { type: 'lines' }>, 'type' | 'path'>
+  >();
   /** The profile as its classes' migrateProfile left it (`migrate`) */
   migrated?: Profile;
   protected _exited: Promise<number | null>;
@@ -145,6 +150,13 @@ export class WorkerProcess extends EventEmitter {
           message: msg.message,
         });
         this.emit('component-status', msg.path, msg.status, msg.message);
+        break;
+      case 'lines':
+        this.lines.set(msg.path, {
+          glance: msg.glance,
+          activity: msg.activity,
+        });
+        this.emit('lines', msg.path, msg.glance, msg.activity);
         break;
       case 'invalid':
         this._fail(
