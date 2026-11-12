@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 7b6f162ea1a3e9ea0111320dae03d9ccb823469b -->
+<!-- rman:documented-up-to f4bc1eded625069587a9ad1eb49d77647a09c67d -->
+
+## @syncbridge/runtime@2.11.0 (2026-11-12)
+
+### ✨ Features
+
+- **runtime:** installPackage takes allowBuilds - the packages whose install scripts run as a package's dependencies are installed (b31d1c0)
+
+---
 
 ## @syncbridge/runtime@2.10.0 (2026-11-12)
 
