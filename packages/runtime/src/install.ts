@@ -193,6 +193,8 @@ export async function installDependencies(
     pnpm?: string[];
     /** See InstallPackageOptions.overrides */
     overrides?: Record<string, string>;
+    /** See InstallPackageOptions.allowBuilds */
+    allowBuilds?: string[];
     logger?: ILogger;
     abortSignal?: AbortSignal;
   },
@@ -217,11 +219,18 @@ export async function installDependencies(
   }
   try {
     if (changed) fs.writeFileSync(file, JSON.stringify(forPnpm, null, 2));
-    if (options.overrides && Object.keys(options.overrides).length) {
+    const settings: Record<string, unknown> = {};
+    if (options.overrides && Object.keys(options.overrides).length)
+      settings.overrides = options.overrides;
+    if (options.allowBuilds?.length)
+      settings.allowBuilds = Object.fromEntries(
+        [...new Set(options.allowBuilds)].sort().map(name => [name, true]),
+      );
+    if (Object.keys(settings).length) {
       /* pnpm reads its settings from here; JSON is YAML */
       fs.writeFileSync(
         path.join(pkg.path, 'pnpm-workspace.yaml'),
-        JSON.stringify({ overrides: options.overrides }, null, 2),
+        JSON.stringify(settings, null, 2),
       );
     }
     await packageManager.install({
@@ -250,6 +259,13 @@ export interface InstallPackageOptions extends VerifyDependenciesOptions {
    * `spm verify`; SyncBridge installs from the registry.
    */
   overrides?: Record<string, string>;
+  /**
+   * The packages whose install scripts run - a native addon built or
+   * downloaded as it is installed. pnpm runs no other's. For `spm verify`,
+   * the workspace's own `allowBuilds`; SyncBridge gives its reviewed list
+   * to the workers' installations (initWorker)
+   */
+  allowBuilds?: string[];
   logger?: ILogger;
   abortSignal?: AbortSignal;
 }
