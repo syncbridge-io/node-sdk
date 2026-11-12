@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 4129357ad6f8ab0fc6ee1b3add490e24b05a3fe9 -->
+<!-- rman:documented-up-to f4bc1eded625069587a9ad1eb49d77647a09c67d -->
+
+## @syncbridge/syncbuild@2.17.1 (2026-11-12)
+
+### 🐛 Bug Fixes
+
+- **syncbuild:** spm verify runs the install scripts the workspace allows - its pnpm-workspace.yaml's allowBuilds and onlyBuiltDependencies - so a native addon such as @pinggy/pinggy is there when the worker loads it (19dc1f1)
+
+---
 
 ## @syncbridge/syncbuild@2.17.0 (2026-11-10)
 
