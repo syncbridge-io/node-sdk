@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 4129357ad6f8ab0fc6ee1b3add490e24b05a3fe9 -->
+<!-- rman:documented-up-to 7b6f162ea1a3e9ea0111320dae03d9ccb823469b -->
+
+## @syncbridge/common@2.24.0 (2026-11-12)
+
+### ✨ Features
+
+- **common:** an element's glance and activity - two short lines it writes of itself as it runs, setGlance and setActivity, each with a tone, told up to the app (555692e)
+
+---
 
 ## @syncbridge/common@2.23.0 (2026-11-10)
 

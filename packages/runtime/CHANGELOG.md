@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 4129357ad6f8ab0fc6ee1b3add490e24b05a3fe9 -->
+<!-- rman:documented-up-to 7b6f162ea1a3e9ea0111320dae03d9ccb823469b -->
+
+## @syncbridge/runtime@2.10.0 (2026-11-12)
+
+### ✨ Features
+
+- **runtime:** an element's glance and activity told to the host - at most once a second each, the latest, and what waits as the worker stops (6439bae)
+
+---
 
 ## @syncbridge/runtime@2.9.0 (2026-11-10)
 
