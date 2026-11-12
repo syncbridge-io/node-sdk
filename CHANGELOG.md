@@ -1,6 +1,15 @@
 # Changelog
 
-<!-- rman:documented-up-to 4129357ad6f8ab0fc6ee1b3add490e24b05a3fe9 -->
+<!-- rman:documented-up-to 7b6f162ea1a3e9ea0111320dae03d9ccb823469b -->
+
+## v2026.11.12-700 (2026-11-12)
+
+### 🧹 Chores
+
+- sync lockfile [skip ci] (79649ac)
+- dependencies updated - @panates/eslint-config and eslint-config-ts 2.4.0 (040ce54)
+
+---
 
 ## v2026.11.10-1758 (2026-11-10)
 
