@@ -1,6 +1,15 @@
 # Changelog
 
-<!-- rman:documented-up-to 7b6f162ea1a3e9ea0111320dae03d9ccb823469b -->
+<!-- rman:documented-up-to f4bc1eded625069587a9ad1eb49d77647a09c67d -->
+
+## v2026.11.12-1030 (2026-11-12)
+
+### 🧹 Chores
+
+- sync lockfile [skip ci] (f12b1f0)
+- dependencies updated - prettier 3.10.1 in the lockfile (9af3df1)
+
+---
 
 ## v2026.11.12-700 (2026-11-12)
 
