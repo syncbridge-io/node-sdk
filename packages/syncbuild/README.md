@@ -97,6 +97,12 @@ native addons and other programs only as the app and its components
 declare them (`permissions: [WorkerPermission.NativeCode]`,
 `ChildProcesses`). One undeclared fails, telling which to declare.
 
+Install scripts run for the packages the workspace allows them for, in
+its `pnpm-workspace.yaml` (`allowBuilds`, or `onlyBuiltDependencies`): a
+native addon built or downloaded as it is installed, such as
+`@pinggy/pinggy`, is there when the worker loads it. SyncBridge runs them
+for the packages it has reviewed.
+
 A profile can use components SyncBridge provides, such as
 `@syncbridge/net:TcpClient`: like the engine at its start, verify registers
 those packages from the project's `node_modules`, so the project needs

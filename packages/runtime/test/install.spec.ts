@@ -98,6 +98,38 @@ describe('installDependencies', () => {
     expect(fs.readFileSync(file, 'utf8')).toBe(original);
   });
 
+  it('should let the install scripts of the packages it is told run, beside its overrides, in the settings pnpm reads', async () => {
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkgJson));
+    let seen: any;
+    packageManager.install = async ({ cwd }) => {
+      seen = JSON.parse(
+        fs.readFileSync(path.join(cwd, 'pnpm-workspace.yaml'), 'utf8'),
+      );
+    };
+    await installDependencies({ path: dir } as any, pkgJson, {
+      storeDir: path.join(dir, 'store'),
+      overrides: { 'hl7-standard': 'link:/src/hl7-standard' },
+      allowBuilds: ['oracledb', '@pinggy/pinggy', 'oracledb'],
+    });
+    expect(seen).toEqual({
+      overrides: { 'hl7-standard': 'link:/src/hl7-standard' },
+      allowBuilds: { '@pinggy/pinggy': true, oracledb: true },
+    });
+  });
+
+  it('should write no settings when it is given none', async () => {
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkgJson));
+    let written: boolean | undefined;
+    packageManager.install = async ({ cwd }) => {
+      written = fs.existsSync(path.join(cwd, 'pnpm-workspace.yaml'));
+    };
+    await installDependencies({ path: dir } as any, pkgJson, {
+      storeDir: path.join(dir, 'store'),
+      allowBuilds: [],
+    });
+    expect(written).toBe(false);
+  });
+
   it('should remove a failed install, the package with it', async () => {
     fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkgJson));
     packageManager.install = async () => {
