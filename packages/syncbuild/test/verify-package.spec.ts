@@ -7,6 +7,7 @@ import { expect } from 'expect';
 import {
   defaultStoreDir,
   verifyPackage,
+  workspaceAllowBuilds,
 } from '../src/commands/verify-package.js';
 
 const COMMON_DIR = path.resolve(import.meta.dirname, '../../common');
@@ -1006,5 +1007,51 @@ export class TcpLink extends ComponentBase {}
         }),
       ).rejects.toThrow(/uses @vt\/net, which the project does not have/);
     });
+  });
+});
+
+describe('workspaceAllowBuilds', () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'syncbuild-builds-'));
+    fs.writeFileSync(path.join(root, 'pnpm-lock.yaml'), '');
+    fs.mkdirSync(path.join(root, 'packages', 'net'), { recursive: true });
+  });
+
+  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  it("should take the packages the workspace lets build, from a package's directory: allowBuilds set true and onlyBuiltDependencies", () => {
+    fs.writeFileSync(
+      path.join(root, 'pnpm-workspace.yaml'),
+      `packages:
+  - packages/*
+allowBuilds:
+  '@pinggy/pinggy': true
+  oracledb: true
+  pnpm: false
+onlyBuiltDependencies:
+  - esbuild
+  - oracledb
+`,
+    );
+    expect(workspaceAllowBuilds(path.join(root, 'packages', 'net'))).toEqual([
+      '@pinggy/pinggy',
+      'esbuild',
+      'oracledb',
+    ]);
+  });
+
+  it('should take none from a workspace that lets none build, or has no pnpm-workspace.yaml', () => {
+    expect(workspaceAllowBuilds(path.join(root, 'packages', 'net'))).toEqual(
+      [],
+    );
+    fs.writeFileSync(
+      path.join(root, 'pnpm-workspace.yaml'),
+      'packages:\n  - packages/*\n',
+    );
+    expect(workspaceAllowBuilds(path.join(root, 'packages', 'net'))).toEqual(
+      [],
+    );
   });
 });

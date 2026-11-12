@@ -36,6 +36,7 @@ import {
 import * as jsonc from 'jsonc-parser';
 import semver from 'semver';
 import * as yaml from 'yaml';
+import { workspaceRoot } from '../npm-mirror.js';
 import { packPackage } from '../pack-package.js';
 import { pnpmCommand } from '../pnpm-hook.js';
 import {
@@ -227,6 +228,7 @@ export async function verifyPackage(
               log,
             )
           : undefined,
+        allowBuilds: workspaceAllowBuilds(fromDir || packageDir),
         versionsOf: name => packages.get(name),
         hostVersionOf: name => hostPackageVersion(name, dirs.host),
       });
@@ -653,6 +655,28 @@ function workspaceOverrides(
     );
   }
   return overrides;
+}
+
+/**
+ * The packages the workspace lets run their install scripts: those its
+ * pnpm-workspace.yaml's `allowBuilds` sets true, and its older
+ * `onlyBuiltDependencies`. Its tests run on what they build - a native
+ * addon - so the package is installed with them, as SyncBridge installs a
+ * worker with the list it has reviewed
+ */
+export function workspaceAllowBuilds(packageDir: string): string[] {
+  const file = path.join(workspaceRoot(packageDir), 'pnpm-workspace.yaml');
+  if (!fs.existsSync(file)) return [];
+  const settings = yaml.parse(fs.readFileSync(file, 'utf8')) || {};
+  const allowed = Object.entries<unknown>(settings.allowBuilds || {})
+    .filter(([, on]) => on === true)
+    .map(([name]) => name);
+  const only = Array.isArray(settings.onlyBuiltDependencies)
+    ? settings.onlyBuiltDependencies.filter(
+        (name: unknown): name is string => typeof name === 'string',
+      )
+    : [];
+  return [...new Set([...allowed, ...only])].sort();
 }
 
 /**
