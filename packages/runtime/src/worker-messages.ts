@@ -6,6 +6,13 @@ export type WorkerMessage =
   | { type: 'log'; level: string; source?: string; message: string }
   | { type: 'status'; status: string; message: string }
   | { type: 'component-status'; path: string; status: string; message: string }
+  /** An element's glance and activity as last set; its path "" for the app */
+  | {
+      type: 'lines';
+      path: string;
+      glance?: { text: string; tone?: string };
+      activity?: { text: string; tone?: string };
+    }
   | { type: 'invalid'; issues: { message: string; location?: string }[] }
   /** Created without being started (`createOnly`), with its components' paths */
   | { type: 'created'; components: string[] }
