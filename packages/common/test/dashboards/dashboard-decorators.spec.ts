@@ -68,6 +68,33 @@ describe('The core widget types', () => {
     ).toEqual(['"cardWidth" is one of s, m, l']);
   });
 
+  it("should keep a widget's order and position, and refuse an order not whole or a position not flexible or fixed", () => {
+    const placed = Widget.stat({ order: -1, position: 'fixed' });
+    expect(placed).toMatchObject({ order: -1, position: 'fixed' });
+    expect(widgetMetadataOf('s', placed)).toMatchObject({
+      id: 's',
+      order: -1,
+      position: 'fixed',
+    });
+    expect(
+      widgetIssues(widgetMetadataOf('s', placed), coreWidgetType(placed.type)),
+    ).toEqual([]);
+    /* Not told: neither kept, the defaults (0, flexible) the engine's */
+    expect(Widget.stat()).not.toHaveProperty('order');
+    expect(Widget.stat()).not.toHaveProperty('position');
+    const wrong = Widget.feed({
+      columns: [{ field: 'text' }],
+      order: 1.5,
+      position: 'anywhere' as Widget.Position,
+    });
+    expect(
+      widgetIssues(widgetMetadataOf('f', wrong), coreWidgetType(wrong.type)),
+    ).toEqual([
+      'its order is a whole number',
+      'its position is flexible or fixed',
+    ]);
+  });
+
   it("should bind a row's tone and hint: a card's and its template's to row fields, a list's to fields", () => {
     const issues = (d: Widget.Definition<any>) =>
       widgetIssues(widgetMetadataOf('w', d), coreWidgetType(d.type));
