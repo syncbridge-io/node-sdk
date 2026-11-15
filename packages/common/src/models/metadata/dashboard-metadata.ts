@@ -106,6 +106,18 @@ export class WidgetMetadata {
   @ApiField({ description: 'Its size on the grid' })
   declare size?: WidgetSize;
 
+  @ApiField({
+    description:
+      "Its place in its section, as CSS's order: lower first, 0 when not given, the same order as written",
+  })
+  declare order?: number;
+
+  @ApiField({
+    description:
+      'flexible: beside widgets of its own height (the default); fixed: exactly where its order puts it',
+  })
+  declare position?: 'flexible' | 'fixed';
+
   @ApiField({ type: 'any', description: 'What its type takes' })
   declare properties?: Record<string, any>;
 

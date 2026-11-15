@@ -351,6 +351,23 @@ A widget holds its data, of one of four kinds whatever it looks like:
   200 points of 1 s, the last 200 seconds. Use `point` or `count` for a
   series, not both.
 - `size`: `width` 1 to 4 columns, `height` `s`, `m` or `l`.
+- `order` and `position` place a widget in its section. `order` works
+  as CSS's: lower first, 0 when not given, widgets of the same order as
+  they are written - `-1` puts one before the rest, `1` after them.
+  `position: 'flexible'` (the default) lets SyncBridge stand a widget
+  beside others of its own height, so a row's cards end together; they
+  stay in `order` among themselves. `position: 'fixed'` keeps it exactly
+  where `order` puts it, and a table or a feed beside a shorter card is
+  fitted to that card's height and scrolled:
+
+  ```ts
+  @Widget.Stat({ title: 'Waiting', section: 'queue', order: -1 })
+  declare readonly queue: Widget.Stat;
+
+  @Widget.Chart({ title: 'Throughput', section: 'queue',
+    series: ['received'], position: 'fixed' })
+  declare readonly throughput: Widget.Chart;
+  ```
 - Texts - titles, descriptions, units, columns' titles, a chart's
   `labels` for its series - are in the package's language, translated in
   `locales/` as its settings' are (`@syncbridge/syncbuild`'s README), or
