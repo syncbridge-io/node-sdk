@@ -236,6 +236,13 @@ export function widgetIssues(
     issues.push('its width is 1 to 4');
   if (size?.height != null && !['s', 'm', 'l'].includes(size.height))
     issues.push('its height is s, m or l');
+  if (widget.order != null && !Number.isInteger(widget.order))
+    issues.push('its order is a whole number');
+  if (
+    widget.position != null &&
+    !['flexible', 'fixed'].includes(widget.position)
+  )
+    issues.push('its position is flexible or fixed');
 
   const data = widget.data;
   if (!data || !KINDS.includes(data.kind)) {

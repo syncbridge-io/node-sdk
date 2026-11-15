@@ -141,6 +141,8 @@ export namespace Widget {
     description?: LocalizedText;
     section?: string;
     size?: Size;
+    order?: number;
+    position?: Position;
     properties?: Record<string, any>;
     data: {
       kind: DataKind;
@@ -161,6 +163,14 @@ export namespace Widget {
   }
 
   /**
+   * Where a widget may stand in its section. `flexible`: beside widgets
+   * of its own height, so a row's cards end together - in `order` among
+   * them. `fixed`: exactly where `order` puts it, a list beside a shorter
+   * card fitted to that card's height and scrolled
+   */
+  export type Position = 'flexible' | 'fixed';
+
+  /**
    * What every widget takes. A text - a title, a unit, a column's title -
    * is in the package's language, or by language ({ en: 'Rate', tr:
    * 'Hız' }); a class's widgets' texts are translated in locales/ too
@@ -171,6 +181,14 @@ export namespace Widget {
     /** One of its dashboard's sections (`@DashboardSections`) */
     section?: string;
     size?: Size;
+    /**
+     * Its place in its section, as CSS's `order`: lower first, 0 when not
+     * given, widgets of the same order as they are written. `-1` puts one
+     * before the rest, `1` after them
+     */
+    order?: number;
+    /** See `Widget.Position`. @default 'flexible' */
+    position?: Position;
   }
 
   /**
@@ -455,6 +473,8 @@ export namespace Widget {
       description: o.description,
       section: o.section,
       size: o.size,
+      order: o.order,
+      position: o.position,
     });
 
   /** A number or a short text, its unit, in the tone it is given */
