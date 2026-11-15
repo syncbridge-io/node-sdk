@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 7b6f162ea1a3e9ea0111320dae03d9ccb823469b -->
+<!-- rman:documented-up-to dcaf99c2ca7b18c4c2cac82953bb14b8c07af440 -->
+
+## @syncbridge/common@2.25.0 (2026-11-15)
+
+### ✨ Features
+
+- **common:** a widget's order and position on its dashboard (c921d0a)
+
+---
 
 ## @syncbridge/common@2.24.0 (2026-11-12)
 
