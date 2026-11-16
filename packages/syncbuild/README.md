@@ -94,8 +94,8 @@ of it; one that is not fails the verify, telling why.
 
 The worker runs under Node's permission model, as SyncBridge runs it:
 native addons and other programs only as the app and its components
-declare them (`permissions: [WorkerPermission.NativeCode]`,
-`ChildProcesses`). One undeclared fails, telling which to declare.
+declare them (`permissions: [WorkerPermission.NativeCodeExecute]`,
+`ChildProcessSpawn`). One undeclared fails, telling which to declare.
 
 Install scripts run for the packages the workspace allows them for, in
 its `pnpm-workspace.yaml` (`allowBuilds`, or `onlyBuiltDependencies`): a

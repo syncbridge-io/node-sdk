@@ -960,7 +960,8 @@ export class AuditPlugin extends PluginBase {
         settings: {
           url: expect.objectContaining({ label: 'URL', required: true }),
         },
-        permissions: ['log-records', 'network'],
+        /* Written with the first codes: packed as the ones they became */
+        permissions: ['log:read', 'network:connect'],
         hosts: ['audit.example.com'],
       },
     ]);
