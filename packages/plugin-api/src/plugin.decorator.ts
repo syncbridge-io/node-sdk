@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import {
   CLASS_METADATA,
   CLASS_TYPE,
+  permissionCodes,
   type PluginMetadata,
   PluginPermission,
   readVariables,
@@ -29,17 +30,19 @@ export function Plugin(options: Plugin.Options) {
       `Invalid plugin name "${options.name}": lower case letters, digits and "-", starting with a letter`,
     );
   const known = Object.values(PluginPermission) as string[];
-  for (const p of options.permissions || [])
+  /* The first codes taken as the ones they became */
+  const permissions = permissionCodes(options.permissions);
+  for (const p of permissions || [])
     if (!known.includes(p))
       throw new TypeError(
         `Plugin "${options.name}": unknown permission "${p}" - one of ${known.join(', ')}`,
       );
   if (
     options.hosts?.length &&
-    !options.permissions?.includes(PluginPermission.Network)
+    !permissions?.includes(PluginPermission.NetworkConnect)
   )
     throw new TypeError(
-      `Plugin "${options.name}": hosts are given with the "network" permission`,
+      `Plugin "${options.name}": hosts are given with the "${PluginPermission.NetworkConnect}" permission`,
     );
   /* Read now: the settings class is defined before the plugin's */
   const settings = options.settings
@@ -57,9 +60,7 @@ export function Plugin(options: Plugin.Options) {
       title: options.title,
       description: options.description,
       settings,
-      ...(options.permissions?.length
-        ? { permissions: [...new Set(options.permissions)] }
-        : {}),
+      ...(permissions?.length ? { permissions } : {}),
       ...(options.hosts?.length ? { hosts: [...options.hosts] } : {}),
     };
     Reflect.defineMetadata(CLASS_METADATA, metadata, target);
@@ -79,7 +80,7 @@ export namespace Plugin {
      * admins, given once they approve it, nothing else. Not declared, none
      */
     permissions?: PluginPermission[];
-    /** The hosts it reaches, with `PluginPermission.Network` */
+    /** The hosts it connects to, with `PluginPermission.NetworkConnect` */
     hosts?: string[];
   }
 }

@@ -97,7 +97,7 @@ describe('Component Decorator', () => {
   });
 
   it("should tell what of the server it reaches, its base's too", () => {
-    @Component({ permissions: [WorkerPermission.SerialPorts] })
+    @Component({ permissions: [WorkerPermission.SerialPortConnect] })
     class SerialBaseComponent extends ComponentBase {}
 
     @Component({})
@@ -108,7 +108,7 @@ describe('Component Decorator', () => {
 
     expect(
       Reflect.getMetadata(CLASS_METADATA, DeviceComponent).permissions,
-    ).toEqual(['serial-ports']);
+    ).toEqual(['serial-port:connect']);
     expect(
       Reflect.getMetadata(CLASS_METADATA, PlainComponent).permissions,
     ).toBeUndefined();

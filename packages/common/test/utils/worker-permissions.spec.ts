@@ -2,11 +2,13 @@ import { expect } from 'expect';
 import {
   missingPermissionOf,
   nodePermissionArgs,
+  permissionCodes,
   workerPermissionsOf,
 } from '../../src/index.js';
 
 describe("A worker's permissions", () => {
   const components: Record<string, any> = {
+    /* Built with the first codes: read as the ones they became */
     '@acme/serial:SerialPort': {
       permissions: ['serial-ports', 'native-code'],
     },
@@ -18,7 +20,7 @@ describe("A worker's permissions", () => {
     expect(
       workerPermissionsOf(
         {
-          permissions: ['child-processes'],
+          permissions: ['child-process:spawn'],
           components: {
             link: {
               interfaceUri: '@acme/net:IoClient',
@@ -31,7 +33,11 @@ describe("A worker's permissions", () => {
         } as any,
         find,
       ),
-    ).toEqual(['child-processes', 'native-code', 'serial-ports']);
+    ).toEqual([
+      'child-process:spawn',
+      'native-code:execute',
+      'serial-port:connect',
+    ]);
     expect(workerPermissionsOf(undefined, find)).toEqual([]);
   });
 
@@ -58,17 +64,30 @@ describe("A worker's permissions", () => {
     ]);
   });
 
+  it('should give the same, its codes the first ones or the new', () => {
+    expect(
+      nodePermissionArgs({
+        permissions: ['native-code:execute', 'child-process:spawn'],
+      }),
+    ).toEqual(
+      nodePermissionArgs({ permissions: ['native-code', 'child-processes'] }),
+    );
+    expect(
+      permissionCodes(['serial-ports', 'serial-port:connect', 'x']),
+    ).toEqual(['serial-port:connect', 'x']);
+  });
+
   it('should tell what a refused worker is to declare', () => {
     expect(
       missingPermissionOf(
         'Error [ERR_DLOPEN_DISABLED]: Cannot load native addon because loading addons is disabled.',
       ),
-    ).toBe('native-code');
+    ).toBe('native-code:execute');
     expect(
       missingPermissionOf(
         "Error [ERR_ACCESS_DENIED]: Access to this API has been restricted. permission: 'ChildProcess'",
       ),
-    ).toBe('child-processes');
+    ).toBe('child-process:spawn');
     expect(missingPermissionOf('Cannot find module x')).toBeUndefined();
   });
 });

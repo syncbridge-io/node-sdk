@@ -23,7 +23,10 @@ class AuditSettings {
   name: 'audit',
   title: 'Audit',
   settings: AuditSettings,
-  permissions: [PluginPermission.Workers, PluginPermission.Network],
+  permissions: [
+    PluginPermission.WorkerReadSummary,
+    PluginPermission.NetworkConnect,
+  ],
   hosts: ['audit.example.com'],
 })
 export class AuditPlugin extends PluginBase<AuditSettings> {
@@ -95,14 +98,22 @@ questions and its actions. Anything more it declares in `@Plugin`, and the
 server's admins are shown it and approve it before the plugin runs - again
 when an update declares more:
 
-| `PluginPermission` | What it gives |
-| --- | --- |
-| `WorkerEnvironment` | `host.workers.addEnvironment` |
-| `LogRecords` | its buttons on a log's toolbar and a record's menu: every log record, the workers' messages among them |
-| `Workers` | `host.workers.list/get` and the workers' events |
-| `Network` | the network; the hosts it reaches named in `hosts` |
-| `ChildProcesses` | starting other programs |
-| `NativeCode` | native addons (.node) |
+Each code is `<subject>:<action>`: what it acts on, and what it does
+with it.
+
+| `PluginPermission` | Code | What it gives |
+| --- | --- | --- |
+| `WorkerReadSummary` | `worker:read-summary` | `host.workers.list/get` and the workers' events: their ids, names, statuses and apps, not their configuration |
+| `WorkerAddEnv` | `worker:add-env` | `host.workers.addEnvironment`: environment variables added to what every worker starts with |
+| `LogRead` | `log:read` | its buttons on a log's toolbar and a record's menu: every log record, the workers' messages among them |
+| `NetworkConnect` | `network:connect` | the network; the hosts it connects to named in `hosts` |
+| `ChildProcessSpawn` | `child-process:spawn` | starting other programs |
+| `NativeCodeExecute` | `native-code:execute` | loading and running native addons (.node) |
+
+The first codes - `workers`, `worker-environment`, `log-records`,
+`network`, `child-processes`, `native-code` - and their names
+(`PluginPermission.Workers`…) are still taken, as the ones they became;
+the names are deprecated.
 
 A host API called undeclared is refused, telling the permission it needs.
 Starting programs and native addons are held by Node's permission model;
@@ -178,7 +189,7 @@ this.host.ui.contribute('worker.header.menu', {
   record's `level` and `channel`). SyncBridge checks it again before a run.
 - `requires`: the permission a user needs to run it; the server's
   settings permission when not given. Points telling of the workers need
-  `PluginPermission.Workers`, of the logs `LogRecords`.
+  `PluginPermission.WorkerReadSummary`, of the logs `LogRead`.
 - `resolve(context)`: its properties where it is drawn - checked, hidden,
   a count - kept until `this.host.ui.refresh(point, id)` says they changed.
 - `run(context, { checked, input, item })`: the user chose it; the

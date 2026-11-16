@@ -16,6 +16,7 @@ import {
   materializeMetadataSilent,
   missingPermissionOf,
   nodePermissionArgs,
+  permissionCodes,
   PluginPermission,
   Profile,
   profileMigrations,
@@ -514,13 +515,14 @@ async function loadPackage(
       .get(planned.name)
       ?.find(p => p.version === planned.version);
     for (const e of [...(loaded?.apps || []), ...(loaded?.components || [])])
-      for (const p of e.metadata?.permissions || []) permissions.add(p);
+      for (const p of permissionCodes(e.metadata?.permissions || []))
+        permissions.add(p);
     for (const plugin of loaded?.plugins || [])
-      for (const p of plugin.metadata.permissions || [])
-        if (p === PluginPermission.NativeCode)
-          permissions.add(WorkerPermission.NativeCode);
-        else if (p === PluginPermission.ChildProcesses)
-          permissions.add(WorkerPermission.ChildProcesses);
+      for (const p of permissionCodes(plugin.metadata.permissions || []))
+        if (p === PluginPermission.NativeCodeExecute)
+          permissions.add(WorkerPermission.NativeCodeExecute);
+        else if (p === PluginPermission.ChildProcessSpawn)
+          permissions.add(WorkerPermission.ChildProcessSpawn);
   }
   const pluginsAlone =
     !pkg.apps?.length && !pkg.components?.length && !!pkg.plugins?.length;
@@ -796,7 +798,10 @@ async function providePeers(
 function permissionHint(message: string, plugin = false): string {
   const missing = missingPermissionOf(message);
   if (!missing) return '';
-  const name = missing === 'native-code' ? 'NativeCode' : 'ChildProcesses';
+  const name =
+    missing === WorkerPermission.NativeCodeExecute
+      ? 'NativeCodeExecute'
+      : 'ChildProcessSpawn';
   if (plugin)
     return (
       `\n  SyncBridge runs each plugin under Node's permission model: declare "${missing}" ` +
@@ -804,9 +809,7 @@ function permissionHint(message: string, plugin = false): string {
     );
   return (
     `\n  SyncBridge runs it under Node's permission model: declare "${missing}" ` +
-    `on the app or component that needs it - permissions: [WorkerPermission.${
-      missing === 'native-code' ? 'NativeCode' : 'ChildProcesses'
-    }] in @App() or @Component()`
+    `on the app or component that needs it - permissions: [WorkerPermission.${name}] in @App() or @Component()`
   );
 }
 
