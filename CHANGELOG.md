@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to dcaf99c2ca7b18c4c2cac82953bb14b8c07af440 -->
+<!-- rman:documented-up-to c974be4c90c238deee9d234398b0b226fee13d1f -->
+
+## v2026.11.16-2017 (2026-11-16)
+
+### 🐛 Bug Fixes
+
+- **plugin-api,syncbuild:** the ranges of common as they were - its new codes taken by plugin-api from a common that has them, the first ones alone from one before (9f1286f)
+
+### 🧹 Chores
+
+- sync lockfile [skip ci] (a44e7ab)
+
+---
 
 ## v2026.11.15-1541 (2026-11-15)
 
