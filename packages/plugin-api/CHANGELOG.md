@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to 372d2ba95df657ee05baec174b74d9679dfec558 -->
+<!-- rman:documented-up-to c974be4c90c238deee9d234398b0b226fee13d1f -->
+
+## @syncbridge/plugin-api@2.6.0 (2026-11-16)
+
+### ✨ Features
+
+- **common,plugin-api,syncbuild:** permission codes as <subject>:<action> - what a plugin or a worker acts on and what it does with it; the first codes and names still taken, as the ones they became (c11c37f)
+
+### 🐛 Bug Fixes
+
+- **plugin-api,syncbuild:** the ranges of common as they were - its new codes taken by plugin-api from a common that has them, the first ones alone from one before (9f1286f)
+
+---
 
 ## @syncbridge/plugin-api@2.5.0 (2026-11-09)
 
