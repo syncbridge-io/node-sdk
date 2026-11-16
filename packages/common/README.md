@@ -513,13 +513,21 @@ directory declares it:
 ```ts
 @Component({
   displayName: 'Serial client',
-  permissions: [WorkerPermission.SerialPorts, WorkerPermission.NativeCode],
+  permissions: [
+    WorkerPermission.SerialPortConnect,
+    WorkerPermission.NativeCodeExecute,
+  ],
 })
 ```
 
-- `SerialPorts`: the serial devices.
-- `NativeCode`: native addons (`.node`), such as `serialport` or `oracledb`.
-- `ChildProcesses`: starting other programs.
+- `SerialPortConnect` (`serial-port:connect`): the serial devices.
+- `NativeCodeExecute` (`native-code:execute`): native addons (`.node`),
+  such as `serialport` or `oracledb`.
+- `ChildProcessSpawn` (`child-process:spawn`): starting other programs.
+
+Each code is `<subject>:<action>`. The first codes - `serial-ports`,
+`native-code`, `child-processes` - and their names are still taken, as
+the ones they became; the names are deprecated.
 
 A subclass has its base's permissions. `spm verify` runs a module under
 the permission model and tells you what it failed to declare.

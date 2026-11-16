@@ -13,6 +13,7 @@ import {
   VariableMetadataRecord,
 } from '../models/index.js';
 import { initializeModelsDocument } from '../models-document.js';
+import { permissionCodes } from './permission-codes.js';
 import { resolvePromisesDeep } from './resolve-promises.js';
 
 export async function normalizeAppMetadata(metadata: AppMetadata) {
@@ -55,6 +56,8 @@ export async function normalizeAppMetadataSilent(
   cloned = await resolvePromisesDeep(cloned);
   cloned.variables = normalizeVariables(cloned.variables);
   cloned.components = normalizeComponents(cloned.components);
+  /* A package built with the first codes: read as the ones they became */
+  cloned.permissions = permissionCodes(cloned.permissions);
   const { value, errors } = decoder.silent(cloned);
   if (value) merge(value, metadata, { keepExisting: true, deep: 'full' });
   return {
@@ -110,6 +113,8 @@ export async function normalizeComponentMetadataSilent(
   cloned = await resolvePromisesDeep(cloned);
   cloned.variables = normalizeVariables(cloned.variables);
   cloned.components = normalizeComponents(cloned.components);
+  /* A package built with the first codes: read as the ones they became */
+  cloned.permissions = permissionCodes(cloned.permissions);
   const { value, errors } = decoder.silent(cloned);
   if (value) merge(value, metadata, { keepExisting: true, deep: 'full' });
   return {
@@ -140,6 +145,7 @@ export async function normalizePluginMetadata(
     deepClone({ ...metadata, classType: 'plugin' }),
   );
   cloned.settings = normalizeVariables(cloned.settings);
+  cloned.permissions = permissionCodes(cloned.permissions);
   const { value, errors } = _pluginMetadataTypeDecoder.silent(cloned);
   if (!errors?.length) return value;
   throw new SbValidationError(

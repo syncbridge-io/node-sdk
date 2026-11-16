@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import * as common from '@syncbridge/common';
 import {
   CLASS_METADATA,
   CLASS_TYPE,
@@ -10,6 +11,14 @@ import type { Type } from 'ts-gems';
 import type { PluginBase } from './plugin-base.js';
 
 const NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
+
+/* The first codes taken as the ones they became - by a common that has
+ * them; one before them knows the first codes alone, as they are */
+const permissionCodes: (codes?: PluginPermission[]) => PluginPermission[] =
+  (common as any).permissionCodes ?? ((codes?: PluginPermission[]) => codes);
+/* Its code, by the common found: "network" in one before the new codes */
+const NETWORK: PluginPermission =
+  (PluginPermission as any).NetworkConnect ?? 'network';
 
 /**
  * Makes a class a plugin. syncbuild finds it among the classes the package
@@ -29,17 +38,16 @@ export function Plugin(options: Plugin.Options) {
       `Invalid plugin name "${options.name}": lower case letters, digits and "-", starting with a letter`,
     );
   const known = Object.values(PluginPermission) as string[];
-  for (const p of options.permissions || [])
+  /* The first codes taken as the ones they became */
+  const permissions = permissionCodes(options.permissions);
+  for (const p of permissions || [])
     if (!known.includes(p))
       throw new TypeError(
         `Plugin "${options.name}": unknown permission "${p}" - one of ${known.join(', ')}`,
       );
-  if (
-    options.hosts?.length &&
-    !options.permissions?.includes(PluginPermission.Network)
-  )
+  if (options.hosts?.length && !permissions?.includes(NETWORK))
     throw new TypeError(
-      `Plugin "${options.name}": hosts are given with the "network" permission`,
+      `Plugin "${options.name}": hosts are given with the "${NETWORK}" permission`,
     );
   /* Read now: the settings class is defined before the plugin's */
   const settings = options.settings
@@ -57,9 +65,7 @@ export function Plugin(options: Plugin.Options) {
       title: options.title,
       description: options.description,
       settings,
-      ...(options.permissions?.length
-        ? { permissions: [...new Set(options.permissions)] }
-        : {}),
+      ...(permissions?.length ? { permissions } : {}),
       ...(options.hosts?.length ? { hosts: [...options.hosts] } : {}),
     };
     Reflect.defineMetadata(CLASS_METADATA, metadata, target);
@@ -79,7 +85,7 @@ export namespace Plugin {
      * admins, given once they approve it, nothing else. Not declared, none
      */
     permissions?: PluginPermission[];
-    /** The hosts it reaches, with `PluginPermission.Network` */
+    /** The hosts it connects to, with `PluginPermission.NetworkConnect` */
     hosts?: string[];
   }
 }

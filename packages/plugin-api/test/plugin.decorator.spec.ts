@@ -49,9 +49,9 @@ describe('@Plugin', () => {
     @Plugin({
       name: 'oracle-client',
       permissions: [
-        PluginPermission.WorkerEnvironment,
-        PluginPermission.Network,
-        PluginPermission.Network,
+        PluginPermission.WorkerAddEnv,
+        PluginPermission.NetworkConnect,
+        PluginPermission.NetworkConnect,
       ],
       hosts: ['download.oracle.com'],
     })
@@ -62,8 +62,40 @@ describe('@Plugin', () => {
     const metadata = await normalizePluginMetadata(
       Reflect.getMetadata(CLASS_METADATA, OracleClientPlugin),
     );
-    expect(metadata.permissions).toEqual(['worker-environment', 'network']);
+    expect(metadata.permissions).toEqual(['worker:add-env', 'network:connect']);
     expect(metadata.hosts).toEqual(['download.oracle.com']);
+  });
+
+  it('should take the first codes, and their names, as the ones they became', async () => {
+    @Plugin({
+      name: 'legacy',
+      permissions: [
+        PluginPermission.Workers,
+        'log-records' as PluginPermission,
+        'network' as PluginPermission,
+        PluginPermission.NetworkConnect,
+      ],
+      hosts: ['example.com'],
+    })
+    class LegacyPlugin extends PluginBase {
+      activate() {}
+    }
+    const metadata = await normalizePluginMetadata(
+      Reflect.getMetadata(CLASS_METADATA, LegacyPlugin),
+    );
+    expect(metadata.permissions).toEqual([
+      'worker:read-summary',
+      'log:read',
+      'network:connect',
+    ]);
+    expect(Object.values(PluginPermission)).toEqual([
+      'worker:read-summary',
+      'worker:add-env',
+      'log:read',
+      'network:connect',
+      'child-process:spawn',
+      'native-code:execute',
+    ]);
   });
 
   it('should declare nothing when nothing is given', async () => {
@@ -81,7 +113,7 @@ describe('@Plugin', () => {
       Plugin({ name: 'a', permissions: ['root' as PluginPermission] }),
     ).toThrow(/unknown permission "root"/);
     expect(() => Plugin({ name: 'a', hosts: ['example.com'] })).toThrow(
-      /hosts are given with the "network" permission/,
+      /hosts are given with the "network:connect" permission/,
     );
   });
 });

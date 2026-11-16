@@ -3,6 +3,7 @@ import { WorkerPermission } from '../models/enums/worker-permission.enum.js';
 import type { AppMetadata } from '../models/metadata/app-metadata.js';
 import type { ComponentMetadata } from '../models/metadata/component-metadata.js';
 import type { ElementComponentMetadataRecord } from '../models/metadata/element-component-metadata.js';
+import { permissionCode, permissionCodes } from './permission-codes.js';
 
 /**
  * What of the server a worker reaches: as its app declares, and each
@@ -13,11 +14,14 @@ export function workerPermissionsOf(
   metadata: AppMetadata | undefined,
   find: (uri: string) => ComponentMetadata | undefined,
 ): WorkerPermission[] {
-  const out = new Set<WorkerPermission>(metadata?.permissions ?? []);
+  const out = new Set<WorkerPermission>(
+    permissionCodes(metadata?.permissions ?? []),
+  );
   const walk = (components?: ElementComponentMetadataRecord) => {
     for (const slot of Object.values(components ?? {})) {
       const uri = slot.classUri || slot.interfaceUri;
-      for (const p of (uri && find(uri)?.permissions) || []) out.add(p);
+      for (const p of (uri && find(uri)?.permissions) || [])
+        out.add(permissionCode(p));
       walk(slot.components);
     }
   };
@@ -28,8 +32,8 @@ export function workerPermissionsOf(
 /**
  * Node's permission model for a worker: it reads and writes the paths
  * told (any, when none), and reaches native addons and other programs as
- * it declares them (native-code, child-processes) - both outside the
- * model; worker threads never, outside it too
+ * it declares them (native-code:execute, child-process:spawn) - both
+ * outside the model; worker threads never, outside it too
  */
 export function nodePermissionArgs(args: {
   read?: string[];
@@ -38,14 +42,15 @@ export function nodePermissionArgs(args: {
 }): string[] {
   const all = (paths?: string[]) =>
     paths ? [...new Set(paths.flatMap(p => [p, realpathOf(p)]))] : ['*'];
+  const permissions = permissionCodes(args.permissions);
   return [
     '--permission',
     ...all(args.read).map(p => `--allow-fs-read=${p}`),
     ...all(args.write).map(p => `--allow-fs-write=${p}`),
-    ...(args.permissions.includes(WorkerPermission.NativeCode)
+    ...(permissions.includes(WorkerPermission.NativeCodeExecute)
       ? ['--allow-addons']
       : []),
-    ...(args.permissions.includes(WorkerPermission.ChildProcesses)
+    ...(permissions.includes(WorkerPermission.ChildProcessSpawn)
       ? ['--allow-child-process']
       : []),
   ];
@@ -63,12 +68,12 @@ export function missingPermissionOf(
       message,
     )
   )
-    return WorkerPermission.NativeCode;
+    return WorkerPermission.NativeCodeExecute;
   if (
     /ChildProcess|child_process/i.test(message) &&
     /ERR_ACCESS_DENIED/.test(message)
   )
-    return WorkerPermission.ChildProcesses;
+    return WorkerPermission.ChildProcessSpawn;
 }
 
 function realpathOf(p: string) {
