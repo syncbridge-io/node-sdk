@@ -1,8 +1,8 @@
 import 'reflect-metadata';
+import * as common from '@syncbridge/common';
 import {
   CLASS_METADATA,
   CLASS_TYPE,
-  permissionCodes,
   type PluginMetadata,
   PluginPermission,
   readVariables,
@@ -11,6 +11,14 @@ import type { Type } from 'ts-gems';
 import type { PluginBase } from './plugin-base.js';
 
 const NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
+
+/* The first codes taken as the ones they became - by a common that has
+ * them; one before them knows the first codes alone, as they are */
+const permissionCodes: (codes?: PluginPermission[]) => PluginPermission[] =
+  (common as any).permissionCodes ?? ((codes?: PluginPermission[]) => codes);
+/* Its code, by the common found: "network" in one before the new codes */
+const NETWORK: PluginPermission =
+  (PluginPermission as any).NetworkConnect ?? 'network';
 
 /**
  * Makes a class a plugin. syncbuild finds it among the classes the package
@@ -37,12 +45,9 @@ export function Plugin(options: Plugin.Options) {
       throw new TypeError(
         `Plugin "${options.name}": unknown permission "${p}" - one of ${known.join(', ')}`,
       );
-  if (
-    options.hosts?.length &&
-    !permissions?.includes(PluginPermission.NetworkConnect)
-  )
+  if (options.hosts?.length && !permissions?.includes(NETWORK))
     throw new TypeError(
-      `Plugin "${options.name}": hosts are given with the "${PluginPermission.NetworkConnect}" permission`,
+      `Plugin "${options.name}": hosts are given with the "${NETWORK}" permission`,
     );
   /* Read now: the settings class is defined before the plugin's */
   const settings = options.settings
