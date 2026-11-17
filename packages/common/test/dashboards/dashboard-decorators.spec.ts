@@ -95,6 +95,25 @@ describe('The core widget types', () => {
     ]);
   });
 
+  it("should keep a widget's maxWidth, and refuse one under its width or over 4", () => {
+    const issues = (d: Widget.Definition<any>) =>
+      widgetIssues(widgetMetadataOf('w', d), coreWidgetType(d.type));
+    const growing = Widget.stat({ size: { width: 1, maxWidth: 2 } });
+    expect(widgetMetadataOf('w', growing).size).toEqual({
+      width: 1,
+      maxWidth: 2,
+    });
+    expect(issues(growing)).toEqual([]);
+    /* No width: its least is 1 */
+    expect(issues(Widget.stat({ size: { maxWidth: 4 } }))).toEqual([]);
+    expect(issues(Widget.stat({ size: { width: 3, maxWidth: 2 } }))).toEqual([
+      'its maxWidth is its width to 4',
+    ]);
+    expect(issues(Widget.stat({ size: { maxWidth: 5 } }))).toEqual([
+      'its maxWidth is its width to 4',
+    ]);
+  });
+
   it("should bind a row's tone and hint: a card's and its template's to row fields, a list's to fields", () => {
     const issues = (d: Widget.Definition<any>) =>
       widgetIssues(widgetMetadataOf('w', d), coreWidgetType(d.type));

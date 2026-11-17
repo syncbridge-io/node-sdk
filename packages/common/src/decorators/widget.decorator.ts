@@ -159,6 +159,11 @@ export namespace Widget {
   export interface Size {
     /** Columns, 1 to 4 */
     width?: number;
+    /**
+     * The columns it grows to where its row has room, up to 4: `width`
+     * is then its least. Not given, it stays at `width`
+     */
+    maxWidth?: number;
     height?: 's' | 'm' | 'l';
   }
 
