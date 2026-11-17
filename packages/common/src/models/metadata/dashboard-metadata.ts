@@ -68,6 +68,12 @@ export class WidgetSize {
   @ApiField({ description: 'Columns, 1 to 4' })
   declare width?: number;
 
+  @ApiField({
+    description:
+      'The columns it grows to where its row has room, up to 4; width is its least',
+  })
+  declare maxWidth?: number;
+
   @ApiField({ description: 'Height: s, m or l' })
   declare height?: 's' | 'm' | 'l';
 }
