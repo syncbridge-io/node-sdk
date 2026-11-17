@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to c974be4c90c238deee9d234398b0b226fee13d1f -->
+<!-- rman:documented-up-to c619d44eb044f240dc7b49bc405bc36d26d5365f -->
+
+## @syncbridge/common@2.27.0 (2026-11-17)
+
+### ✨ Features
+
+- **common:** a widget's maxWidth - the columns it grows to where its row has room, its width then its least (c29fd7b)
+
+---
 
 ## @syncbridge/common@2.26.0 (2026-11-16)
 
