@@ -350,7 +350,9 @@ A widget holds its data, of one of four kinds whatever it looks like:
   worker stops is written then. The chart shows `points` x `interval`:
   200 points of 1 s, the last 200 seconds. Use `point` or `count` for a
   series, not both.
-- `size`: `width` 1 to 4 columns, `height` `s`, `m` or `l`.
+- `size`: `width` 1 to 4 columns, `height` `s`, `m` or `l`. `maxWidth`
+  lets a widget grow where its row has room: `{ width: 1, maxWidth: 2 }`
+  takes one column, two when a column beside it would stay empty.
 - `order` and `position` place a widget in its section. `order` works
   as CSS's: lower first, 0 when not given, widgets of the same order as
   they are written - `-1` puts one before the rest, `1` after them.

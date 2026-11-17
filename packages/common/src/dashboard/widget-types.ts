@@ -234,6 +234,11 @@ export function widgetIssues(
   const size = widget.size;
   if (size?.width != null && ![1, 2, 3, 4].includes(size.width))
     issues.push('its width is 1 to 4');
+  if (
+    size?.maxWidth != null &&
+    (![1, 2, 3, 4].includes(size.maxWidth) || size.maxWidth < (size.width ?? 1))
+  )
+    issues.push('its maxWidth is its width to 4');
   if (size?.height != null && !['s', 'm', 'l'].includes(size.height))
     issues.push('its height is s, m or l');
   if (widget.order != null && !Number.isInteger(widget.order))
