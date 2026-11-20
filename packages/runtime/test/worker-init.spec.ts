@@ -10,6 +10,7 @@ import {
   INSTALL_STAMP_FILE,
   installedWorkerPlan,
   lockedVersions,
+  mirrorDependencies,
   packageManager,
   planDigest,
   readWorkerInit,
@@ -416,6 +417,64 @@ describe('initWorker', function () {
     expect(settings).toEqual({
       allowBuilds: { '@pinggy/pinggy': true, oracledb: true },
     });
+  });
+
+  it('should leave out what a module from the npm mirror names a registry package the plan holds by', async () => {
+    /* A module as the mirror publishes it: the registry package it needs
+     * named by its mirror name. The plan holds that package; nothing is
+     * fetched, and no registry is asked (this test has no network) */
+    const hostModules = path.join(host, 'node_modules', '@acme');
+    write(path.join(hostModules, 'net', 'package.json'), {
+      name: '@acme/net',
+      version: '1.0.0',
+      type: 'module',
+      module: './index.js',
+      dependencies: { '@sbext/acme__codec': '^2.0.0' },
+    });
+    write(path.join(hostModules, 'net', 'index.js'), `export {};`);
+    const codec = writeExtension('@acme/codec', '2.1.0');
+    const plan = planOf({ name: '@acme/codec', version: '2.1.0', path: codec });
+    plan.packages['@acme/net'] = {
+      name: '@acme/net',
+      version: '1.0.0',
+      path: path.join(hostModules, 'net'),
+      entryPoint: path.join(hostModules, 'net', 'index.js'),
+      source: 'module',
+    };
+
+    const r = await init(plan);
+    expect(r.record.packages).toEqual({
+      '@acme/codec': '2.1.0',
+      '@acme/net': '1.0.0',
+    });
+    const deps = path.join(workerDir, r.record.depsDir);
+    expect(
+      JSON.parse(
+        fs.readFileSync(path.join(deps, 'pnpm-workspace.yaml'), 'utf8'),
+      ),
+    ).toEqual({ overrides: { '@sbext/acme__codec': '-' } });
+    expect(fs.existsSync(path.join(deps, 'node_modules', '@sbext'))).toBe(
+      false,
+    );
+  });
+
+  it('should keep a mirror name of a package the plan does not hold', () => {
+    const a = writeExtension('@acme/a', '1.0.0', {
+      dependencies: {
+        '@sbext/acme__codec': '^2.0.0',
+        '@sbext/acme__other': '^1.0.0',
+        '@sbext/not-a-mirror-name': '^1.0.0',
+      },
+    });
+    const codec = writeExtension('@acme/codec', '2.1.0');
+    expect(
+      mirrorDependencies(
+        planOf(
+          { name: '@acme/a', version: '1.0.0', path: a },
+          { name: '@acme/codec', version: '2.1.0', path: codec },
+        ),
+      ),
+    ).toEqual(['@sbext/acme__codec']);
   });
 
   it('should install from an updated lockfile as it is, frozen', async () => {
