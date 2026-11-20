@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ILogger } from '@syncbridge/common';
-import { SbError } from '@syncbridge/common';
+import { fromSbextName, SbError, SBEXT_SCOPE } from '@syncbridge/common';
 import semver from 'semver';
 import { installStamp } from './install.js';
 import { packageManager } from './package-manager.js';
@@ -245,19 +245,21 @@ export async function initWorker(
         2,
       ),
     );
-    if (options.allowBuilds?.length) {
+    const settings: Record<string, unknown> = {};
+    if (options.allowBuilds?.length)
+      settings.allowBuilds = Object.fromEntries(
+        [...options.allowBuilds].sort().map(name => [name, true]),
+      );
+    const mirrored = mirrorDependencies(plan);
+    if (mirrored.length)
+      settings.overrides = Object.fromEntries(
+        mirrored.map(name => [name, '-']),
+      );
+    if (Object.keys(settings).length) {
       /* pnpm reads its settings from here; JSON is YAML */
       fs.writeFileSync(
         path.join(temp, 'pnpm-workspace.yaml'),
-        JSON.stringify(
-          {
-            allowBuilds: Object.fromEntries(
-              [...options.allowBuilds].sort().map(name => [name, true]),
-            ),
-          },
-          null,
-          2,
-        ),
+        JSON.stringify(settings, null, 2),
       );
     }
     /* Restoring takes this plan's lockfile only; a new init starts from the
@@ -412,6 +414,42 @@ function resolvedVersion(name: string, dir: string): string | undefined {
  */
 function workerPackages(plan: WorkerPlan): WorkerPlanPackage[] {
   return Object.values(plan.packages).filter(p => !!p.path);
+}
+
+/**
+ * The npm mirror's names (`@sbext/<vendor>__<name>`) that the plan's
+ * packages depend on, each one of a registry package the plan holds. A
+ * package installed from the mirror - SyncBridge's own modules, as a server
+ * comes with them - names the registry packages it needs so. The worker
+ * loads the plan's copy of each (loader.ts), and the mirror is not one a
+ * server reaches: pnpm leaves these out (`overrides`, "-").
+ */
+export function mirrorDependencies(plan: WorkerPlan): string[] {
+  const prefix = `@${SBEXT_SCOPE}/`;
+  const out = new Set<string>();
+  for (const p of workerPackages(plan)) {
+    let json: any;
+    try {
+      json = JSON.parse(
+        fs.readFileSync(path.join(p.path, 'package.json'), 'utf8'),
+      );
+    } catch {
+      continue;
+    }
+    for (const field of ['dependencies', 'optionalDependencies']) {
+      for (const name of Object.keys(json?.[field] || {})) {
+        if (!name.startsWith(prefix)) continue;
+        let registryName: string;
+        try {
+          registryName = fromSbextName(name);
+        } catch {
+          continue;
+        }
+        if (plan.packages[registryName]) out.add(name);
+      }
+    }
+  }
+  return [...out].sort();
 }
 
 /**
