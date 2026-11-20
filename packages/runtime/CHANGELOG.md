@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to f4bc1eded625069587a9ad1eb49d77647a09c67d -->
+<!-- rman:documented-up-to 87d316d13333f5fdd64ae61aecdb70ece802c6d3 -->
+
+## @syncbridge/runtime@2.11.1 (2026-11-20)
+
+### 🐛 Bug Fixes
+
+- **runtime:** a worker's installation leaves out the npm mirror's names of the registry packages its plan holds - a module installed from the mirror (hl7, kafka, redis...) no longer has pnpm ask npmjs for @sbext/syncbridge__builtins; the plan's copy is the one loaded (6dba96f)
+
+---
 
 ## @syncbridge/runtime@2.11.0 (2026-11-12)
 
