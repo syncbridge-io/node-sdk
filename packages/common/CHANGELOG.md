@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 03c4c26c6cf0b4b7d0607a75551a5e17e7cbf95a -->
+<!-- rman:documented-up-to 8ab1184b941b04cc9451bdbce25f1e241aabb775 -->
+
+## @syncbridge/common@2.29.0 (2026-11-24)
+
+### ✨ Features
+
+- packet capture - the network:capture permission, the capture request and its refusals, the network-interfaces enum source; the app given SyncBridge's packetCapture by AppFactory and AppWorker (3c8507e)
+
+---
 
 ## @syncbridge/common@2.28.0 (2026-11-24)
 
