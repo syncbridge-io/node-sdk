@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 87d316d13333f5fdd64ae61aecdb70ece802c6d3 -->
+<!-- rman:documented-up-to 8ab1184b941b04cc9451bdbce25f1e241aabb775 -->
+
+## @syncbridge/runtime@2.12.0 (2026-11-24)
+
+### ✨ Features
+
+- packet capture - the network:capture permission, the capture request and its refusals, the network-interfaces enum source; the app given SyncBridge's packetCapture by AppFactory and AppWorker (3c8507e)
+
+---
 
 ## @syncbridge/runtime@2.11.1 (2026-11-20)
 
