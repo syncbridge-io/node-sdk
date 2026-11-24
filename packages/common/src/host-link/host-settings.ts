@@ -71,3 +71,16 @@ export interface HostSettingsPutRequest {
   hash: string;
   document: HostSettingsDocument;
 }
+
+/**
+ * Where, under Console's API, a host taking a record's identity takes its
+ * settings back (restore requested: HostWorkersSyncResponse.restore)
+ */
+export const HOST_SETTINGS_RESTORE_PATH = 'host/settings/restore';
+
+/** The settings a host takes back: none kept, none */
+export interface HostSettingsRestoreResponse {
+  hash?: string;
+  /** Its secret values sealed for the host */
+  document?: HostSettingsDocument;
+}

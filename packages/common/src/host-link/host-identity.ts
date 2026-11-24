@@ -20,6 +20,67 @@ import {
 export const HOST_PAIR_PATH = '/hosts/pair';
 
 /**
+ * What a machine tells of itself as it pairs: Console takes the record's
+ * identity to it - its workers, its settings - when it is fresh, and asks
+ * first when it has workers of its own
+ */
+export interface HostPairState {
+  /** The workers it has now */
+  workers: number;
+  /** The record it is paired with at this Console: none, never paired */
+  hostId?: string;
+  /** Its own settings' hash (HostSettingsSyncRequest's) */
+  settingsHash?: string;
+}
+
+/** What a host sends to pair (HOST_PAIR_PATH) */
+export interface HostPairRequest {
+  code: string;
+  publicKey: string;
+  sealPublicKey: string;
+  /** Told by a host that knows it: one that does not is paired as before */
+  state?: HostPairState;
+  /**
+   * The user said yes: its workers replaced by those the record keeps
+   * (asked by HOST_NOT_FRESH)
+   */
+  replace?: boolean;
+}
+
+/**
+ * Pairing refused (409) until the user says yes: the record keeps workers
+ * or settings, and the machine has workers of its own. The code is not
+ * taken: the same one is sent again with `replace`. Told as the error's
+ * code, with HostNotFreshDetails as its details.
+ */
+export const HOST_NOT_FRESH = 'HOST_NOT_FRESH';
+
+/** What the user is told before the machine's workers are replaced */
+export interface HostNotFreshDetails {
+  /** The record's name at Console */
+  name: string;
+  /** What Console keeps of it */
+  keptWorkers: number;
+  keptSettings: boolean;
+  /** The workers the machine has */
+  workers: number;
+}
+
+/**
+ * A key another machine has replaced (410): the record was paired with
+ * another machine, this one is to stop. Told as the error's code, with
+ * HostReplacedDetails as its details, on the link and on every API.
+ */
+export const HOST_REPLACED = 'HOST_REPLACED';
+
+/** Which record, replaced when */
+export interface HostReplacedDetails {
+  name: string;
+  /** ISO 8601 */
+  replacedAt: string;
+}
+
+/**
  * The header a host's token for Console's APIs comes in: a bearer token
  * is a user's, there
  */
