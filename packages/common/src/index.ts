@@ -26,6 +26,7 @@ export * from './host-link/host-identity.js';
 export * from './host-link/host-link.js';
 export * from './host-link/host-packages.js';
 export * from './host-link/host-permissions.js';
+export * from './host-link/host-settings.js';
 export * from './host-link/host-values.js';
 export * from './host-link/host-workers.js';
 export * from './host-link/multiplexer.js';
