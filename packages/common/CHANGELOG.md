@@ -1,6 +1,16 @@
 # Changelog
 
-<!-- rman:documented-up-to c619d44eb044f240dc7b49bc405bc36d26d5365f -->
+<!-- rman:documented-up-to 03c4c26c6cf0b4b7d0607a75551a5e17e7cbf95a -->
+
+## @syncbridge/common@2.28.0 (2026-11-24)
+
+### ✨ Features
+
+- **common:** a host's own settings kept by Console - what an admin set, its packages, their update policies, its plugins' approvals - told by a hash and sent when Console has them not (HOST_SETTINGS_PATH) (eb8ad1e)
+- **common:** a record's identity taken by the machine that pairs with it - the state a host tells as it pairs, HOST_NOT_FRESH until its user says replace, HOST_REPLACED to a machine left behind; its settings taken back (HOST_SETTINGS_RESTORE_PATH) and told with its workers' restore (c483db1)
+- **common:** a host's own IP addresses told with its status - IPv4 first, then IPv6, loopback, link-local and virtual interfaces left out, MAX_HOST_ADDRESSES at most (d16fa26)
+
+---
 
 ## @syncbridge/common@2.27.0 (2026-11-17)
 
