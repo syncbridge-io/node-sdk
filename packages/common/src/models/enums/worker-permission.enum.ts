@@ -20,6 +20,11 @@ export enum WorkerPermission {
   NativeCodeExecute = 'native-code:execute',
   /** Starting other programs: outside Node's permission model too */
   ChildProcessSpawn = 'child-process:spawn',
+  /**
+   * Reading a network interface's frames: SyncBridge captures them for
+   * it, an interface and a filter at a time, each approved by an admin
+   */
+  NetworkCapture = 'network:capture',
 }
 
 EnumType(WorkerPermission, {
@@ -33,6 +38,8 @@ EnumType(WorkerPermission, {
       "Loads and runs native addons (.node), outside Node's permission model: a module with one",
     ChildProcessSpawn:
       "Starts other programs, outside Node's permission model too",
+    NetworkCapture:
+      "Reads a network interface's frames, captured by SyncBridge as an admin approved",
   } as Record<keyof typeof WorkerPermission, string>,
 });
 

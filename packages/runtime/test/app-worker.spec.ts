@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream';
 import {
   App,
   AppBase,
@@ -110,6 +111,22 @@ describe('AppWorker', () => {
         status: 'started',
       }),
     );
+  });
+
+  it('should give the app the packet capture it is given, and none without it', async () => {
+    const capture = async () => Readable.from([]);
+    const given = new AppWorker({ dataDirectory: '', packetCapture: capture });
+    try {
+      await given.updateProfile(profile(), logger);
+      expect(given.app!.packetCapture).toBe(capture);
+      /* Its profile changed: still the same */
+      await given.updateProfile(profile({ level: 2 }), logger);
+      expect(given.app!.packetCapture).toBe(capture);
+    } finally {
+      await given.stop();
+    }
+    await worker.updateProfile(profile(), logger);
+    expect(worker.app!.packetCapture).toBeUndefined();
   });
 
   it("should tell a component's lines: at once, then at most once a second", async () => {

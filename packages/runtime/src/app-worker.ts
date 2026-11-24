@@ -9,6 +9,7 @@ import {
   type DashboardSink,
   type ILogger,
   type LogChannel,
+  type PacketCapture,
   type Profile,
   SbError,
   type ServiceStatus,
@@ -100,6 +101,7 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
       return AppFactory.updateAppSilent(this.app, profile, {
         logger,
         logSink: this.options.logSink,
+        packetCapture: this.options.packetCapture,
         dashboardSink: this._dashboardSink,
         dashboardCounters: this._counters,
       });
@@ -108,6 +110,7 @@ export class AppWorker extends EventEmitter<AppWorker.Events> {
       logger,
       dataDirectory: this.options.dataDirectory,
       logSink: this.options.logSink,
+      packetCapture: this.options.packetCapture,
       dashboardSink: this._dashboardSink,
       dashboardCounters: this._counters,
     });
@@ -206,6 +209,11 @@ export namespace AppWorker {
     dashboardSink?: (ops: DashboardOp[]) => void;
     /** The interval, in milliseconds: default 1000, at least 250 */
     dashboardInterval?: number;
+    /**
+     * Opens a network interface's capture for the app's components; without
+     * it, none is
+     */
+    packetCapture?: PacketCapture;
   }
 
   export interface Events {

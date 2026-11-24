@@ -10,6 +10,8 @@ export enum EnumSource {
   SerialPorts = 'serial-ports',
   /** The server's IPv4 addresses, its loopback's apart */
   NetworkAddresses = 'network-addresses',
+  /** The server's network interfaces, by their names, its loopback's apart */
+  NetworkInterfaces = 'network-interfaces',
 }
 
 EnumType(EnumSource, {
@@ -19,5 +21,7 @@ EnumType(EnumSource, {
   meanings: {
     SerialPorts: 'The serial ports of the server, by their paths',
     NetworkAddresses: "The server's IPv4 addresses, its loopback's apart",
+    NetworkInterfaces:
+      "The server's network interfaces, by their names, its loopback's apart",
   },
 });
