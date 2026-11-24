@@ -87,7 +87,17 @@ export interface HostStatusMessage {
   workers: HostWorkerSummary;
   /** Its packages in use: none from a host older than common 2.13 */
   usage?: HostUsage;
+  /**
+   * Its own IP addresses, IPv4 first, then IPv6, each plain (no prefix
+   * length); loopback, IPv6 link-local and Docker's and other virtual
+   * interfaces' left out; MAX_HOST_ADDRESSES at most. None from a host
+   * older than common 2.28.
+   */
+  addresses?: string[];
 }
+
+/** The most addresses a host tells of itself */
+export const MAX_HOST_ADDRESSES = 16;
 
 /**
  * A host's usage counted: each version it installed from the registry, how
