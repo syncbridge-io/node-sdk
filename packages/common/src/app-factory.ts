@@ -16,7 +16,7 @@ import {
   WidgetWriter,
 } from './dashboard/widget-writer.js';
 import type { LogChannel } from './decorators/log-channel.decorator.js';
-import type { ILogger } from './interfaces/index.js';
+import type { ILogger, PacketCapture } from './interfaces/index.js';
 import {
   AppMetadata,
   type DashboardMetadataRecord,
@@ -50,6 +50,8 @@ export namespace AppFactory {
      * count() drops what it is given
      */
     dashboardCounters?: DashboardCounters;
+    /** Opens a network interface's capture; without it, none is */
+    packetCapture?: PacketCapture;
   }
 
   interface ConfigureAppContext {
@@ -172,6 +174,7 @@ export namespace AppFactory {
   }> {
     if (options?.logger) app.logger = options.logger;
     if (options?.dataDirectory) app.dataDirectory = options.dataDirectory;
+    if (options?.packetCapture) app.packetCapture = options.packetCapture;
     const ctx: ConfigureAppContext = {
       stackExecutor: new StackExecutor(),
       app,
@@ -229,6 +232,8 @@ export namespace AppFactory {
         values: r1.profile.values ? clone(r1.profile.values) : {},
         dataDirectory: ctx.options?.dataDirectory,
       });
+      if (ctx.options?.packetCapture)
+        ctx.app.packetCapture = ctx.options.packetCapture;
     } else {
       /* Update values */
       if (
