@@ -101,4 +101,10 @@ export interface HostWorkersRestoreStatusRequest {
   workers: { id: string; state: HostWorkerRestoreState; message?: string }[];
   /** Each one tried: the reinstall is over, those waiting wait on the host */
   done?: boolean;
+  /**
+   * The host's own settings taken back: restored, packages waiting, or
+   * failed - and why. The restore ends once both are told.
+   */
+  settings?: HostWorkerRestoreState;
+  settingsMessage?: string;
 }
