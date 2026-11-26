@@ -171,6 +171,24 @@ describe('computeWorkerPlan', () => {
     expect(r.packages['@syncbridge/builtins'].source).toBe('module');
   });
 
+  it("should load a component of the app's own package at the app's version, a prerelease too", () => {
+    const pre = pkg('@abisena/lab', '1.4.0-pc.1');
+    const r = plan(pre, registry(pre), {
+      device: { classUri: '@abisena/lab:Listener', components: {} },
+    });
+    expect(r.packages['@abisena/lab'].version).toBe('1.4.0-pc.1');
+    const r2 = computeWorkerPlan({
+      app: { pkg: pre, version: pre.version } as any,
+      profile: {
+        components: { device: { uri: '@abisena/lab:Listener' } },
+      } as any,
+      versionsOf: registry(pre),
+      isInstalled: () => true,
+      hostURL: 'file:///app/package.json',
+    });
+    expect(r2.packages['@abisena/lab'].version).toBe('1.4.0-pc.1');
+  });
+
   describe('package versions', () => {
     const client = {
       client: { classUri: '@acme/hl7:Hl7Link', components: {} },
