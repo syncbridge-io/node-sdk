@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 8ab1184b941b04cc9451bdbce25f1e241aabb775 -->
+<!-- rman:documented-up-to 6c2c38209a32b09856a506c9088d8f509d7f7abb -->
+
+## @syncbridge/runtime@2.12.1 (2026-11-26)
+
+### 🐛 Bug Fixes
+
+- **runtime:** a component of the app's own package is loaded at the app's version - a prerelease app's worker no longer fails its plan on the component's "*" (4fff28e)
+
+---
 
 ## @syncbridge/runtime@2.12.0 (2026-11-24)
 
