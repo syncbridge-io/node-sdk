@@ -85,6 +85,61 @@ App({ className: '${className}' })(${className});
   );
 }
 
+/**
+ * An installed prerelease app package bringing a component of its own,
+ * the app using it - a package with no stable version installed
+ */
+async function writePrereleaseApp(dir: string, name: string, version: string) {
+  write(
+    path.join(dir, 'package.json'),
+    JSON.stringify({ name, version, type: 'module', module: 'index.js' }),
+  );
+  write(
+    path.join(dir, 'index.js'),
+    `import { App, AppBase, Component, ComponentBase } from '@syncbridge/common';
+export class RtDevice extends ComponentBase {}
+Component({ className: 'RtDevice' })(RtDevice);
+export class RtPreApp extends AppBase {
+  async _start(abortSignal) {
+    this.logger?.info('device ' + (this.components.device ? 'created' : 'missing'));
+    return super._start(abortSignal);
+  }
+}
+App({ className: 'RtPreApp' })(RtPreApp);
+`,
+  );
+  const device = {
+    classType: 'component',
+    uri: `${name}:RtDevice`,
+    className: 'RtDevice',
+    displayName: 'RtDevice',
+    version,
+  };
+  const metadata = await normalizeAppMetadata({
+    classType: 'app',
+    uri: `${name}:RtPreApp`,
+    className: 'RtPreApp',
+    displayName: 'RtPreApp',
+    version,
+    components: {
+      device: {
+        interfaceUri: device.uri,
+        classUri: device.uri,
+        required: true,
+      },
+    },
+  } as any);
+  write(
+    path.join(dir, 'syncbridge-manifest.json'),
+    JSON.stringify({
+      components: [
+        { exportName: 'RtDevice', entryPoint: './index.js', ...device },
+      ],
+      apps: [{ exportName: 'RtPreApp', entryPoint: './index.js', ...metadata }],
+    }),
+  );
+}
+
 describe('startWorker', function () {
   this.timeout(60000);
   let root: string;
@@ -100,21 +155,28 @@ describe('startWorker', function () {
     return pkg;
   }
 
-  async function start(name: string, createOnly?: boolean) {
+  async function start(
+    name: string,
+    createOnly?: boolean,
+    components?: Record<string, any>,
+  ) {
     const app = packages.get(name)![0].apps![0];
+    const profile = {
+      id: 'rt',
+      displayName: 'Runtime test',
+      appUri: app.uri,
+      components,
+    } as any;
     const plan = computeWorkerPlan({
       app,
+      profile,
       versionsOf: n => packages.get(n),
       isInstalled: () => true,
       hostURL: pathToFileURL(path.join(REPO_ROOT, 'package.json')).href,
     });
     return (worker = await startWorker({
       plan,
-      profile: {
-        id: 'rt',
-        displayName: 'Runtime test',
-        appUri: app.uri,
-      } as any,
+      profile,
       dataDirectory: path.join(root, 'data-' + name.split('/')[1]),
       execArgv: EXEC_ARGV,
       env: { ...process.env, NODE_PATH: '' },
@@ -150,6 +212,18 @@ describe('startWorker', function () {
     expect(w.logs.some(l => /open when it stopped/.test(l.message))).toBe(
       false,
     );
+  });
+
+  it('should start an app given only a prerelease, its own component in it', async () => {
+    const dir = path.join(root, 'rt__pre@1.4.0-pc.1');
+    await writePrereleaseApp(dir, '@rt/pre', '1.4.0-pc.1');
+    await install(dir);
+    /* As a profile names it: its own package, no version */
+    const w = await start('@rt/pre', false, {
+      device: { uri: '@rt/pre:RtDevice' },
+    });
+    expect(await w.waitForStatus(['started'])).toBe('started');
+    expect(w.logs.map(l => l.message)).toContain('device created');
   });
 
   it('should end once its app stopped, telling what the app left open', async () => {

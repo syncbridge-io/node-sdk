@@ -28,6 +28,26 @@ import { readExtensionManifest } from './package-manifest.js';
 const instanceSymbol = Symbol.for('instance');
 
 /**
+ * Of an extension's versions, the first `range` takes. With no range
+ * ("*"), a stable one first, else a prerelease: a worker given only a
+ * prerelease of a package finds its classes
+ */
+function pickVersion<T extends { version: string }>(
+  items: T[] | undefined,
+  range?: string,
+): T | undefined {
+  if (!items) return;
+  if (range && range !== '*')
+    return items.find(v => semver.satisfies(v.version, range));
+  return (
+    items.find(v => semver.satisfies(v.version, '*')) ??
+    items.find(v =>
+      semver.satisfies(v.version, '*', { includePrerelease: true }),
+    )
+  );
+}
+
+/**
  * The `ExtensionRegistry` class is responsible for managing component and app extensions,
  * as well as handling the registration of extension packages. It provides methods to locate and
  * retrieve extensions by their class name and version, and offers the ability to dynamically register
@@ -175,9 +195,7 @@ export class ExtensionRegistry extends AsyncEventEmitter {
     uri: string,
     version: string = '*',
   ): ComponentExtension | undefined {
-    return this.components
-      .get(uriToId(uri))
-      ?.find(v => semver.satisfies(v.version, version || '*'));
+    return pickVersion(this.components.get(uriToId(uri)), version);
   }
 
   /**
@@ -197,9 +215,7 @@ export class ExtensionRegistry extends AsyncEventEmitter {
    *
    */
   findApp(uri: string, version: string = '*'): AppExtension | undefined {
-    return this.apps
-      .get(uriToId(uri))
-      ?.find(v => semver.satisfies(v.version, version || '*'));
+    return pickVersion(this.apps.get(uriToId(uri)), version);
   }
 
   /**
