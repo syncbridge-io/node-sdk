@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 6c2c38209a32b09856a506c9088d8f509d7f7abb -->
+<!-- rman:documented-up-to 282f192e45653f4f083e25575c8c5938d7d994b5 -->
+
+## @syncbridge/runtime@2.12.2 (2026-11-26)
+
+### 🐛 Bug Fixes
+
+- **common:** a class asked with no version is found in a prerelease when no stable version is there - a worker given only a prerelease of its app starts (794e1d7)
+
+---
 
 ## @syncbridge/runtime@2.12.1 (2026-11-26)
 
