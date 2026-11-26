@@ -115,9 +115,13 @@ interface Requirement {
  *
  * The roots are the app, at the version the profile resolved to, and
  * the package of every component its metadata assigns - and its profile
- * names, when given one to migrate; see computePlan.
+ * names, when given one to migrate; see computePlan. A component of the
+ * app's own package adds nothing: it is loaded at the app's version, a
+ * prerelease too.
  */
 export function computeWorkerPlan(args: ComputeWorkerPlanArgs): WorkerPlan {
+  /* A component of the app's own package is loaded at the app's version */
+  const own = args.app.pkg.name;
   const roots: PlanRoot[] = [
     {
       name: args.app.pkg.name,
@@ -128,7 +132,8 @@ export function computeWorkerPlan(args: ComputeWorkerPlanArgs): WorkerPlan {
   const walk = (components?: ElementComponentMetadataRecord) => {
     for (const [key, cmp] of Object.entries(components || {})) {
       const name = cmp.classUri?.split(':')[0];
-      if (name) roots.push({ name, range: '*', by: `component "${key}"` });
+      if (name && name !== own)
+        roots.push({ name, range: '*', by: `component "${key}"` });
       walk(cmp.components);
     }
   };
@@ -136,7 +141,8 @@ export function computeWorkerPlan(args: ComputeWorkerPlanArgs): WorkerPlan {
   const named = (components?: ProfileComponentRecord, at = '') => {
     for (const [key, cmp] of Object.entries(components || {})) {
       const name = cmp?.uri?.split(':')[0];
-      if (name) roots.push({ name, range: '*', by: `component "${at}${key}"` });
+      if (name && name !== own)
+        roots.push({ name, range: '*', by: `component "${at}${key}"` });
       named(cmp?.components, `${at}${key}/`);
     }
   };
