@@ -58,7 +58,8 @@ export class ElementMetadata {
 
   @ApiField({
     label: 'Icon',
-    description: 'Icon url',
+    description:
+      "The class's icon, an image URL; spm makes it a data: URL from docs/<ClassName>/icon.svg or icon.png",
   })
   declare iconUrl?: string;
 
