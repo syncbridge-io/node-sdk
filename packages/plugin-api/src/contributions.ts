@@ -159,7 +159,7 @@ export namespace Contribution {
   /** What every component may have */
   interface Common {
     label: string;
-    /** A name of the UI's icon set (lucide): `database`, `send` */
+    /** A name of the UI's icon set (peacox-icons, docs/ui-icons.md): `database`, `send` */
     icon?: string;
     description?: string;
     /** Not to be used now, and why */
