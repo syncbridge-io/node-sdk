@@ -197,6 +197,7 @@ function _materializeComponents(
           metadataComponent,
           profileComponent.uri,
           reg.metadata.variables,
+          reg.metadata.interfaces,
         );
         materializedComponent.variables = sortVariables(
           materializedComponent.variables,

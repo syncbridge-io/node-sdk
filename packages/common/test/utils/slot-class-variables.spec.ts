@@ -37,6 +37,10 @@ class SlotCapture extends ComponentBase {
   declare values: CaptureVariables;
 }
 
+/* A class standing in for SlotCapture, as a test's mock does */
+@Component({ className: 'SlotCaptureMock1' })
+class SlotCaptureMock extends SlotCapture {}
+
 @App({ className: 'SlotVarsApp' })
 class SlotVarsApp extends AppBase {
   @App.UseComponent({
@@ -53,7 +57,7 @@ describe("A slot's settings for the class put in it", () => {
 
   before(async () => {
     end = ExtensionRegistry.use(new ExtensionRegistry());
-    for (const cls of [SlotListen, SlotCapture, SlotVarsApp])
+    for (const cls of [SlotListen, SlotCapture, SlotCaptureMock, SlotVarsApp])
       await ExtensionRegistry.registerClass(cls as any);
   });
 
@@ -84,6 +88,12 @@ describe("A slot's settings for the class put in it", () => {
     const capture = slotOf(SlotCapture.uri);
     expect(capture.variables.port.default).toBe(24000);
     expect(capture.variables.filter.default).toBe('udp port 24000');
+  });
+
+  it('should give a class extending one of its oneOf what the slot gives that class', () => {
+    const mock = slotOf(SlotCaptureMock.uri);
+    expect(mock.variables.port.default).toBe(24000);
+    expect(mock.variables.filter.default).toBe('udp port 24000');
   });
 
   it('should pass over an override of a setting the class does not define', () => {
