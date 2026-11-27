@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 70c9e726f2ba5d153c2ae99104daf9f548387307 -->
+<!-- rman:documented-up-to b66bfc5112af573fd492abadef1a6c5580bfaafd -->
+
+## @syncbridge/common@2.31.0 (2026-11-27)
+
+### ✨ Features
+
+- **common:** optional label on component slots (6636804)
+
+---
 
 ## @syncbridge/common@2.30.1 (2026-11-27)
 
