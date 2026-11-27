@@ -39,7 +39,7 @@ export async function migrateProfileTo(
 ): Promise<MigratedProfile> {
   await initializeModelsDocument();
   const { profile: carried, changes } = carryProfile(profile);
-  const steps = profileMigrations(carried);
+  const steps = profileMigrations(carried, { changes });
   const migrated = await runProfileMigrations(
     carried,
     steps,

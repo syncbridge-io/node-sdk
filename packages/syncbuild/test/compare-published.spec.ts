@@ -137,6 +137,44 @@ describe('A version compared with the last published one', () => {
     expect(compareMetadata(before, now, { major: false }).errors).toEqual([]);
   });
 
+  it("should compare a slot's settings by class, as it overrides them for one class of its oneOf", () => {
+    const before = [
+      app({
+        components: { mirror: { interfaceUri: 'p:Io', required: true } },
+      }),
+    ];
+    const slot = (variablesOf: any) => [
+      app({
+        components: {
+          mirror: { interfaceUri: 'p:Io', required: true, variablesOf },
+        },
+      }),
+    ];
+    /* A default for one class, added in a minor */
+    expect(
+      compareMetadata(
+        before,
+        slot({ PacketCapture: { filter: { default: 'udp port 24000' } } }),
+        { major: false },
+      ),
+    ).toEqual({ errors: [], warnings: [] });
+    /* A former name still in use, told at the class it is for */
+    expect(
+      compareMetadata(
+        before,
+        slot({
+          PacketCapture: {
+            filter: { default: 'udp', formerly: ['expr'] },
+            expr: { default: 'tcp' },
+          },
+        }),
+        { major: true },
+      ).errors,
+    ).toEqual([
+      'Gw.mirror.PacketCapture.filter: formerly "expr", a setting still',
+    ]);
+  });
+
   it('should tell a major version, a 0.x minor as one', () => {
     expect(isMajorChange('1.4.2', '2.0.0')).toBe(true);
     expect(isMajorChange('1.4.2', '1.5.0')).toBe(false);

@@ -57,6 +57,7 @@ export * from './utils/permission-codes.js';
 export * from './utils/profile-editor.js';
 export * from './utils/registry-names.js';
 export * from './utils/slot-interfaces.js';
+export * from './utils/slot-variables.js';
 export * from './utils/type-guards.js';
 export * from './utils/uri-to-id.js';
 export * from './utils/value-refs.js';

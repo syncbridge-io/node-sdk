@@ -123,6 +123,21 @@ The app tells which it was given (`this.hl7 instanceof HL7Server`). Where
 the kinds do share what the app uses, an abstract base they both extend
 serves better: one slot typed by it, no branching.
 
+A slot may give the class put in it other defaults for its settings:
+`variables` for every class, `variablesOf` for one class of its `oneOf`
+alone, by the class's name. A setting the chosen class does not define
+is passed over.
+
+```ts
+@App.UseComponent({
+  oneOf: [UdpListener, PacketCapture],
+  required: true,
+  variables: { port: { default: 24000 } },
+  variablesOf: { PacketCapture: { filter: { default: 'udp port 24000' } } },
+})
+declare readonly mirror: UdpListener | PacketCapture;
+```
+
 ## Variables
 
 `@DefineVariable` describes a setting. Its type is read from the
@@ -208,6 +223,21 @@ or dropped, never made or changed. Should it fail, or leave values that
 are not valid, the worker is held on the version they were written with,
 told why. `profileMigrations` and `runProfileMigrations` run them as
 SyncBridge does.
+
+A class renamed - several model apps folded into one, their names in its
+`formerly` - is told which one a profile was written for: `m.fromUri`,
+the former class's uri; undefined when the class kept its name.
+
+```ts
+@App({ formerly: ['EfficiaCM10App', 'EfficiaCM12App'] })
+class EfficiaCmApp extends AppBase {
+  @App.MigrateProfile()
+  static migrateProfile(m: ProfileMigration) {
+    const model = m.fromUri?.match(/EfficiaCM(\d+)App$/)?.[1];
+    return model ? { ...m.values, model: `CM${model}` } : m.values;
+  }
+}
+```
 
 `spm publish` compares the version with its package's last published one:
 a class, a slot, a setting or a choice gone with nothing declared, or a

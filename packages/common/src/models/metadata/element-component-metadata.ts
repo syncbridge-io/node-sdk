@@ -83,6 +83,14 @@ export class ElementComponentMetadata {
   declare variables?: VariableMetadataRecord;
 
   @ApiField({
+    label: 'Variables by class',
+    description:
+      "Variables to be overridden for one class of a oneOf slot alone, by its class name: { PacketCapture: { filter: { default: 'udp port 24000' } } } - over `variables`",
+    type: 'any',
+  })
+  declare variablesOf?: Record<string, VariableMetadataRecord>;
+
+  @ApiField({
     label: 'Components',
     description: 'Components settings of the app',
   })

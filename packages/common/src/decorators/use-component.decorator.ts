@@ -5,6 +5,7 @@ import { AppBase } from '../classes/app-base.js';
 import { ComponentBase } from '../classes/component-base.js';
 import { CLASS_METADATA } from '../constants.js';
 import { ElementComponentMetadata } from '../models/index.js';
+import { classNameOf } from '../utils/slot-variables.js';
 import { defineOwnMetadata, formerNames } from './decorator-helpers.js';
 
 export function UseComponent<T extends AppBase | ComponentBase>(
@@ -24,6 +25,15 @@ export function UseComponent<T extends AppBase | ComponentBase>(
         );
       return u;
     });
+    /* Overrides for one class of its oneOf alone: by a class name in it */
+    if (options.variablesOf) {
+      const names = (oneOf ?? []).map(classNameOf);
+      for (const name of Object.keys(options.variablesOf))
+        if (!names.includes(name))
+          throw new TypeError(
+            `${String(propertyKey)}: variablesOf names "${name}", not a class of its oneOf (${names.join(', ') || 'none'})`,
+          );
+    }
     let uri = options.uri ?? oneOf?.[0];
 
     if (!uri) {
@@ -63,7 +73,7 @@ export namespace UseComponent {
   export interface Options extends Partial<
     StrictOmit<
       ElementComponentMetadata,
-      'classUri' | 'interfaceUri' | 'oneOf' | 'formerly'
+      'classUri' | 'interfaceUri' | 'oneOf' | 'formerly' | 'variablesOf'
     >
   > {
     uri?: string;
@@ -74,5 +84,15 @@ export namespace UseComponent {
      * `oneOf: [HL7Client, HL7Server]` - its property typed as either
      */
     oneOf?: (string | { uri: string })[];
+    /**
+     * Settings overridden for one class of its `oneOf` alone, by the
+     * class's name - over `variables`, which every class takes:
+     * `variablesOf: { PacketCapture: { filter: { default: 'udp port 24000' } } }`.
+     * An override of a setting the class does not define is passed over.
+     */
+    variablesOf?: Record<
+      string,
+      NonNullable<ElementComponentMetadata['variables']>
+    >;
   }
 }

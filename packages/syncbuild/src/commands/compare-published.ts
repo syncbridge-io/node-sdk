@@ -83,6 +83,19 @@ export function compareMetadata(
         errors,
         true,
       );
+      /* And as it overrides them for one class of its oneOf alone */
+      for (const cls of new Set([
+        ...Object.keys(was?.variablesOf || {}),
+        ...Object.keys(def.variablesOf || {}),
+      ]))
+        compareVariables(
+          was?.variablesOf?.[cls],
+          def.variablesOf?.[cls],
+          `${now.className}.${slot}.${cls}`,
+          breaking,
+          errors,
+          true,
+        );
     }
   }
   return { errors, warnings };
