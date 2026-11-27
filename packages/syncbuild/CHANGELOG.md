@@ -1,6 +1,18 @@
 # Changelog
 
-<!-- rman:documented-up-to c974be4c90c238deee9d234398b0b226fee13d1f -->
+<!-- rman:documented-up-to c2bd42d207efd6f0ef0b41e4e2df2131c5d9e18b -->
+
+## @syncbridge/syncbuild@2.19.0 (2026-11-27)
+
+### ✨ Features
+
+- **common:** give a slot's class only its own settings, and defaults by class (variablesOf) (86f1739)
+
+### 🧪 Tests
+
+- **syncbuild:** compare a slot's settings by class (variablesOf) (60b4f1f)
+
+---
 
 ## @syncbridge/syncbuild@2.18.0 (2026-11-16)
 

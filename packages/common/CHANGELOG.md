@@ -1,6 +1,15 @@
 # Changelog
 
-<!-- rman:documented-up-to 282f192e45653f4f083e25575c8c5938d7d994b5 -->
+<!-- rman:documented-up-to c2bd42d207efd6f0ef0b41e4e2df2131c5d9e18b -->
+
+## @syncbridge/common@2.30.0 (2026-11-27)
+
+### ✨ Features
+
+- **common:** tell a profile migration the class it was written for when renamed (fromUri) (17ee758)
+- **common:** give a slot's class only its own settings, and defaults by class (variablesOf) (86f1739)
+
+---
 
 ## @syncbridge/common@2.29.1 (2026-11-26)
 

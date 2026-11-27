@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to 9a529577bf206212d0345c4b937f689ec920c9b8 -->
+<!-- rman:documented-up-to c2bd42d207efd6f0ef0b41e4e2df2131c5d9e18b -->
+
+## @syncbridge/testing@2.7.0 (2026-11-27)
+
+### ✨ Features
+
+- **common:** tell a profile migration the class it was written for when renamed (fromUri) (17ee758)
+
+---
 
 ## @syncbridge/testing@2.5.0 (2026-11-01)
 
