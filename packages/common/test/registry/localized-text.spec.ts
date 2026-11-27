@@ -49,11 +49,15 @@ describe('Text by language', () => {
     ]);
   });
 
-  it("should tell a slot's description wrong, a slot's within it too, by path", () => {
+  it("should tell a slot's label or description wrong, a slot's within it too, by path", () => {
     expect(
       slotTextProblems(
         {
-          client: { interfaceUri: 'p:C', description: { en: 'Client' } },
+          client: {
+            interfaceUri: 'p:C',
+            label: { en: 'Client', tr: '' },
+            description: { en: 'Client' },
+          },
           server: {
             interfaceUri: 'p:S',
             description: 'Server',
@@ -65,6 +69,7 @@ describe('Text by language', () => {
         'Hl7App',
       ),
     ).toEqual([
+      `Hl7App's client component label in tr is empty`,
       `Hl7App's server.tls component description is told in "turkish", not a language: en, tr, pt-BR...`,
     ]);
   });

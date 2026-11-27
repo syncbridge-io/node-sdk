@@ -47,6 +47,7 @@ export class Prc1App extends AppBase {
 
   @App.UseComponent({
     uri: Cmp1Component.uri,
+    label: { en: 'Second', tr: 'İkinci' },
   })
   declare cmp2: Cmp1Component;
 }

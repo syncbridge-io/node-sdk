@@ -45,6 +45,7 @@ describe('materializeMetadata', () => {
     expect(metadata.components!.cmp1.classUri).toBe(Cmp1Component.uri);
     expect(metadata.components!.cmp1.variables).toBeTruthy();
     expect(metadata.components!.cmp1.variables!.var1).toBeTruthy();
+    expect(metadata.components!.cmp1.label).toBeUndefined();
     expect(metadata.components!.cmp2).toBeUndefined(); // Optional and not provided
   });
 
@@ -83,6 +84,10 @@ describe('materializeMetadata', () => {
     expect(metadata.components!.cmp2).toBeTruthy();
     expect(metadata.components!.cmp2.interfaceUri).toBe(Cmp1Component.uri);
     expect(metadata.components!.cmp2.classUri).toBeUndefined();
+    expect(metadata.components!.cmp2.label).toEqual({
+      en: 'Second',
+      tr: 'İkinci',
+    });
   });
 
   it('should throw error if required component is missing', () => {

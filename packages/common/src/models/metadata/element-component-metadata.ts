@@ -63,6 +63,14 @@ export class ElementComponentMetadata {
   declare formerly?: string[];
 
   @ApiField({
+    label: 'Label',
+    description:
+      "The slot's short name: text, or text by language ({ en: 'Mirror stream', tr: 'Ayna akışı' }) - shown in the reader's language where the slot is named, its key in words when not given; spm takes the package's locales/ into it",
+    type: 'any',
+  })
+  declare label?: LocalizedText;
+
+  @ApiField({
     label: 'Description',
     description:
       "What the slot is for: text, or text by language ({ en: '...', tr: '...' }) - shown in the reader's language; spm takes the package's locales/ into it",

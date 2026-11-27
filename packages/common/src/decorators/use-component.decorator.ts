@@ -50,10 +50,11 @@ export function UseComponent<T extends AppBase | ComponentBase>(
     const metadata = defineOwnMetadata(target.constructor, CLASS_METADATA);
     metadata.components = metadata.components || {};
     const formerly = formerNames(options.formerly);
-    /* Redeclared, its description not told: the base's kept - the texts
-     * its locales give it with it */
-    const { description } = metadata.components[propertyKey] ?? {};
+    /* Redeclared, its label or description not told: the base's kept -
+     * the texts its locales give it with it */
+    const { label, description } = metadata.components[propertyKey] ?? {};
     metadata.components[propertyKey] = {
+      ...(label !== undefined ? { label } : {}),
       ...(description !== undefined ? { description } : {}),
       interfaceUri: uri,
       ...omit(options as any, [
