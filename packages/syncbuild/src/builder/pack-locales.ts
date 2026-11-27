@@ -31,8 +31,8 @@ import { findWorkspacePackage } from '../workspace.js';
  *     "@abisena/iomt-common:TestConfigurationVariables" } } } }
  *
  * A class's component slots are told by their names, a slot within one by
- * its dotted path: { "components": { "hl7Client": { "description": ...
- * } } }.
+ * its dotted path: { "components": { "hl7Client": { "label": "HL7",
+ * "description": ... } } }.
  *
  * Its dashboards by their names; in each, its sections and widgets by id,
  * a widget's columns by field and its chart's series by name:
@@ -96,7 +96,7 @@ interface Texts {
 }
 
 /** The texts of a component slot a locale file tells */
-const SLOT_TEXTS = ['description'] as const;
+const SLOT_TEXTS = ['label', 'description'] as const;
 
 const noTexts = (): Texts => ({
   fields: {},
