@@ -123,6 +123,21 @@ The app tells which it was given (`this.hl7 instanceof HL7Server`). Where
 the kinds do share what the app uses, an abstract base they both extend
 serves better: one slot typed by it, no branching.
 
+A slot may give the class put in it other defaults for its settings:
+`variables` for every class, `variablesOf` for one class of its `oneOf`
+alone, by the class's name. A setting the chosen class does not define
+is passed over.
+
+```ts
+@App.UseComponent({
+  oneOf: [UdpListener, PacketCapture],
+  required: true,
+  variables: { port: { default: 24000 } },
+  variablesOf: { PacketCapture: { filter: { default: 'udp port 24000' } } },
+})
+declare readonly mirror: UdpListener | PacketCapture;
+```
+
 ## Variables
 
 `@DefineVariable` describes a setting. Its type is read from the

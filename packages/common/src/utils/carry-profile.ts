@@ -1,4 +1,4 @@
-import { clone, merge } from '@jsopen/objects';
+import { clone } from '@jsopen/objects';
 import semver from 'semver';
 import {
   ElementComponentMetadata,
@@ -15,6 +15,7 @@ import type {
 import { ExtensionRegistry } from '../registry/extension-registry.js';
 import { SECRET_PREFIX } from './encrypt-helpers.js';
 import { ProfileEditor } from './profile-editor.js';
+import { slotClassVariables } from './slot-variables.js';
 import { hasValueRef } from './value-refs.js';
 
 /**
@@ -215,12 +216,12 @@ function carryComponents(
     const carried =
       holderCarried || earlier(component.writtenWith, reg.version);
     if (carried) {
-      /* Its class's settings, as its slot overrides them */
-      const variables = merge(
-        {},
-        [reg.metadata.variables || {}, def?.variables || {}],
-        { deep: 'full' },
-      ) as VariableMetadataRecord;
+      /* Its class's settings, as its slot overrides them for it */
+      const variables = slotClassVariables(
+        def,
+        reg.uri,
+        reg.metadata.variables,
+      );
       component.values = carryValues(
         component.values,
         variables,
