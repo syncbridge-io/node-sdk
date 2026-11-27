@@ -221,6 +221,7 @@ function carryComponents(
         def,
         reg.uri,
         reg.metadata.variables,
+        reg.metadata.interfaces,
       );
       component.values = carryValues(
         component.values,
