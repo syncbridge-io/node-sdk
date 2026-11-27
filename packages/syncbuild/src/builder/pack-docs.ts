@@ -29,6 +29,7 @@ import { gfm } from 'micromark-extension-gfm';
 import { visit } from 'unist-util-visit';
 import * as yaml from 'yaml';
 import type { Context } from '../context.js';
+import { classIcon, ICON_FILES } from './pack-icon.js';
 import { LOCALES_DIR, packLocales } from './pack-locales.js';
 
 /** A link's scheme, when it has one: it leaves the package */
@@ -166,6 +167,10 @@ export function packDocs(context: Context) {
     );
     checkMarkdown(doc.path, source, docs, shown, errors, warn);
   }
+  /* An app's or a component's icon: shown on its card */
+  for (const ext of [...(manifest.components ?? []), ...(manifest.apps ?? [])])
+    for (const name of ICON_FILES)
+      shown.add(`${DOCS_DIR}/${ext.className}/${name}`);
   for (const doc of docs.values())
     if (doc.type.kind === 'image' && !shown.has(doc.path))
       warn(`${doc.path} is shown by no document: is it needed?`);
@@ -239,6 +244,9 @@ export function packDocs(context: Context) {
       ...slotTextProblems(ext.components as any, ext.className),
     );
     Object.assign(ext, catalog);
+    const icon = classIcon(context.packageDir, ext.className, ext.iconUrl);
+    if (icon?.iconUrl) ext.iconUrl = icon.iconUrl;
+    errors.push(...(icon?.problems ?? []));
     if (!catalog.summary)
       warn(
         `${ext.className} has no summary: tell what it is for, in a sentence (@${ext.classType === 'app' ? 'App' : 'Component'}({ summary })) - its card in the Marketplace`,
