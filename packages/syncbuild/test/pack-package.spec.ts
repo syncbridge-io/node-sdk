@@ -475,6 +475,48 @@ export class PackComponent extends ComponentBase {}
     });
   });
 
+  it("should take a class's icon from its documents into its iconUrl, telling nothing of it", async () => {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8"/></svg>';
+    write(path.join(pkgDir, 'docs', 'PackComponent', 'README.md'), '# Pack');
+    write(path.join(pkgDir, 'docs', 'PackComponent', 'icon.svg'), svg);
+    const told: string[] = [];
+    await packPackage({
+      packageDir: pkgDir,
+      outDir: 'dist',
+      pack: false,
+      logger: (m: string) => told.push(m),
+    });
+    const manifest = JSON.parse(
+      fs.readFileSync(
+        path.join(pkgDir, 'dist', 'syncbridge-manifest.json'),
+        'utf8',
+      ),
+    );
+    expect(manifest.components[0].iconUrl).toBe(
+      `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
+    );
+    expect(told.filter(m => m.includes('icon.svg'))).toEqual([]);
+  });
+
+  it("should refuse a class's icon with a script", async () => {
+    write(
+      path.join(pkgDir, 'docs', 'PackComponent', 'icon.svg'),
+      '<svg><script>alert(1)</script></svg>',
+    );
+    const message = await packPackage({
+      packageDir: pkgDir,
+      outDir: 'dist',
+      pack: false,
+    }).then(
+      () => '',
+      (e: Error) => e.message,
+    );
+    expect(message).toMatch(
+      /docs\/PackComponent\/icon.svg has a script: an icon may not/,
+    );
+  });
+
   it("should refuse a module's Marketplace fields with problems, all told at once", async () => {
     write(
       path.join(pkgDir, 'src', 'pack.component.ts'),
