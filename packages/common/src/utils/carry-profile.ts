@@ -1,4 +1,4 @@
-import { clone, merge } from '@jsopen/objects';
+import { clone } from '@jsopen/objects';
 import semver from 'semver';
 import {
   ElementComponentMetadata,
@@ -15,6 +15,7 @@ import type {
 import { ExtensionRegistry } from '../registry/extension-registry.js';
 import { SECRET_PREFIX } from './encrypt-helpers.js';
 import { ProfileEditor } from './profile-editor.js';
+import { slotClassVariables } from './slot-variables.js';
 import { hasValueRef } from './value-refs.js';
 
 /**
@@ -215,12 +216,12 @@ function carryComponents(
     const carried =
       holderCarried || earlier(component.writtenWith, reg.version);
     if (carried) {
-      /* Its class's settings, as its slot overrides them */
-      const variables = merge(
-        {},
-        [reg.metadata.variables || {}, def?.variables || {}],
-        { deep: 'full' },
-      ) as VariableMetadataRecord;
+      /* Its class's settings, as its slot overrides them for it */
+      const variables = slotClassVariables(
+        def,
+        reg.uri,
+        reg.metadata.variables,
+      );
       component.values = carryValues(
         component.values,
         variables,
@@ -353,6 +354,13 @@ export interface ProfileMigration {
   values: Record<string, any>;
   /** The version of the class they were written with, if told */
   from?: string;
+  /**
+   * The class they were written for, when it was another one renamed into
+   * this (`@App` / `@Component({ formerly })`): its uri - several model
+   * apps folded into one telling which model a profile was of. Undefined
+   * when the class kept its name.
+   */
+  fromUri?: string;
   /** The version of the class they are carried to */
   to: string;
   /** Where in the profile: "" its app, "components/server" a component */
@@ -375,8 +383,18 @@ export interface ProfileMigrationStep {
   version: string;
   /** The version its values were written with, if told */
   from?: string;
+  /** The class its values were written for, renamed into this one since */
+  fromUri?: string;
   /** Its static method */
   method: string;
+}
+
+export interface ProfileMigrationsOptions extends CarryProfileOptions {
+  /**
+   * What carryProfile changed: a class it renamed tells each step the
+   * class its values were written for (`fromUri`)
+   */
+  changes?: ProfileCarryChange[];
 }
 
 /**
@@ -385,11 +403,12 @@ export interface ProfileMigrationStep {
  * then the app: each that declares one and whose values were written with
  * an earlier version than the one taken, or with one not told. Of a
  * profile as carryProfile leaves it. The app last, given the whole
- * profile: what it moves, its components have carried already.
+ * profile: what it moves, its components have carried already. Given
+ * the carry's changes, each step renamed by it is told its former class.
  */
 export function profileMigrations(
   profile: Profile,
-  options?: CarryProfileOptions,
+  options?: ProfileMigrationsOptions,
 ): ProfileMigrationStep[] {
   const findApp =
     options?.findApp ??
@@ -398,6 +417,14 @@ export function profileMigrations(
     options?.findComponent ??
     ((uri: string) => ExtensionRegistry.findComponent(uri));
   const steps: ProfileMigrationStep[] = [];
+  /* The class each element was written for, where the carry renamed it */
+  const formerAt = new Map<string, string>();
+  for (const c of options?.changes ?? [])
+    if (c.kind === 'class' && c.from)
+      formerAt.set(
+        c.location === 'appUri' ? '' : c.location.replace(/\/uri$/, ''),
+        c.from,
+      );
   const app = profile.appUri
     ? findApp(profile.appUri, profile.appVersion)
     : undefined;
@@ -416,6 +443,7 @@ export function profileMigrations(
         uri: ext.uri,
         version: ext.version,
         ...(written ? { from: written } : {}),
+        ...(formerAt.has(path) ? { fromUri: formerAt.get(path) } : {}),
         method,
       });
   };
@@ -473,6 +501,7 @@ export async function runProfileMigrations(
     const answered = await fn.call(ctor, {
       values: clone(given, { deep: 'full' }),
       from: s.from,
+      fromUri: s.fromUri,
       to: s.version,
       path: s.path,
     } satisfies ProfileMigration);
@@ -502,6 +531,7 @@ async function migrateApp(
   const answered = await fn.call(ctor, {
     values: work.values,
     from: s.from,
+    fromUri: s.fromUri,
     to: s.version,
     path: s.path,
     profile: editor,

@@ -1,4 +1,4 @@
-import { clone, merge, omit, omitUndefined } from '@jsopen/objects';
+import { clone, omit, omitUndefined } from '@jsopen/objects';
 import { SbValidationError } from '../classes/sb-error.js';
 import { StackExecutor } from '../classes/stack-executor.js';
 import {
@@ -13,6 +13,7 @@ import {
 } from '../models/index.js';
 import { ExtensionRegistry } from '../registry/extension-registry.js';
 import { slotInterfaces, slotTakes } from './slot-interfaces.js';
+import { slotClassVariables } from './slot-variables.js';
 
 export interface MaterializeOptions {
   returnUndefinedComponentsAsAbstract?: boolean;
@@ -184,12 +185,18 @@ function _materializeComponents(
         materializedComponent = {
           classUri: profileComponent.uri,
           version: reg.version,
-          ...omit(metadataComponent, ['classUri', 'variables', 'version']),
+          ...omit(metadataComponent, [
+            'classUri',
+            'variables',
+            'variablesOf',
+            'version',
+          ]),
         };
-        materializedComponent.variables = merge(
-          {},
-          [reg.metadata.variables || {}, metadataComponent.variables || {}],
-          { deep: 'full' },
+        /* Its class's settings, as the slot overrides them for it */
+        materializedComponent.variables = slotClassVariables(
+          metadataComponent,
+          profileComponent.uri,
+          reg.metadata.variables,
         );
         materializedComponent.variables = sortVariables(
           materializedComponent.variables,
