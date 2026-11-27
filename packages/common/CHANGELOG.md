@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to c2bd42d207efd6f0ef0b41e4e2df2131c5d9e18b -->
+<!-- rman:documented-up-to 70c9e726f2ba5d153c2ae99104daf9f548387307 -->
+
+## @syncbridge/common@2.30.1 (2026-11-27)
+
+### 🐛 Bug Fixes
+
+- **common:** give a class extending one of a slot's oneOf what variablesOf gives that class (90d2897)
+
+---
 
 ## @syncbridge/common@2.30.0 (2026-11-27)
 
