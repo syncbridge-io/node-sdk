@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to c2bd42d207efd6f0ef0b41e4e2df2131c5d9e18b -->
+<!-- rman:documented-up-to b66bfc5112af573fd492abadef1a6c5580bfaafd -->
+
+## @syncbridge/syncbuild@2.20.0 (2026-11-27)
+
+### ✨ Features
+
+- **syncbuild:** take slot labels from locales/ (84134cc)
+
+---
 
 ## @syncbridge/syncbuild@2.19.0 (2026-11-27)
 
