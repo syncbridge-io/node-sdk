@@ -152,7 +152,9 @@ A plugin adds to exact places in the UI, each a point by name -
 `<page>.<area>.<place>` - with the component it draws there. It gives
 the component's properties and SyncBridge draws it; no code, HTML or SVG
 of the plugin reaches the browser. Icons are named from the UI's icon
-set ([lucide](https://lucide.dev/icons)): `database`, `send`.
+set, peacox-icons, in kebab case: `database`, `send`, `heart-pulse`
+([the names](docs/ui-icons.md)). A name the set does not have is drawn
+as the default icon.
 
 ```ts
 this.host.ui.contribute('worker.header.menu', {
