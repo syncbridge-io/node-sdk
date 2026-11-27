@@ -106,6 +106,14 @@ export class WeatherStationApp extends AppBase {
 }
 ```
 
+A slot may name itself with `label`, a short name, and tell what it is for
+with `description`: each text, or text by language - `label: { en:
+'Mirror stream', tr: 'Ayna akışı' }`. The worker's component map names
+the slot by its label, else by its property name in words. A slot
+redeclared in a subclass keeps the base's label and description when it
+gives none. `locales/` may tell them too (`"components": { "mirror": {
+"label": "Ayna akışı" } }`).
+
 A component may use components too, with `Component.UseComponent`. A URI
 can name another module's component, for example
 `@syncbridge/net:TcpClient`. Declare that module as a peer as well.

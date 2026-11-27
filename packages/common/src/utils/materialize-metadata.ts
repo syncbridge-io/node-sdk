@@ -154,6 +154,9 @@ function _materializeComponents(
           ...(metadataComponent.oneOf
             ? { oneOf: metadataComponent.oneOf }
             : {}),
+          ...(metadataComponent.label !== undefined
+            ? { label: metadataComponent.label }
+            : {}),
           description: metadataComponent.description,
           required: metadataComponent.required,
         } satisfies ElementComponentMetadata;

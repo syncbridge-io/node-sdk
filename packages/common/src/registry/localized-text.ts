@@ -55,9 +55,9 @@ interface VariableTexts {
 }
 
 /**
- * What is wrong with the descriptions of an app's or a component's slots,
- * those of the slots within them too: each by its path ("ClassName's
- * server.inner component description")
+ * What is wrong with the labels and descriptions of an app's or a
+ * component's slots, those of the slots within them too: each by its path
+ * ("ClassName's server.inner component description")
  */
 export function slotTextProblems(
   components: Record<string, any> | undefined,
@@ -69,6 +69,10 @@ export function slotTextProblems(
     if (!slot || typeof slot !== 'object') continue;
     const path = at + key;
     problems.push(
+      ...localizedTextProblems(
+        slot.label,
+        `${owner}'s ${path} component label`,
+      ),
       ...localizedTextProblems(
         slot.description,
         `${owner}'s ${path} component description`,
