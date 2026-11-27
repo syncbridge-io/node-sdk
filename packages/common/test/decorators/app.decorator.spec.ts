@@ -102,13 +102,21 @@ describe('App Decorator', () => {
       expect(metadata.components.comp1.interfaceUri).toBe('ns:comp1');
     });
 
-    it("should keep the base's description of a slot redeclared without one, and take its own", () => {
+    it("should keep the base's label and description of a slot redeclared without them, and take its own", () => {
       @App({ abstract: true })
       class BaseApp extends AppBase {
-        @App.UseComponent({ uri: 'ns:server', description: 'The server' })
+        @App.UseComponent({
+          uri: 'ns:server',
+          label: { en: 'Server', tr: 'Sunucu' },
+          description: 'The server',
+        })
         declare server: any;
 
-        @App.UseComponent({ uri: 'ns:client', description: 'The client' })
+        @App.UseComponent({
+          uri: 'ns:client',
+          label: 'Client',
+          description: 'The client',
+        })
         declare client: any;
       }
 
@@ -117,7 +125,11 @@ describe('App Decorator', () => {
         @App.UseComponent({ uri: 'ns:server', required: true })
         declare server: any;
 
-        @App.UseComponent({ uri: 'ns:client', description: 'Its own client' })
+        @App.UseComponent({
+          uri: 'ns:client',
+          label: 'HIS',
+          description: 'Its own client',
+        })
         declare client: any;
       }
 
@@ -125,8 +137,10 @@ describe('App Decorator', () => {
       expect(components.server).toMatchObject({
         interfaceUri: 'ns:server',
         required: true,
+        label: { en: 'Server', tr: 'Sunucu' },
         description: 'The server',
       });
+      expect(components.client.label).toBe('HIS');
       expect(components.client.description).toBe('Its own client');
       /* The base's own: untouched */
       expect(

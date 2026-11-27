@@ -308,14 +308,14 @@ their dotted path:
 }
 ```
 
-An app's or a component's slots (`@UseComponent({ description })`) are
+An app's or a component's slots (`@UseComponent({ label, description })`) are
 told under `components`, a slot within one by its dotted path:
 
 ```json
 {
   "Hl7DeviceApp": {
     "components": {
-      "hl7Client": { "description": "HL7 istemci bileşeni" },
+      "hl7Client": { "label": "HBYS", "description": "HL7 istemci bileşeni" },
       "hl7Server.tls": { "description": "TLS" }
     }
   }

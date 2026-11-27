@@ -214,6 +214,36 @@ describe("locales/ extending a registry dependency's classes", () => {
       });
     });
 
+    it("should take a slot's label, and tell it lacking where the code tells one", () => {
+      write(path.join(pkgDir, 'locales', 'tr.json'), {
+        Hl7App: {
+          displayName: 'HL7',
+          components: {
+            hl7Client: { label: 'HBYS', description: 'HL7 istemcisi.' },
+            hl7Server: { description: 'HL7 sunucusu.' },
+            'hl7Server.tls': { description: 'TLS.' },
+          },
+        },
+      });
+      const m = slotted();
+      m.apps[0].components.hl7Client.label = 'HIS';
+      m.apps[0].components.hl7Server.label = 'Server';
+      const warnings: string[] = [];
+      const r = pack(m, warnings);
+      expect(r.errors).toEqual([]);
+      const { components } = m.apps[0];
+      expect(components.hl7Client.label).toEqual({ en: 'HIS', tr: 'HBYS' });
+      expect(components.hl7Server.label).toBe('Server');
+      expect(components.hl7Server.components.tls.label).toBeUndefined();
+      expect(r.files.tr.Hl7App.components.hl7Client).toEqual({
+        label: 'HBYS',
+        description: 'HL7 istemcisi.',
+      });
+      expect(warnings).toEqual([
+        "locales/tr.json lacks 1 text, shown in en meanwhile: Hl7App's hl7Server component label",
+      ]);
+    });
+
     it("should not take a base's text where the class's code tells none - a slot or a setting redeclared without it - and tell it; one the file tells of the class itself, taken", () => {
       write(path.join(depDir, 'locales', 'tr.json'), {
         Hl7DeviceApp: {
@@ -267,7 +297,7 @@ describe("locales/ extending a registry dependency's classes", () => {
       write(path.join(pkgDir, 'locales', 'tr.json'), {
         Hl7App: {
           components: {
-            hl7Client: { description: 'İstemci.', label: 'x' },
+            hl7Client: { description: 'İstemci.', title: 'x' },
             gone: { description: 'Yok.' },
           },
         },
@@ -275,7 +305,7 @@ describe("locales/ extending a registry dependency's classes", () => {
       const warnings: string[] = [];
       const r = pack(slotted(), warnings);
       expect(r.errors).toEqual([
-        'locales/tr.json: Hl7App\'s hl7Client component "label" is not a text of it: description',
+        'locales/tr.json: Hl7App\'s hl7Client component "title" is not a text of it: label, description',
         'locales/tr.json: Hl7App has no component "gone"',
       ]);
       expect(warnings).toEqual([
