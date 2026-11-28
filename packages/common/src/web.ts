@@ -3,3 +3,4 @@
  * nothing of Node is imported here
  */
 export * from './host-link/sealed-box-web.js';
+export * from './utils/icon-tint.js';

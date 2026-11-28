@@ -59,7 +59,7 @@ export class ElementMetadata {
   @ApiField({
     label: 'Icon',
     description:
-      "The class's icon, an image URL; spm makes it a data: URL from docs/<ClassName>/icon.svg or icon.png",
+      "The class's icon, an image URL; spm makes it a data: URL from docs/<ClassName>/icon.svg or icon.png. An SVG painted in currentColor alone is drawn in the page's colour (isTintedIcon)",
   })
   declare iconUrl?: string;
 
