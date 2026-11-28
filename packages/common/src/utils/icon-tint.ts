@@ -21,7 +21,8 @@ const COLOR_PROPERTIES = [
 /** The values that paint nothing, or take the colour of the parent */
 const NEUTRAL_COLORS = new Set(['none', 'transparent', 'inherit']);
 
-const SVG_DATA_URL = /^data:image\/svg\+xml(;charset=[\w-]+)?(;base64)?,/i;
+/** An SVG data: URL, with its parameters: `;charset=utf-8`, `;utf8`, `;base64` */
+const SVG_DATA_URL = /^data:image\/svg\+xml((?:;[^;,]*)*),/i;
 
 /**
  * Whether an icon - a class's `iconUrl` - is painted in `currentColor`
@@ -70,11 +71,19 @@ function svgOfDataUrl(url: string): string | undefined {
   const m = SVG_DATA_URL.exec(url);
   if (!m) return;
   const data = url.substring(m[0].length);
+  const base64 = m[1].toLowerCase().split(';').at(-1)?.trim() === 'base64';
+  if (base64) {
+    try {
+      const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    } catch {
+      return;
+    }
+  }
+  // Written by hand, an SVG is often not URL-encoded: a "%" in it is kept
   try {
-    if (!m[2]) return decodeURIComponent(data);
-    const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0));
-    return new TextDecoder().decode(bytes);
+    return decodeURIComponent(data);
   } catch {
-    return;
+    return data;
   }
 }
