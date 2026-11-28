@@ -1,6 +1,14 @@
 # Changelog
 
-<!-- rman:documented-up-to c974be4c90c238deee9d234398b0b226fee13d1f -->
+<!-- rman:documented-up-to f264b9f851747202557f056df536532a6698da10 -->
+
+## @syncbridge/plugin-api@2.6.1 (2026-11-28)
+
+### 📚 Documentation
+
+- **plugin-api:** name icons from peacox-icons, with the list (da9e5f4)
+
+---
 
 ## @syncbridge/plugin-api@2.6.0 (2026-11-16)
 
