@@ -48,6 +48,8 @@ describe('sealed box, made with WebCrypto', () => {
 
   it('should be what the web entry gives, nothing of Node in it', () => {
     expect(Object.keys(web).sort()).toEqual([
+      'isTintedIcon',
+      'isTintedSvg',
       'sealForWeb',
       'sealKeyFingerprint',
     ]);

@@ -51,6 +51,7 @@ export {
   secretDecryptor,
   secretEncryptor,
 } from './utils/encrypt-helpers.js';
+export * from './utils/icon-tint.js';
 export * from './utils/materialize-metadata.js';
 export * from './utils/normalize-metadata.js';
 export * from './utils/permission-codes.js';
