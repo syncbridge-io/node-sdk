@@ -1,6 +1,15 @@
 # Changelog
 
-<!-- rman:documented-up-to b66bfc5112af573fd492abadef1a6c5580bfaafd -->
+<!-- rman:documented-up-to f264b9f851747202557f056df536532a6698da10 -->
+
+## @syncbridge/syncbuild@2.21.0 (2026-11-28)
+
+### ✨ Features
+
+- **syncbuild:** pack a class's icon into its iconUrl (c0d3dd7)
+- **common:** tell whether a class's icon is drawn in the page's colour (8455157)
+
+---
 
 ## @syncbridge/syncbuild@2.20.0 (2026-11-27)
 
