@@ -60,6 +60,24 @@ describe('isTintedIcon', () => {
     ).toBe(true);
   });
 
+  it('reads an SVG data: URL with any parameters, encoded or not', () => {
+    expect(isTintedIcon(`data:image/svg+xml;utf8,${tinted}`)).toBe(true);
+    expect(
+      isTintedIcon(`data:image/svg+xml;utf8,${encodeURIComponent(tinted)}`),
+    ).toBe(true);
+    expect(isTintedIcon(`data:image/svg+xml,${tinted}`)).toBe(true);
+    expect(
+      isTintedIcon(
+        `data:image/svg+xml;charset=utf-8;base64,${Buffer.from(tinted).toString('base64')}`,
+      ),
+    ).toBe(true);
+    expect(
+      isTintedIcon(
+        `data:image/svg+xml;utf8,${svg('<rect width="100%" stroke="currentColor"/>')}`,
+      ),
+    ).toBe(true);
+  });
+
   it('refuses what is not an SVG data: URL', () => {
     expect(isTintedIcon(undefined)).toBe(false);
     expect(isTintedIcon('https://example.com/icon.svg')).toBe(false);
