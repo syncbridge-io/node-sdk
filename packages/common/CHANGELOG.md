@@ -1,6 +1,22 @@
 # Changelog
 
-<!-- rman:documented-up-to b66bfc5112af573fd492abadef1a6c5580bfaafd -->
+<!-- rman:documented-up-to f264b9f851747202557f056df536532a6698da10 -->
+
+## @syncbridge/common@2.32.0 (2026-11-28)
+
+### ✨ Features
+
+- **common:** tell whether a class's icon is drawn in the page's colour (8455157)
+
+### 🐛 Bug Fixes
+
+- **common:** read an SVG icon's data: URL with any parameters (b9a2b57)
+
+### 📚 Documentation
+
+- **common:** tell where a class's iconUrl comes from (ac8887d)
+
+---
 
 ## @syncbridge/common@2.31.0 (2026-11-27)
 
