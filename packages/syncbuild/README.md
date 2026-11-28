@@ -233,6 +233,13 @@ docs/
   `foreignObject`, or a link or `url()` to anything not in it is
   refused. A class gives its icon this way or by `iconUrl` in its code,
   not both.
+  An SVG icon painted in `currentColor` alone - every `fill`, `stroke`
+  and stop colour is `currentColor` or `none`, at least one is
+  `currentColor` - is drawn in the colour of the page showing it, light
+  or dark theme alike. Any other icon, a PNG or a logo in its own
+  colours, is drawn as it is. `isTintedIcon(iconUrl)` from
+  `@syncbridge/common` (or `@syncbridge/common/web` in a browser) tells
+  which.
 - **Shared:** extensions alike - one device family's - may share
   documents rather than each keep a copy. They are put in a directory
   not named as a class (`docs/shared/`), and each extension's sidebar
